@@ -1,0 +1,25 @@
+/* Custom CSS for MetaIntegrator Documentation */
+
+/* Improve code block appearance */
+.highlight {
+    border-radius: 4px;
+}
+
+/* Better table styling */
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+table th {
+    background-color: var(--md-primary-fg-color);
+    color: white;
+}
+
+/* Card grid styling */
+.grid.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}

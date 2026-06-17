@@ -1,0 +1,19 @@
+# requirements-dev.txt
+# Development, testing, and code quality dependencies
+# Install alongside runtime deps: pip install -r requirements.txt -r requirements-dev.txt
+
+# --- Code quality ---
+flake8>=5.0.0
+black>=22.0.0
+mypy>=0.991
+isort>=5.10.0
+
+# --- Testing ---
+pytest>=6.0.0
+pytest-cov>=2.12.0
+
+# --- Memory / performance profiling ---
+psutil>=5.7.0
+
+# --- Database connectivity (for optional integration tests) ---
+mysql-connector-python>=8.0.0

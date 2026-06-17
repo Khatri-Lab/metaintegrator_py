@@ -1,0 +1,91 @@
+# ============================================================
+# MetaIntegrator-py .gitignore
+# ============================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg
+*.egg-info/
+*.whl
+pip-wheel-metadata/
+
+# --- Virtual Environments ---
+.venv/
+venv/
+ENV/
+env/
+.env
+env.bak
+
+# --- Testing & Coverage ---
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.benchmarks/
+.tox/
+.nox/
+.mypy_cache/
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# --- macOS ---
+.DS_Store
+**/.DS_Store
+
+# --- MkDocs build output ---
+site/
+
+# --- Jupyter Notebook ---
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# --- Data Science & Large Files ---
+*.parquet
+*.pkl
+*.h5
+*.npy
+
+# --- R artifacts (from reference data conversion) ---
+# Note: .rda/.RData under src/metaintegrator/data/ and data/reference/
+# are intentionally tracked. This only excludes bare session files.
+.RData
+.Rhistory
+.Rproj.user/
+
+# --- Temporary / scratch ---
+tmp/
+*.tmp
+*.bak
+*.log
+
+# --- Output artifacts from tutorial runs ---
+# (users regenerate these locally; don't track generated plots)
+tutorials/output*/
+
+# --- OS-level ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini

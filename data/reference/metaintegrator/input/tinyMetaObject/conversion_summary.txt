@@ -1,0 +1,57 @@
+R Data Conversion Summary
+========================
+
+Input file: data/reference/metaintegrator/rdata/tinyMetaObject.RData 
+Processing time: 2026-01-04 15:41:33.18328 
+Successfully converted: 40 files
+Failed conversions: 0 items
+
+Source objects:
+-  tinyMetaObject  ( list )
+
+Output files:
+-  objects_before.csv 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0_effectSizeThresh.csv 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0_FDRThresh.csv 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0_filterDescription.txt 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0_heterogeneityPvalThresh.csv 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0_isLeaveOneOut.csv 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0_negGeneNames.csv 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0_numberStudiesThresh.csv 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0_posGeneNames.csv 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0_timestamp.csv 
+-  tinyMetaObject_filterResults_pValueFDR0.05_es0_nStudies1_looaTRUE_hetero0.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_PBMC.Study.1_analysisDescription.txt 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_PBMC.Study.1_datasetEffectSizes.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_PBMC.Study.1_datasetEffectSizeStandardErrors.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_PBMC.Study.1_pooledResults.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_PBMC.Study.1.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.1_analysisDescription.txt 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.1_datasetEffectSizes.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.1_datasetEffectSizeStandardErrors.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.1_pooledResults.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.1.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.2_analysisDescription.txt 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.2_datasetEffectSizes.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.2_datasetEffectSizeStandardErrors.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.2_pooledResults.csv 
+-  tinyMetaObject_leaveOneOutAnalysis_removed_Whole.Blood.Study.2.csv 
+-  tinyMetaObject_metaAnalysis_analysisDescription.txt 
+-  tinyMetaObject_metaAnalysis_datasetEffectSizes.csv 
+-  tinyMetaObject_metaAnalysis_datasetEffectSizeStandardErrors.csv 
+-  tinyMetaObject_metaAnalysis_pooledResults.csv 
+-  tinyMetaObject_originalData_PBMC.Study.1_class.csv 
+-  tinyMetaObject_originalData_PBMC.Study.1_expr.csv 
+-  tinyMetaObject_originalData_PBMC.Study.1_formattedName.txt 
+-  tinyMetaObject_originalData_PBMC.Study.1_keys.csv 
+-  tinyMetaObject_originalData_PBMC.Study.1_pheno.csv 
+-  tinyMetaObject_originalData_Whole.Blood.Study.1_class.csv 
+-  tinyMetaObject_originalData_Whole.Blood.Study.1_expr.csv 
+-  tinyMetaObject_originalData_Whole.Blood.Study.1_formattedName.txt 
+-  tinyMetaObject_originalData_Whole.Blood.Study.1_keys.csv 
+-  tinyMetaObject_originalData_Whole.Blood.Study.1_pheno.csv 
+-  tinyMetaObject_originalData_Whole.Blood.Study.2_class.csv 
+-  tinyMetaObject_originalData_Whole.Blood.Study.2_expr.csv 
+-  tinyMetaObject_originalData_Whole.Blood.Study.2_formattedName.txt 
+-  tinyMetaObject_originalData_Whole.Blood.Study.2_keys.csv 
+-  tinyMetaObject_originalData_Whole.Blood.Study.2_pheno.csv 

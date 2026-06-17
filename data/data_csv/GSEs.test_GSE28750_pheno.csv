@@ -1,0 +1,11 @@
+"","Title","DiagnosisPrimary","Platform_id","AnyInfect.1yes.0no","Healthy0.Sepsis1","SIRS0.Sepsis1"
+"GSM712488","Control_Healthy_1","Healthy","GPL570",0,0,NA
+"GSM712489","Control_Healthy_2","Healthy","GPL570",0,0,NA
+"GSM712490","Control_Healthy_3","Healthy","GPL570",0,0,NA
+"GSM712491","Control_Healthy_4","Healthy","GPL570",0,0,NA
+"GSM712492","Control_Healthy_5","Healthy","GPL570",0,0,NA
+"GSM712478","Experiment_Sepsis_1","Sepsis","GPL570",1,1,1
+"GSM712479","Experiment_Sepsis_2","Sepsis","GPL570",1,1,1
+"GSM712480","Experiment_Sepsis_3","Sepsis","GPL570",1,1,1
+"GSM712481","Experiment_Sepsis_4","Sepsis","GPL570",1,1,1
+"GSM712482","Experiment_Sepsis_5","Sepsis","GPL570",1,1,1

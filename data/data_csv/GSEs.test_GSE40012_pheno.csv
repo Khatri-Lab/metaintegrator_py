@@ -1,0 +1,11 @@
+"","Title","DiagnosisPrimary","Platform_id","AnyInfect.1yes.0no","Healthy0.Sepsis1","SIRS0.Sepsis1"
+"GSM983459","PAXgenewholebloodhealthycontrolDay_1ID=48","Healthy","GPL6947",0,0,NA
+"GSM983461","PAXgenewholebloodhealthycontrolDay_1ID=51","Healthy","GPL6947",0,0,NA
+"GSM983463","PAXgenewholebloodhealthycontrolDay_1ID=50","Healthy","GPL6947",0,0,NA
+"GSM983465","PAXgenewholebloodhealthycontrolDay_1ID=43","Healthy","GPL6947",0,0,NA
+"GSM983467","PAXgenewholebloodhealthycontrolDay_1ID=57","Healthy","GPL6947",0,0,NA
+"GSM983407","PAXgenewholebloodbacterialpneumoniaDay_1ID=33","Sepsis","GPL6947",1,1,1
+"GSM983408","PAXgenewholebloodbacterialpneumoniaDay_2ID=33","Sepsis","GPL6947",1,1,1
+"GSM983416","PAXgenewholebloodbacterialpneumoniaDay_1ID=1","Sepsis","GPL6947",1,1,1
+"GSM983417","PAXgenewholebloodbacterialpneumoniaDay_2ID=1","Sepsis","GPL6947",1,1,1
+"GSM983422","PAXgenewholebloodbacterialpneumoniaDay_2ID=3","Sepsis","GPL6947",1,1,1

@@ -1,0 +1,13 @@
+R Data Conversion Summary
+========================
+
+Input file: data/reference/metaintegrator/rdata/immunoStatesMatrix.RData 
+Processing time: 2026-01-04 15:51:42.011813 
+Successfully converted: 1 files
+Failed conversions: 0 items
+
+Source objects:
+-  immunoStatesMatrix  ( matrix/array )
+
+Output files:
+-  immunoStatesMatrix.csv 

@@ -1,0 +1,13 @@
+R Data Conversion Summary
+========================
+
+Input file: data/reference/metaintegrator/rdata/ens_ensgID_table.rda 
+Processing time: 2026-01-04 16:17:51.351294 
+Successfully converted: 1 files
+Failed conversions: 0 items
+
+Source objects:
+-  ens_ensgID_table  ( data.frame )
+
+Output files:
+-  ens_ensgID_table.csv 

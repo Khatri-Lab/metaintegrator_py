@@ -1,0 +1,13 @@
+R Data Conversion Summary
+========================
+
+Input file: data/reference/metaintegrator/rdata/ucsc_genbank_table.rda 
+Processing time: 2026-01-04 16:28:49.609251 
+Successfully converted: 1 files
+Failed conversions: 0 items
+
+Source objects:
+-  ucsc_genbank_table  ( data.frame )
+
+Output files:
+-  ucsc_genbank_table.csv 

@@ -1,0 +1,37 @@
+# requirements.txt
+# Runtime dependencies — what end users need to use metaintegrator-py
+
+# Core scientific stack
+pandas>=1.5.0
+numpy>=1.21.0
+scipy>=1.9.0
+scikit-learn>=0.24.0
+
+# Plotting
+matplotlib>=3.10.8
+seaborn>=0.13.2
+
+# Statistical analysis
+statsmodels>=0.14.2
+
+# Configuration
+PyYAML>=6.0.3
+
+# Data loading and web requests
+requests>=2.25.0
+
+# XML parsing
+lxml>=4.6.0
+
+# Progress bars
+tqdm>=4.60.0
+
+# Advanced plotting
+plotly>=5.0.0
+
+# Excel file support
+openpyxl>=3.0.0
+xlrd>=2.0.0
+
+# GEO data access
+GEOparse>=2.0.3

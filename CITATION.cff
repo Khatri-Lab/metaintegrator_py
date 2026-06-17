@@ -1,0 +1,157 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software and the original methodology paper."
+type: software
+title: "MetaIntegrator-py"
+version: 1.0.0
+date-released: 2026-04-22
+url: "https://github.com/Khatri-Lab/metaintegrator_py"
+repository-code: "https://github.com/Khatri-Lab/metaintegrator_py"
+license: Apache-2.0
+abstract: "A Python implementation for meta-analysis of gene expression data. MetaIntegrator-py provides fast, modern tools for integrating multiple genomic datasets, performing meta-analysis, and generating publication-quality visualizations. This package is based on the original R implementation while maintaining full methodological compatibility."
+
+keywords:
+  - meta-analysis
+  - bioinformatics
+  - gene expression
+  - genomics
+  - microarray
+  - RNA-seq
+  - GEO
+  - transcriptomics
+
+authors:
+  - name: "Khatri Lab"
+    affiliation: "Stanford University"
+    city: "Stanford"
+    region: "CA"
+    country: "US"
+
+contact:
+  - email: "khatrilab-support@stanford.edu"
+    name: "Khatri Lab Support"
+    affiliation: "Stanford University"
+
+identifiers:
+  - type: url
+    value: "https://khatrilab.stanford.edu/tools/"
+    description: "Khatri Lab Tools"
+
+references:
+  - type: article
+    authors:
+      - family-names: "Haynes"
+        given-names: "Winston A"
+      - family-names: "Vallania"
+        given-names: "Francesco"
+      - family-names: "Liu"
+        given-names: "Chun"
+      - family-names: "Rinchai"
+        given-names: "Darawan"
+      - family-names: "Uhlig"
+        given-names: "Judith"
+      - family-names: "Banchereau"
+        given-names: "Jacques"
+      - family-names: "Pascual"
+        given-names: "Virginia"
+      - family-names: "Palucka"
+        given-names: "Karolina"
+      - family-names: "Khatri"
+        given-names: "Purvesh"
+    title: "Empowering multi-cohort gene expression analysis to increase reproducibility"
+    journal: "Bioinformatics"
+    year: 2017
+    volume: 33
+    issue: 4
+    start: 596
+    end: 598
+    doi: "10.1093/bioinformatics/btw694"
+    pmid: 27789686
+    scope: "Original methodology paper - must be cited when using MetaIntegrator-py"
+
+  - type: article
+    authors:
+      - family-names: "Sweeney"
+        given-names: "Timothy E"
+      - family-names: "Haynes"
+        given-names: "Winston A"
+      - family-names: "Vallania"
+        given-names: "Francesco"
+      - family-names: "Ioannidis"
+        given-names: "John P A"
+      - family-names: "Khatri"
+        given-names: "Purvesh"
+    title: "Methods to increase reproducibility in differential gene expression via meta-analysis"
+    journal: "Nucleic Acids Research"
+    year: 2017
+    volume: 45
+    issue: 1
+    start: e1
+    doi: "10.1093/nar/gkw797"
+    pmid: 27634960
+    scope: "Cite if using COCONUT batch correction functionality"
+
+  - type: article
+    authors:
+      - family-names: "Vallania"
+        given-names: "Francesco"
+      - family-names: "Tam"
+        given-names: "Andrew"
+      - family-names: "Lofgren"
+        given-names: "Shane"
+      - family-names: "Schaffert"
+        given-names: "Sarah"
+      - family-names: "Azad"
+        given-names: "Tej D"
+      - family-names: "Bongen"
+        given-names: "Erika"
+      - family-names: "Haynes"
+        given-names: "Winston"
+      - family-names: "Alsup"
+        given-names: "Meia"
+      - family-names: "Alonso"
+        given-names: "Miguela"
+      - family-names: "Davis"
+        given-names: "Mark"
+      - family-names: "Engleman"
+        given-names: "Edgar"
+      - family-names: "Khatri"
+        given-names: "Purvesh"
+    title: "Leveraging heterogeneity across multiple datasets increases cell-mixture deconvolution accuracy and reduces biological and technical biases"
+    journal: "Nature Communications"
+    year: 2018
+    volume: 9
+    issue: 1
+    start: 4735
+    doi: "10.1038/s41467-018-07242-6"
+    pmid: 30514919
+    scope: "Cite if using ImmunoStates immune deconvolution functionality"
+
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Haynes"
+      given-names: "Winston A"
+    - family-names: "Vallania"
+      given-names: "Francesco"
+    - family-names: "Liu"
+      given-names: "Chun"
+    - family-names: "Rinchai"
+      given-names: "Darawan"
+    - family-names: "Uhlig"
+      given-names: "Judith"
+    - family-names: "Banchereau"
+      given-names: "Jacques"
+    - family-names: "Pascual"
+      given-names: "Virginia"
+    - family-names: "Palucka"
+      given-names: "Karolina"
+    - family-names: "Khatri"
+      given-names: "Purvesh"
+  title: "Empowering multi-cohort gene expression analysis to increase reproducibility"
+  journal: "Bioinformatics"
+  year: 2017
+  volume: 33
+  issue: 4
+  start: 596
+  end: 598
+  doi: "10.1093/bioinformatics/btw694"
