@@ -2,15 +2,13 @@
 Statistical analysis module for meta-analysis results.
 This module provides comprehensive statistical analysis capabilities for meta-integrator data.
 
-IMPROVEMENTS FROM ORIGINAL:
-- Uses scoring_core infrastructure (eliminates ~200 lines of duplicate code)
+Highlights:
+- Uses scoring_core infrastructure
 - Enhanced statistical methods with robust error handling
 - Comprehensive distribution and correlation analysis
 - Modular design with clear separation of concerns
 - Standardized validation and logging
-- New advanced statistical features (bootstrap, permutation tests)
-
-NEW FEATURES:
+- Advanced statistical features (bootstrap, permutation tests)
 - Bootstrap confidence intervals
 - Permutation-based significance testing
 - Advanced distribution fitting
@@ -26,7 +24,7 @@ from scipy import stats
 from sklearn.preprocessing import StandardScaler
 
 # Import from consolidated core module (eliminates duplicates)
-from metaintegrator.scoring_core import (
+from .scoring_core import (
     # Use unified data structures and configurations
     StatisticalSummary,
     SummaryConfig,

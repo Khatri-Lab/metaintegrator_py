@@ -1,7 +1,7 @@
 """
 Comprehensive export capabilities for scoring and meta-analysis results.
 
-NEW MODULE FEATURES:
+Highlights:
 - Unified export interface for all data types (results, plots, reports)
 - Multiple format support (CSV, Excel, JSON, Parquet, HDF5)
 - Automated report generation with customizable templates
@@ -25,7 +25,7 @@ import seaborn as sns
 from jinja2 import Template
 
 # Import from consolidated core module
-from metaintegrator.scoring_core import (
+from .scoring_core import (
     # Data structures
     ExportFormat,
     StatisticalSummary,

@@ -1,17 +1,14 @@
 """
-Refactored Results Summarizer with modular design and enhanced analytics.
+Results Summarizer with modular design and enhanced analytics.
 This module provides comprehensive result summarization and analysis capabilities.
 
-IMPROVEMENTS FROM ORIGINAL (scoring_filter_results_summarizer.py):
-- Uses scoring_core infrastructure (eliminates ~400 lines of duplicate code)
+Highlights:
+- Uses scoring_core infrastructure
 - Modular design with specialized analyzers
 - Enhanced statistical analysis capabilities
 - Integrated export functionality via scoring_export_engine
 - Improved error handling and validation
 - Better separation of concerns
-- Reduced from ~1,200 lines to ~450 lines (62% reduction)
-
-NEW FEATURES:
 - Advanced trend analysis
 - Multi-level summarization (gene, pathway, study levels)
 - Interactive visualization support
@@ -28,7 +25,7 @@ import pandas as pd
 from scipy import stats
 
 # Import from consolidated core module (eliminates duplicates)
-from metaintegrator.scoring_core import (
+from .scoring_core import (
     # Data structures
     StatisticalSummary,
     SummaryConfig,
@@ -40,10 +37,10 @@ from metaintegrator.scoring_core import (
     # Exceptions
     ScoringCalculationError,
 )
-from metaintegrator.scoring_export_engine import ExportEngine, ExportConfig
+from .scoring_export_engine import ExportEngine, ExportConfig
 
 # Import specialized modules for enhanced functionality
-from metaintegrator.scoring_statistical_analysis import (
+from .scoring_statistical_analysis import (
     StatisticalAnalyzer,
     DistributionAnalyzer,
 )

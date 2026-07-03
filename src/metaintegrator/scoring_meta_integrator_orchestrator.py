@@ -1,18 +1,15 @@
 """
-Refactored Meta Integrator Orchestrator - Unified interface for meta-integrator workflows.
+Meta Integrator Orchestrator - Unified interface for meta-integrator workflows.
 This module provides comprehensive orchestration of all meta-analysis components.
 
-IMPROVEMENTS FROM ORIGINAL:
-- Uses all refactored modules with consolidated infrastructure
+Highlights:
+- Uses all modules with consolidated infrastructure
 - Enhanced workflow management with configurable pipelines
 - Comprehensive error handling and recovery mechanisms
 - Advanced batch processing and parallel execution capabilities
 - Integrated export and reporting through scoring_export_engine
 - Better monitoring and progress tracking
 - Flexible component configuration and swapping
-- Reduced from ~715 lines to ~650 lines (9% reduction)
-
-NEW FEATURES:
 - Multi-level orchestration (simple, advanced, batch, custom)
 - Pipeline validation and optimization
 - Automated quality assessment and recommendations
@@ -35,8 +32,8 @@ from typing import Dict, List, Optional, Any
 import numpy as np
 import pandas as pd
 
-# Import all refactored scoring modules
-from metaintegrator.scoring_core import (
+# Import all refactored scoring modules (relative imports within package)
+from .scoring_core import (
     # Core infrastructure
     LoggerMixin,
     # Exceptions
@@ -45,24 +42,24 @@ from metaintegrator.scoring_core import (
     # Data structures
     StatisticalSummary,
 )
-from metaintegrator.scoring_export_engine import ExportEngine, ExportConfig
+from .scoring_export_engine import ExportEngine, ExportConfig
 
 # Import refactored modules
-from metaintegrator.scoring_gene_scorer import (
+from .scoring_gene_scorer import (
     EnhancedGeneScorer,
     EnhancedScoringConfig,
     ScoringMethod,
 )
-from metaintegrator.scoring_meta_integrator_filter import (
+from .scoring_meta_integrator_filter import (
     EnhancedMetaIntegratorFilter,
     EnhancedFilterConfig,
     EnhancedFilterResults,
 )
-from metaintegrator.scoring_results_summarizer import (
+from .scoring_results_summarizer import (
     EnhancedSummaryConfig,
     EnhancedResultSummarizer,
 )
-from metaintegrator.scoring_statistical_analysis import StatisticalAnalyzer
+from .scoring_statistical_analysis import StatisticalAnalyzer
 
 # ==================================================================
 # ORCHESTRATOR CONFIGURATION

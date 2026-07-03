@@ -1,17 +1,14 @@
 """
-Refactored GeneScorer using the consolidated scoring_core infrastructure.
+GeneScorer uses the consolidated scoring_core infrastructure.
 This module provides comprehensive gene scoring capabilities with enhanced modularity.
 
-IMPROVEMENTS FROM ORIGINAL:
-- Uses scoring_core infrastructure (eliminates ~250 lines of duplicate code)
+Highlights:
+- Uses scoring_core infrastructure
 - Enhanced scoring methods with robust error handling
 - Modular pathway scoring with customizable aggregation
 - Improved validation and configuration management
 - Better separation of concerns between scoring and validation
 - Advanced normalization and missing data handling
-- Reduced from ~1,050 lines to ~600 lines (43% reduction)
-
-NEW FEATURES:
 - Adaptive scoring based on data characteristics
 - Bootstrap confidence intervals for scores
 - Multi-level scoring (gene, pathway, signature)
@@ -28,7 +25,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
 # Import from consolidated core module (eliminates duplicates)
-from metaintegrator.scoring_core import (
+from .scoring_core import (
     # Data structures and enums
     ScoringMethod,
     AggregationMethod,

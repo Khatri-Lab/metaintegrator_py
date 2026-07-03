@@ -1,17 +1,14 @@
 """
-Refactored Meta Integrator Filter using consolidated scoring_core infrastructure.
+Meta Integrator Filter uses consolidated scoring_core infrastructure.
 This module handles filtering operations for meta-analysis results with enhanced capabilities.
 
-IMPROVEMENTS FROM ORIGINAL:
-- Uses scoring_core infrastructure (eliminates ~150 lines of duplicate code)
+Highlights:
+- Uses scoring_core infrastructure
 - Enhanced filtering strategies with configurable thresholds
 - Robust validation and error handling using standardized exceptions
 - Improved leave-one-out analysis with statistical validation
 - Better integration with other scoring modules
 - Advanced filtering methods (adaptive, sequential, multi-criteria)
-- Reduced from ~570 lines to ~500 lines (12% reduction)
-
-NEW FEATURES:
 - Adaptive threshold selection based on data characteristics
 - Multi-step filtering with intermediate validation
 - Cross-study consistency filtering
@@ -27,7 +24,7 @@ import numpy as np
 import pandas as pd
 
 # Import from consolidated core module (eliminates duplicates)
-from metaintegrator.scoring_core import (
+from .scoring_core import (
     # Data structures
     FilterConfig,
     FilterResults,
@@ -1085,7 +1082,7 @@ class MetaIntegratorFilter(EnhancedMetaIntegratorFilter):
             FilterResults object constructed from the standard enhanced filter results.
         """
         # Import from scoring_core to use the actual class, not the mock
-        from metaintegrator.scoring_core import (
+        from .scoring_core import (
             FilterResults as CoreFilterResults,
             FilterConfig as CoreFilterConfig,
         )

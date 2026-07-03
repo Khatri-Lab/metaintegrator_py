@@ -1,6 +1,5 @@
 """
-Refactored FilterManager using the consolidated scoring_core infrastructure.
-This demonstrates significant code reduction while enhancing functionality.
+FilterManager uses the consolidated scoring_core infrastructure.
 
 """
 
@@ -13,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 # Import from the consolidated core module (eliminates ~300 lines)
-from metaintegrator.scoring_core import (
+from .scoring_core import (
     # Data structures (eliminates duplicates)
     FilterSummary,
     OverlapAnalysis,
