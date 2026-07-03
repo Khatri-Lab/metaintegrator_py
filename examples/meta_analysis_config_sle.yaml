@@ -1,0 +1,109 @@
+# ===========================================================================
+# MetaIntegrator CLI — SLE (Systemic Lupus Erythematosus) Example Config
+# ===========================================================================
+# This config reproduces the SLE tutorial notebook headlessly.
+#
+# Run with:
+#   python -m src meta_analysis --config examples/meta_analysis_config_sle.yaml
+#
+# Validate first (recommended):
+#   python -m src meta_analysis --config examples/meta_analysis_config_sle.yaml --dry-run
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# 1. DATASETS — three public GEO SLE datasets
+# ---------------------------------------------------------------------------
+datasets:
+  gse_ids:
+    - GSE11909      # multi-platform: GPL96 (HG-U133A) + GPL97 (HG-U133B)
+    - GSE50635      # GPL6244 (HuGene-1_0-st)
+    - GSE39088      # GPL570 (HG-U133_Plus_2)
+  strategy: hybrid
+  cache_dir: ~/.geo_cache
+  stop_on_error: false
+
+# ---------------------------------------------------------------------------
+# 2. LABELING — SLE-specific case/control assignment
+#
+#    Keys are matched as substrings (GSE11909 → GSE11909_GPL96, GSE11909_GPL97).
+# ---------------------------------------------------------------------------
+labeling:
+  GSE11909:
+    disease_terms:
+      - "RBP +"
+      - "RBP -"
+      - SLE
+    possible_columns:
+      - characteristics
+      - characteristics_ch1
+      - "Illness:ch1"
+      - "disease state:ch1"
+
+  GSE50635:
+    disease_terms:
+      - "RBP +"
+      - "RBP -"
+      - SLE
+    possible_columns:
+      - characteristics
+      - title
+      - Sample_title
+      - "subject type:ch1"
+      - "disease state:ch1"
+      - characteristics_ch1
+
+  GSE39088:
+    disease_terms:
+      - SLE
+      - Patient
+    possible_columns:
+      - characteristics
+      - title
+      - Sample_title
+      - "disease state:ch1"
+      - characteristics_ch1
+
+# ---------------------------------------------------------------------------
+# 3. META-ANALYSIS
+# ---------------------------------------------------------------------------
+meta_analysis:
+  strategy: random_effects
+  run_leave_one_out: true
+  use_old_method: false
+
+# ---------------------------------------------------------------------------
+# 4. GENE FILTERING
+# ---------------------------------------------------------------------------
+filter:
+  fdr_thresh: 0.05
+  effect_size_thresh: 0.0
+  number_studies_thresh: 1
+  heterogeneity_pval_thresh: 0.0
+  is_leave_one_out: true
+
+# ---------------------------------------------------------------------------
+# 5. GENE SEARCH
+# ---------------------------------------------------------------------------
+gene_search:
+  run_backward: true
+  run_forward: true
+  back_thresh: 0.0
+  forward_thresh: 0.0
+
+# ---------------------------------------------------------------------------
+# 6. OUTPUT
+# ---------------------------------------------------------------------------
+output:
+  output_dir: ./output_sle_cli
+  save_plot_data: true
+  plot_dpi: 300
+  plot_format: png
+
+  plots:
+    - forest
+    - heatmap
+    - violin
+    - roc
+    - prc
+
+  forest_gene: IFI44L

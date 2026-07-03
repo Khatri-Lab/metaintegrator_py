@@ -1,0 +1,42 @@
+{
+  "datasets": {
+    "gse_ids": ["GSE11909", "GSE50635", "GSE39088"],
+    "strategy": "hybrid",
+    "cache_dir": "~/.geo_cache"
+  },
+  "labeling": {
+    "GSE11909": {
+      "disease_terms": ["RBP +", "RBP -", "SLE"],
+      "possible_columns": ["characteristics", "characteristics_ch1", "disease state:ch1"]
+    },
+    "GSE50635": {
+      "disease_terms": ["RBP +", "RBP -", "SLE"]
+    },
+    "GSE39088": {
+      "disease_terms": ["SLE", "Patient"],
+      "possible_columns": ["characteristics", "title", "disease state:ch1", "characteristics_ch1"]
+    }
+  },
+  "meta_analysis": {
+    "strategy": "random_effects",
+    "run_leave_one_out": true
+  },
+  "filter": {
+    "fdr_thresh": 0.05,
+    "effect_size_thresh": 0.0,
+    "number_studies_thresh": 1,
+    "is_leave_one_out": true
+  },
+  "gene_search": {
+    "run_backward": true,
+    "run_forward": true
+  },
+  "output": {
+    "output_dir": "./output_sle_cli",
+    "save_plot_data": true,
+    "plots": ["forest", "heatmap", "violin", "roc", "prc"],
+    "forest_gene": "IFI44L",
+    "plot_format": "png",
+    "plot_dpi": 300
+  }
+}

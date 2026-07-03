@@ -5,107 +5,60 @@ Package entry point.
 Allows:
     python -m src
 
-Example to call the main function in src/__main__.py programmatically with no subprocess required.
+Subcommands
+-----------
+coconut_batch_effect_removal
+    Run the COCONUT batch-effect removal pipeline.
 
-from src.__main__ import run
+meta_analysis
+    Run the full MetaIntegrator meta-analysis pipeline from a config file.
 
-run([
-    "coconut_batch_effect_removal",
-    "--csv_dir", "data/data_csv",
-    "--output_dir", "data_out_csv",
-    "--debug",
-])
+Examples
+--------
+Run COCONUT::
 
-Example to skip config/CLI logic entirely, call the main function directly:
+    python -m src coconut_batch_effect_removal \\
+        --csv_dir data/data_csv --output_dir data_out_csv --debug
 
-from src.coconut.coconut_runner import main as coconut_main
-coconut_main({
-    "csv_dir": "data/data_csv",
-    "output_dir": "data_out_csv",
-    "debug": True,
-})
+Run meta-analysis::
 
+    python -m src meta_analysis --config my_config.yaml
+    python -m src meta_analysis --config my_config.yaml --dry-run
+    python -m src meta_analysis --config my_config.yaml --output-dir ./results --verbose
+
+Generate a config template::
+
+    python -m src meta_analysis --generate-config yaml
+    python -m src meta_analysis --generate-config json
+
+Programmatic usage (no subprocess needed)::
+
+    from src.__main__ import run
+    run(["meta_analysis", "--config", "my_config.yaml"])
+
+    # Or skip CLI parsing and call the runner directly:
+    from src.metaintegrator.meta_analysis_runner import run_pipeline
+    result = run_pipeline("my_config.yaml")
 """
 
-# src/__main__.py
 import argparse
 
 from .utils.config import load_config, merge_config
-
-# from .application.myapp import main as app_main
 from .coconut.coconut_runner import main as coconut_runner_main
+from .metaintegrator.meta_analysis_runner import main as meta_analysis_runner_main
 
-# from .meta_analysis.meta_analysis import main as meta_analysis_main
-
-
-# src/__main__.py - plotting commands
-def setup_plot_parser(subparsers):
-    """
-    Sets up subparsers for plotting-related commands and their associated arguments.
-
-    This function defines the structure for various plotting commands within a command-line
-    interface tool. It allows users to add subcommands for plot-related operations, such as
-    "forest" plots or package-specific plotting styles. Each subcommand is configured with
-    the necessary arguments to customize its behavior.
-
-    Args:
-        subparsers: The parent argparse subparser object to which the plot parsers will be
-            added. It is expected to be a subparsers instance obtained from
-            argparse.ArgumentParser.
-
-    Returns:
-        None
-    """
-    plot_parser = subparsers.add_parser("plot")
-    plot_subparsers = plot_parser.add_subparsers()
-
-    # Forest plot (works with any meta-analysis results)
-    forest_parser = plot_subparsers.add_parser("forest")
-    forest_parser.add_argument("--results", required=True)
-    forest_parser.add_argument("--style", choices=["classic", "bayesian"], default="classic")
-
-    # Package-specific plotting
-    manatee_parser = plot_subparsers.add_parser("manatee-beeswarm")
-    # etc...
 
 def run(argv=None):
-    """
-    Parses command-line arguments and delegates execution flow to the appropriate
-    functionality specified through subcommands. This script can be used for
-    various types of analyses such as running the main application, performing
-    batch effect removal, or running meta-analysis.
-
-    Args:
-        argv: Optional. A list of strings representing command-line arguments.
-              If None, defaults to `sys.argv`.
-
-    Raises:
-        SystemExit: If command-line argument parsing fails or if required
-                    arguments are missing.
-
-    Subcommands:
-        run: Executes the main application logic.
-            --config: Path to a required configuration file.
-            --verbose: If set, increases the verbosity of application logs.
-
-        coconut_batch_effect_removal: Removes batch effects using the Coconut tool.
-            --csv_dir: Directory containing input CSV files. Default is 'data/data_csv'.
-            --output_dir: Optional directory to write output files. If omitted, results are
-                          printed to the console.
-            --debug: If set, enables additional debugging information. Default is False.
-
-        meta_analysis: Performs meta-analysis on datasets.
-            --source: Path to the input source file. Required parameter.
-            --format: The input file format, must be either 'csv' or 'json'. Default is 'csv'.
-
-    Returns:
-        None
-    """
-    parser = argparse.ArgumentParser(prog="Metaintegrator_py")
+    """Parse CLI arguments and dispatch to the appropriate subcommand."""
+    parser = argparse.ArgumentParser(
+        prog="Metaintegrator_py",
+        description="MetaIntegrator Python — meta-analysis and batch-effect tools",
+    )
 
     parser.add_argument(
         "--config-file",
-        help="Path to config file",
+        help="Path to a global config file (YAML).  Subcommand-specific "
+             "settings from this file are merged with CLI flags.",
         default="config/default.yaml",
     )
 
@@ -113,20 +66,13 @@ def run(argv=None):
         dest="command", required=True, help="Available commands"
     )
 
-    # ---- run command ----
-    """
-    run_parser = subparsers.add_parser("run", help="Run main application")
-    run_parser.add_argument("--config", required=True)
-    run_parser.add_argument("--verbose", action="store_true")
-    run_parser.set_defaults(func=app_main)
-    """
-
-    # ---- coconut coconut command ----
+    # ==================================================================
+    # Subcommand: coconut_batch_effect_removal
+    # ==================================================================
     prep_parser = subparsers.add_parser(
         "coconut_batch_effect_removal",
-        help="Run coconuting with coconut to remove batch effects",
+        help="Run COCONUT batch-effect removal on CSV data",
     )
-
     prep_parser.add_argument(
         "--csv_dir",
         type=str,
@@ -137,35 +83,86 @@ def run(argv=None):
         "--output_dir",
         type=str,
         default=None,
-        help="Optional directory to write the three output files. "
-        "If omitted, results are only printed.",
+        help="Optional directory to write the output files. "
+             "If omitted, results are only printed.",
     )
     prep_parser.add_argument(
         "--debug",
         action="store_true",
         default=False,
-        help="If set, the script prints additional debugging information.",
+        help="Print additional debugging information.",
     )
     prep_parser.set_defaults(func=coconut_runner_main)
 
-    # ---- meta analysis command ----
-    """
-    manalysis_parser = subparsers.add_parser("meta_analysis", help="Run meta analysis")
-    manalysis_parser.add_argument("--source", required=True)
-    manalysis_parser.add_argument("--format", choices=["csv", "json"], default="csv")
-    manalysis_parser.set_defaults(func=meta_analysis_main
-    """
+    # ==================================================================
+    # Subcommand: meta_analysis
+    # ==================================================================
+    ma_parser = subparsers.add_parser(
+        "meta_analysis",
+        help="Run the full MetaIntegrator meta-analysis pipeline",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=(
+            "Execute the MetaIntegrator meta-analysis pipeline driven by a\n"
+            "JSON or YAML configuration file.\n\n"
+            "Quick start:\n"
+            "  1.  python -m src meta_analysis --generate-config yaml\n"
+            "  2.  Edit meta_analysis_config_template.yaml\n"
+            "  3.  python -m src meta_analysis --config meta_analysis_config_template.yaml\n"
+        ),
+    )
+    ma_parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to a JSON or YAML config file describing the analysis.  "
+             "Required unless --generate-config is used.",
+    )
+    ma_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="Validate the config and check connectivity without running "
+             "the full pipeline.",
+    )
+    ma_parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        dest="output_dir",
+        help="Override the output directory specified in the config file.",
+    )
+    ma_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="Enable debug-level logging for richer progress output.",
+    )
+    ma_parser.add_argument(
+        "--generate-config",
+        type=str,
+        choices=["yaml", "json"],
+        default=None,
+        dest="generate_config",
+        metavar="FORMAT",
+        help="Generate a documented config template (yaml or json) and exit.",
+    )
+    ma_parser.set_defaults(func=meta_analysis_runner_main)
 
+    # ==================================================================
+    # Parse and dispatch
+    # ==================================================================
     args = parser.parse_args(argv)
 
     cfg = load_config(args.config_file)
     merged_args = merge_config(args, cfg)
 
-    # Dispatch
+    # Dispatch to the subcommand handler
     args.func(merged_args)
+
 
 def main():
     run()
+
 
 if __name__ == "__main__":
     main()

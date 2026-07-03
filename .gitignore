@@ -85,6 +85,9 @@ tmp/
 # (users regenerate these locally; don't track generated plots)
 tutorials/output*/
 
+# --- Output artifacts from CLI runs ---
+my_meta_*
+
 # --- OS-level ---
 Thumbs.db
 ehthumbs.db
