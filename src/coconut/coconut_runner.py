@@ -8,7 +8,9 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
+# Cross-package import — resolved via src/ on sys.path (see src/__init__.py bootstrap)
 from utils.convert_floats_to_ints import run_convert_floats_to_int64
+
 from .coconut import coconut, combine_coco_output, CombatControlOutput
 
 # ------------------------------------------------------------------

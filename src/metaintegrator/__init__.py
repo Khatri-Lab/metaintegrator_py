@@ -21,7 +21,7 @@ from .analysis import *
 from .scoring_core import *
 from .scoring_meta_integrator_orchestrator import *
 
-# Visualization modules
+# Visualization modules (cross-package — resolved via src/ on sys.path)
 try:
     from visualization.enhanced_plotting import MetaAnalysisPlotter
 except ImportError:

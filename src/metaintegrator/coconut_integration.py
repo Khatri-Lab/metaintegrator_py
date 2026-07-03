@@ -42,7 +42,7 @@ class COCONUTIntegrator:
             - rawDiseaseList: Original unnormalized disease samples
             - controlList: Normalized control samples and parameters
         """
-        from coconut.coconut import coconut as coconut_analysis
+        from coconut.coconut import coconut as coconut_analysis  # cross-package; resolved via src/ on sys.path
 
         # Convert to gene-level meta format (dict of dicts)
         gene_level_data_dict = self.gene_level_meta(meta_object)
