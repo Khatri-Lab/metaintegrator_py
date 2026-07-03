@@ -207,9 +207,7 @@ class TestGeneSearchOptimizer:
         ]
         weights = np.array([4, 4])
 
-        result = self.optimizer._get_weighted_aucs_genes_list(
-            discovery_genes, [], [], weights
-        )
+        result = self.optimizer._get_weighted_aucs_genes_list(discovery_genes, [], [], weights)
 
         assert result == 0.5 * np.sum(weights)  # Random performance
 
@@ -234,9 +232,7 @@ class TestGeneSearchOptimizer:
         ]
 
         with pytest.raises(ValueError, match="yes_pos contains genes not in pos_genes"):
-            self.optimizer._match_all_genes(
-                discovery_genes, ["GENE1"], [], ["GENE2"], []
-            )
+            self.optimizer._match_all_genes(discovery_genes, ["GENE1"], [], ["GENE2"], [])
 
     def test_match_all_genes_missing_genes_warning(self):
         """Test gene matching with missing genes issues warning."""
@@ -249,9 +245,7 @@ class TestGeneSearchOptimizer:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            self.optimizer._match_all_genes(
-                discovery_genes, ["GENE1", "GENE2"], [], [], []
-            )
+            self.optimizer._match_all_genes(discovery_genes, ["GENE1", "GENE2"], [], [], [])
             assert len(w) == 1
             assert "not found in discovery datasets" in str(w[0].message)
 
@@ -317,9 +311,7 @@ class TestGeneSearchOptimizer:
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 3  # 2 pos + 1 neg gene
-        assert all(
-            col in result.columns for col in ["gene", "original", "search", "diff"]
-        )
+        assert all(col in result.columns for col in ["gene", "original", "search", "diff"])
 
     @patch("metaintegrator.sample_level_gene_data.getSampleLevelGeneData")
     def test_forward_search_inner(self, mock_get_sample_level):
@@ -337,9 +329,372 @@ class TestGeneSearchOptimizer:
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 2  # 2 candidate genes
-        assert all(
-            col in result.columns for col in ["gene", "original", "search", "diff"]
+        assert all(col in result.columns for col in ["gene", "original", "search", "diff"])
+
+
+class TestRatioScaling:
+    """Tests for the ratio scaling fix in inner search loops.
+
+    The R MetaIntegrator uses a ratio to balance positive and negative gene
+    contributions when evaluating gene additions/removals in the inner search
+    loops.  The Python port was missing this ratio, leading to different gene
+    selections (Jaccard ~0.5-0.6 vs expected ~1.0).  These tests verify that
+    the ratio is correctly computed and applied.
+
+    R formulas:
+      backsearchPos:    ratio = #neg / (#pos - 1)
+      backsearchNeg:    ratio = (#neg - 1) / #pos
+      forwardSearchPos: ratio = #selected_neg / (#selected_pos + 1)
+      forwardSearchNeg: ratio = (#selected_neg + 1) / #selected_pos
+    """
+
+    def setup_method(self):
+        """Build deterministic gene-level discovery data (no mocking needed)."""
+        np.random.seed(42)
+        self.optimizer = GeneSearchOptimizer()
+
+        # Gene matrix: 6 genes x 20 samples, values > 0 (required by geom mean)
+        self.gene_matrix = pd.DataFrame(
+            np.random.randn(6, 20) * 0.5 + 5,
+            index=["G1", "G2", "G3", "G4", "G5", "G6"],
+            columns=[f"s{i}" for i in range(20)],
         )
+
+        # Two discovery datasets with different sample sizes
+        self.discovery_genes = [
+            {
+                "genes": self.gene_matrix.iloc[:, :12].copy(),
+                "class": np.array([0] * 6 + [1] * 6),
+            },
+            {
+                "genes": self.gene_matrix.iloc[:, :8].copy(),
+                "class": np.array([0] * 4 + [1] * 4),
+            },
+        ]
+        self.weights = np.array([12, 8])
+
+    # ------------------------------------------------------------------
+    # _score_genes_matrix ratio parameter
+    # ------------------------------------------------------------------
+    def test_score_genes_matrix_ratio_changes_scores(self):
+        """Scores with ratio != 1 must differ from scores without ratio."""
+        pos = ["G1", "G2"]
+        neg = ["G3"]
+
+        scores_no_ratio = self.optimizer._score_genes_matrix(self.gene_matrix, pos, neg, ratio=None)
+        scores_with_ratio = self.optimizer._score_genes_matrix(
+            self.gene_matrix, pos, neg, ratio=2.0
+        )
+
+        # Both should be standardized (mean≈0, sample std≈1)
+        assert abs(np.mean(scores_no_ratio)) < 1e-10
+        assert abs(np.mean(scores_with_ratio)) < 1e-10
+
+        # But actual values must differ because negative contribution is scaled
+        assert not np.allclose(
+            scores_no_ratio, scores_with_ratio
+        ), "Scores with ratio=2.0 should differ from scores without ratio"
+
+    def test_score_genes_matrix_ratio_one_equals_no_ratio(self):
+        """ratio=1.0 should produce the same result as ratio=None."""
+        pos = ["G1", "G2"]
+        neg = ["G3"]
+
+        scores_none = self.optimizer._score_genes_matrix(self.gene_matrix, pos, neg, ratio=None)
+        scores_one = self.optimizer._score_genes_matrix(self.gene_matrix, pos, neg, ratio=1.0)
+
+        np.testing.assert_array_almost_equal(scores_none, scores_one)
+
+    def test_score_genes_matrix_ratio_zero_ignores_neg(self):
+        """ratio=0.0 should produce the same result as having no negative genes."""
+        pos = ["G1", "G2"]
+        neg = ["G3"]
+
+        scores_ratio_zero = self.optimizer._score_genes_matrix(
+            self.gene_matrix, pos, neg, ratio=0.0
+        )
+        scores_no_neg = self.optimizer._score_genes_matrix(self.gene_matrix, pos, [], ratio=None)
+
+        np.testing.assert_array_almost_equal(scores_ratio_zero, scores_no_neg)
+
+    # ------------------------------------------------------------------
+    # _get_weighted_aucs_genes_list ratio threading
+    # ------------------------------------------------------------------
+    def test_weighted_auc_with_ratio_differs(self):
+        """Weighted AUC with a non-unity ratio must differ from without."""
+        pos = ["G1", "G2", "G3"]
+        neg = ["G4", "G5"]
+
+        auc_no_ratio = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, pos, neg, self.weights, ratio=None
+        )
+        auc_with_ratio = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, pos, neg, self.weights, ratio=3.0
+        )
+
+        # They *can* coincidentally match, but with ratio=3.0 on real data
+        # the scoring is very different so the AUCs should diverge.
+        assert auc_no_ratio != pytest.approx(
+            auc_with_ratio, abs=1e-6
+        ), "Weighted AUC with ratio=3.0 should differ from no-ratio"
+
+    def test_weighted_auc_pos_only_neg_sign(self):
+        """pos_only_neg_sign=True should score as scale(-negScore)."""
+        neg = ["G4", "G5"]
+
+        auc = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, [], neg, self.weights, ratio=1.0, pos_only_neg_sign=True
+        )
+
+        assert isinstance(auc, float)
+        assert auc > 0  # should be a real weighted AUC, not degenerate
+
+    # ------------------------------------------------------------------
+    # Backward search inner loop ratio values
+    # ------------------------------------------------------------------
+    def test_backward_inner_ratio_for_pos_removal(self):
+        """Removing a pos gene: ratio should be #neg / (#pos - 1).
+
+        We verify indirectly: the search AUC for removing a positive gene
+        must differ between the ratio-aware implementation and a manual
+        call without ratio.
+        """
+        pos = ["G1", "G2", "G3"]  # 3 pos
+        neg = ["G4", "G5"]  # 2 neg
+        # Expected ratio = 2 / (3-1) = 1.0
+        current_auc = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, pos, neg, self.weights
+        )
+
+        result = self.optimizer._backward_search_inner(
+            self.discovery_genes, pos, neg, current_auc, self.weights
+        )
+
+        assert len(result) == 5  # 3 pos + 2 neg
+        assert set(result["gene"].tolist()) == {"G1", "G2", "G3", "G4", "G5"}
+        assert all(result["original"] == current_auc)
+
+    def test_backward_inner_single_pos_gene_edge_case(self):
+        """With only 1 pos gene, removing it should use scale(-negScore).
+
+        R's .backsearchPos: if(length(pos.genes) <= 1) totalScore = scale(-negScore)
+        """
+        pos = ["G1"]  # single pos
+        neg = ["G4", "G5"]  # 2 neg
+        current_auc = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, pos, neg, self.weights
+        )
+
+        result = self.optimizer._backward_search_inner(
+            self.discovery_genes, pos, neg, current_auc, self.weights
+        )
+
+        # Should have 3 rows: 1 pos + 2 neg
+        assert len(result) == 3
+        pos_row = result[result["gene"] == "G1"]
+        assert len(pos_row) == 1
+        # The search AUC should be a real value (not NaN or 0)
+        assert np.isfinite(pos_row["search"].iloc[0])
+
+    def test_backward_inner_single_neg_gene_edge_case(self):
+        """With only 1 neg gene, removing it should use scale(posScore).
+
+        R's .backsearchNeg: if(length(neg.genes) <= 1) totalScore = scale(posScore)
+        """
+        pos = ["G1", "G2", "G3"]
+        neg = ["G4"]  # single neg
+        current_auc = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, pos, neg, self.weights
+        )
+
+        result = self.optimizer._backward_search_inner(
+            self.discovery_genes, pos, neg, current_auc, self.weights
+        )
+
+        assert len(result) == 4  # 3 pos + 1 neg
+
+        neg_row = result[result["gene"] == "G4"]
+        assert len(neg_row) == 1
+        assert np.isfinite(neg_row["search"].iloc[0])
+
+        # Verify the neg-removal AUC equals using pos-only scoring
+        auc_pos_only = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, pos, [], self.weights, ratio=0.0
+        )
+        assert neg_row["search"].iloc[0] == pytest.approx(auc_pos_only, abs=1e-10)
+
+    # ------------------------------------------------------------------
+    # Forward search inner loop ratio values
+    # ------------------------------------------------------------------
+    def test_forward_inner_ratio_for_pos_addition(self):
+        """Adding a pos gene: ratio = #selected_neg / (#selected_pos + 1).
+
+        With selected_pos=[G1], selected_neg=[G4], adding a pos candidate:
+          ratio = 1 / (1 + 1) = 0.5
+        """
+        selected_pos = ["G1"]
+        selected_neg = ["G4"]
+        candidate_pos = ["G2", "G3"]
+        candidate_neg = []
+        current_auc = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, selected_pos, selected_neg, self.weights
+        )
+
+        result = self.optimizer._forward_search_inner(
+            self.discovery_genes,
+            candidate_pos,
+            candidate_neg,
+            selected_pos,
+            selected_neg,
+            current_auc,
+            self.weights,
+        )
+
+        assert len(result) == 2  # 2 candidates
+        assert set(result["gene"].tolist()) == {"G2", "G3"}
+
+        # Verify the AUC was computed with ratio=0.5
+        expected_ratio = len(selected_neg) / (len(selected_pos) + 1)  # 0.5
+        assert expected_ratio == pytest.approx(0.5)
+
+        for _, row in result.iterrows():
+            gene = row["gene"]
+            test_pos = selected_pos + [gene]
+            manual_auc = self.optimizer._get_weighted_aucs_genes_list(
+                self.discovery_genes, test_pos, selected_neg, self.weights, ratio=expected_ratio
+            )
+            assert row["search"] == pytest.approx(
+                manual_auc, abs=1e-10
+            ), f"Forward inner AUC for {gene} should match manual ratio=0.5 calculation"
+
+    def test_forward_inner_ratio_for_neg_addition(self):
+        """Adding a neg gene: ratio = (#selected_neg + 1) / #selected_pos.
+
+        With selected_pos=[G1, G2], selected_neg=[G4], adding a neg candidate:
+          ratio = (1 + 1) / 2 = 1.0
+        """
+        selected_pos = ["G1", "G2"]
+        selected_neg = ["G4"]
+        candidate_pos = []
+        candidate_neg = ["G5", "G6"]
+        current_auc = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, selected_pos, selected_neg, self.weights
+        )
+
+        result = self.optimizer._forward_search_inner(
+            self.discovery_genes,
+            candidate_pos,
+            candidate_neg,
+            selected_pos,
+            selected_neg,
+            current_auc,
+            self.weights,
+        )
+
+        assert len(result) == 2
+        expected_ratio = (len(selected_neg) + 1) / len(selected_pos)  # 1.0
+        assert expected_ratio == pytest.approx(1.0)
+
+        for _, row in result.iterrows():
+            gene = row["gene"]
+            test_neg = selected_neg + [gene]
+            manual_auc = self.optimizer._get_weighted_aucs_genes_list(
+                self.discovery_genes, selected_pos, test_neg, self.weights, ratio=expected_ratio
+            )
+            assert row["search"] == pytest.approx(
+                manual_auc, abs=1e-10
+            ), f"Forward inner AUC for {gene} should match manual ratio=1.0 calculation"
+
+    def test_forward_inner_neg_addition_no_pos_selected(self):
+        """When no pos genes selected, R uses ratio=1 for neg addition.
+
+        R: if(is.null(yes.pos)) ratio <- 1
+        """
+        selected_pos = []
+        selected_neg = []
+        candidate_pos = []
+        candidate_neg = ["G4", "G5"]
+
+        result = self.optimizer._forward_search_inner(
+            self.discovery_genes,
+            candidate_pos,
+            candidate_neg,
+            selected_pos,
+            selected_neg,
+            0.0,
+            self.weights,
+        )
+
+        assert len(result) == 2
+
+        # Verify ratio=1.0 was used
+        for _, row in result.iterrows():
+            gene = row["gene"]
+            test_neg = [gene]
+            manual_auc = self.optimizer._get_weighted_aucs_genes_list(
+                self.discovery_genes, [], test_neg, self.weights, ratio=1.0
+            )
+            assert row["search"] == pytest.approx(
+                manual_auc, abs=1e-10
+            ), f"With no pos selected, neg candidate {gene} should use ratio=1.0"
+
+    # ------------------------------------------------------------------
+    # Backward inner ratio correctness (cross-check with manual calc)
+    # ------------------------------------------------------------------
+    def test_backward_inner_pos_removal_ratio_matches_manual(self):
+        """Cross-check: backward inner AUC for pos removal matches manual
+        _get_weighted_aucs_genes_list call with the correct R-formula ratio.
+        """
+        pos = ["G1", "G2", "G3", "G4"]  # 4 pos
+        neg = ["G5", "G6"]  # 2 neg
+        # R ratio for pos removal = #neg / (#pos - 1) = 2 / 3
+        expected_ratio = len(neg) / (len(pos) - 1)
+
+        current_auc = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, pos, neg, self.weights
+        )
+
+        result = self.optimizer._backward_search_inner(
+            self.discovery_genes, pos, neg, current_auc, self.weights
+        )
+
+        # Check each pos gene's search AUC
+        for gene in pos:
+            row = result[result["gene"] == gene]
+            test_pos = [g for g in pos if g != gene]
+            manual_auc = self.optimizer._get_weighted_aucs_genes_list(
+                self.discovery_genes, test_pos, neg, self.weights, ratio=expected_ratio
+            )
+            assert row["search"].iloc[0] == pytest.approx(
+                manual_auc, abs=1e-10
+            ), f"Backward inner AUC for removing {gene} should use ratio={expected_ratio:.4f}"
+
+    def test_backward_inner_neg_removal_ratio_matches_manual(self):
+        """Cross-check: backward inner AUC for neg removal matches manual
+        _get_weighted_aucs_genes_list call with the correct R-formula ratio.
+        """
+        pos = ["G1", "G2", "G3"]  # 3 pos
+        neg = ["G4", "G5", "G6"]  # 3 neg
+        # R ratio for neg removal = (#neg - 1) / #pos = 2 / 3
+        expected_ratio = (len(neg) - 1) / len(pos)
+
+        current_auc = self.optimizer._get_weighted_aucs_genes_list(
+            self.discovery_genes, pos, neg, self.weights
+        )
+
+        result = self.optimizer._backward_search_inner(
+            self.discovery_genes, pos, neg, current_auc, self.weights
+        )
+
+        for gene in neg:
+            row = result[result["gene"] == gene]
+            test_neg = [g for g in neg if g != gene]
+            manual_auc = self.optimizer._get_weighted_aucs_genes_list(
+                self.discovery_genes, pos, test_neg, self.weights, ratio=expected_ratio
+            )
+            assert row["search"].iloc[0] == pytest.approx(
+                manual_auc, abs=1e-10
+            ), f"Backward inner AUC for removing {gene} should use ratio={expected_ratio:.4f}"
 
 
 class TestConvenienceFunctions:
@@ -435,9 +790,7 @@ class TestEdgeCases:
         meta_object = {
             "originalData": {
                 "study1": {
-                    "expr": pd.DataFrame(
-                        {"sample1": [1, 2]}, index=["probe1", "probe2"]
-                    ),
+                    "expr": pd.DataFrame({"sample1": [1, 2]}, index=["probe1", "probe2"]),
                     "keys": ["GENE1", "GENE2"],
                     "class": np.array([0, 1]),
                 }

@@ -77,9 +77,7 @@ class GeneSearchOptimizer:
         )
 
         # Convert discovery datasets to gene-level data
-        discovery_genes = self._convert_discovery_list_to_genes(
-            meta_object, pos_genes, neg_genes
-        )
+        discovery_genes = self._convert_discovery_list_to_genes(meta_object, pos_genes, neg_genes)
 
         # Perform backward search
         optimized_genes = self._backward_search_weighted(
@@ -139,9 +137,7 @@ class GeneSearchOptimizer:
         )
 
         # Convert discovery datasets to gene-level data
-        discovery_genes = self._convert_discovery_list_to_genes(
-            meta_object, pos_genes, neg_genes
-        )
+        discovery_genes = self._convert_discovery_list_to_genes(meta_object, pos_genes, neg_genes)
 
         # Perform forward search
         optimized_genes = self._forward_search_weighted(
@@ -238,9 +234,7 @@ class GeneSearchOptimizer:
         all_genes = list(set(pos_genes + neg_genes))
         discovery_genes = []
 
-        logger.info(
-            "Converting probe-level data to gene-level data for all discovery datasets"
-        )
+        logger.info("Converting probe-level data to gene-level data for all discovery datasets")
 
         for name, dataset in meta_object["originalData"].items():
             try:
@@ -340,9 +334,7 @@ class GeneSearchOptimizer:
                 worst_gene = gene_search.loc[worst_idx, "gene"]
                 new_auc = gene_search.loc[worst_idx, "search"]
 
-                logger.info(
-                    f"Removing gene: {worst_gene}, new weighted AUC: {new_auc:.4f}"
-                )
+                logger.info(f"Removing gene: {worst_gene}, new weighted AUC: {new_auc:.4f}")
 
                 if worst_gene in current_pos:
                     current_pos.remove(worst_gene)
@@ -407,9 +399,7 @@ class GeneSearchOptimizer:
         candidate_neg = [g for g in neg_genes if g not in selected_neg]
 
         # Validate genes
-        self._match_all_genes(
-            discovery_genes, pos_genes, neg_genes, selected_pos, selected_neg
-        )
+        self._match_all_genes(discovery_genes, pos_genes, neg_genes, selected_pos, selected_neg)
 
         # Get initial AUC
         if not selected_pos and not selected_neg:
@@ -451,9 +441,7 @@ class GeneSearchOptimizer:
                 best_gene = gene_search.loc[best_idx, "gene"]
                 new_auc = gene_search.loc[best_idx, "search"]
 
-                logger.info(
-                    f"Adding gene: {best_gene}, new weighted AUC: {new_auc:.4f}"
-                )
+                logger.info(f"Adding gene: {best_gene}, new weighted AUC: {new_auc:.4f}")
 
                 if best_gene in candidate_pos:
                     candidate_pos.remove(best_gene)
@@ -491,6 +479,10 @@ class GeneSearchOptimizer:
         The results for all tested genes are returned as a DataFrame with
         columns 'gene', 'original', 'search', and 'diff'.
 
+        This matches R's .backsearchInner which calls .backsearchPos and
+        .backsearchNeg separately, each using a ratio to balance positive and
+        negative gene contributions when computing the score.
+
         Args:
             discovery_genes (List[Dict]): List of discovery dataset dictionaries.
             pos_genes (List[str]): Current list of positive genes.
@@ -504,36 +496,94 @@ class GeneSearchOptimizer:
         results = []
 
         # Test removing each positive gene
+        # Matches R's .backsearchPos:
+        #   ratio <- length(neg.genes)/(length(pos.genes)-1)
+        #   totalScore <- scale(posScore - ratio*negScore)
+        #   Edge case: if length(pos.genes) <= 1, uses scale(-negScore)
         if pos_genes:
-            for gene in pos_genes:
-                test_pos = [g for g in pos_genes if g != gene]
-                test_auc = self._get_weighted_aucs_genes_list(
-                    discovery_genes, test_pos, neg_genes, weights, print_results=False
-                )
-                results.append(
-                    {
-                        "gene": gene,
-                        "original": current_auc,
-                        "search": test_auc,
-                        "diff": current_auc - test_auc,
-                    }
-                )
+            if len(pos_genes) <= 1:
+                # R edge case: only one pos gene left, removing it means
+                # score = scale(-negScore), i.e. no pos contribution at all.
+                for gene in pos_genes:
+                    test_auc = self._get_weighted_aucs_genes_list(
+                        discovery_genes,
+                        [],
+                        neg_genes,
+                        weights,
+                        print_results=False,
+                        ratio=1.0,
+                        pos_only_neg_sign=True,
+                    )
+                    results.append(
+                        {
+                            "gene": gene,
+                            "original": current_auc,
+                            "search": test_auc,
+                            "diff": current_auc - test_auc,
+                        }
+                    )
+            else:
+                ratio = len(neg_genes) / (len(pos_genes) - 1)
+                for gene in pos_genes:
+                    test_pos = [g for g in pos_genes if g != gene]
+                    test_auc = self._get_weighted_aucs_genes_list(
+                        discovery_genes,
+                        test_pos,
+                        neg_genes,
+                        weights,
+                        print_results=False,
+                        ratio=ratio,
+                    )
+                    results.append(
+                        {
+                            "gene": gene,
+                            "original": current_auc,
+                            "search": test_auc,
+                            "diff": current_auc - test_auc,
+                        }
+                    )
 
         # Test removing each negative gene
+        # Matches R's .backsearchNeg:
+        #   ratio <- (length(neg.genes)-1)/length(pos.genes)
+        #   totalScore <- scale(posScore - ratio*negScore)
+        #   Edge case: if length(neg.genes) <= 1, uses scale(posScore)
         if neg_genes:
-            for gene in neg_genes:
-                test_neg = [g for g in neg_genes if g != gene]
-                test_auc = self._get_weighted_aucs_genes_list(
-                    discovery_genes, pos_genes, test_neg, weights, print_results=False
-                )
-                results.append(
-                    {
-                        "gene": gene,
-                        "original": current_auc,
-                        "search": test_auc,
-                        "diff": current_auc - test_auc,
-                    }
-                )
+            if len(neg_genes) <= 1:
+                # R edge case: only one neg gene left, removing it means
+                # score = scale(posScore), i.e. no neg contribution.
+                for gene in neg_genes:
+                    test_auc = self._get_weighted_aucs_genes_list(
+                        discovery_genes, pos_genes, [], weights, print_results=False, ratio=0.0
+                    )
+                    results.append(
+                        {
+                            "gene": gene,
+                            "original": current_auc,
+                            "search": test_auc,
+                            "diff": current_auc - test_auc,
+                        }
+                    )
+            else:
+                ratio = (len(neg_genes) - 1) / len(pos_genes) if len(pos_genes) > 0 else 1.0
+                for gene in neg_genes:
+                    test_neg = [g for g in neg_genes if g != gene]
+                    test_auc = self._get_weighted_aucs_genes_list(
+                        discovery_genes,
+                        pos_genes,
+                        test_neg,
+                        weights,
+                        print_results=False,
+                        ratio=ratio,
+                    )
+                    results.append(
+                        {
+                            "gene": gene,
+                            "original": current_auc,
+                            "search": test_auc,
+                            "diff": current_auc - test_auc,
+                        }
+                    )
 
         return pd.DataFrame(results)
 
@@ -557,6 +607,13 @@ class GeneSearchOptimizer:
         results are returned as a DataFrame with columns 'gene',
         'original', 'search', and 'diff'.
 
+        This matches R's .forwardSearchInner which calls .forwardSearchPos
+        and .forwardSearchNeg, each using a ratio to balance positive and
+        negative gene contributions:
+          .forwardSearchPos: ratio = length(yes.neg)/(length(yes.pos)+1)
+          .forwardSearchNeg: ratio = (length(yes.neg)+1)/length(yes.pos)
+                             (or ratio = 1 if yes.pos is NULL)
+
         Args:
             discovery_genes (List[Dict]): List of discovery dataset dictionaries.
             candidate_pos (List[str]): Genes available to add to the positive set.
@@ -572,34 +629,60 @@ class GeneSearchOptimizer:
         results = []
 
         # Test adding each candidate positive gene
-        for gene in candidate_pos:
-            test_pos = selected_pos + [gene]
-            test_auc = self._get_weighted_aucs_genes_list(
-                discovery_genes, test_pos, selected_neg, weights, print_results=False
+        # Matches R's .forwardSearchPos:
+        #   ratio <- length(yes.neg)/(length(yes.pos)+1)
+        #   totalScore <- scale(posScore - ratio*negScore)
+        if candidate_pos:
+            ratio_pos = (
+                len(selected_neg) / (len(selected_pos) + 1) if (len(selected_pos) + 1) > 0 else 0.0
             )
-            results.append(
-                {
-                    "gene": gene,
-                    "original": current_auc,
-                    "search": test_auc,
-                    "diff": test_auc - current_auc,
-                }
-            )
+            for gene in candidate_pos:
+                test_pos = selected_pos + [gene]
+                test_auc = self._get_weighted_aucs_genes_list(
+                    discovery_genes,
+                    test_pos,
+                    selected_neg,
+                    weights,
+                    print_results=False,
+                    ratio=ratio_pos,
+                )
+                results.append(
+                    {
+                        "gene": gene,
+                        "original": current_auc,
+                        "search": test_auc,
+                        "diff": test_auc - current_auc,
+                    }
+                )
 
         # Test adding each candidate negative gene
-        for gene in candidate_neg:
-            test_neg = selected_neg + [gene]
-            test_auc = self._get_weighted_aucs_genes_list(
-                discovery_genes, selected_pos, test_neg, weights, print_results=False
-            )
-            results.append(
-                {
-                    "gene": gene,
-                    "original": current_auc,
-                    "search": test_auc,
-                    "diff": test_auc - current_auc,
-                }
-            )
+        # Matches R's .forwardSearchNeg:
+        #   if(is.null(yes.pos)) ratio <- 1
+        #   else ratio <- (length(yes.neg)+1)/length(yes.pos)
+        #   totalScore <- scale(posScore - ratio*negScore)
+        if candidate_neg:
+            if not selected_pos:
+                ratio_neg = 1.0
+            else:
+                ratio_neg = (len(selected_neg) + 1) / len(selected_pos)
+            for gene in candidate_neg:
+                test_neg = selected_neg + [gene]
+                test_auc = self._get_weighted_aucs_genes_list(
+                    discovery_genes,
+                    selected_pos,
+                    test_neg,
+                    weights,
+                    print_results=False,
+                    ratio=ratio_neg,
+                )
+                results.append(
+                    {
+                        "gene": gene,
+                        "original": current_auc,
+                        "search": test_auc,
+                        "diff": test_auc - current_auc,
+                    }
+                )
 
         return pd.DataFrame(results)
 
@@ -610,19 +693,44 @@ class GeneSearchOptimizer:
         neg_genes: List[str],
         weights: np.ndarray,
         print_results: bool = False,
+        ratio: Optional[float] = None,
+        pos_only_neg_sign: bool = False,
     ) -> float:
         """Calculate weighted AUC across all datasets for given gene signature.
 
         Uses the optimized _score_genes_matrix for scoring and
         sklearn's roc_auc_score for fast AUC computation.
+
+        Args:
+            genes_list: List of discovery dataset dictionaries.
+            pos_genes: List of positive gene names.
+            neg_genes: List of negative gene names.
+            weights: Array of weights (sample sizes per dataset).
+            print_results: If True, log individual dataset AUCs.
+            ratio: Optional ratio for inner search scoring. When None,
+                uses standard scoring (posScore - negScore) matching R's
+                .scoreGenesMtx / .getWeightedAUCsGenesList.  When provided,
+                uses posScore - ratio*negScore matching R's inner search
+                functions.
+            pos_only_neg_sign: If True, computes score as scale(-negScore)
+                only (used when all positive genes removed in backward
+                search, matching R's edge case in .backsearchPos).
         """
         if not pos_genes and not neg_genes:
             return 0.5 * np.sum(weights)
 
         aucs = []
         for i, dataset in enumerate(genes_list):
-            # 20260610dev: use the corrected scoring method (geometric mean + ddof=1)
-            score = self._score_genes_matrix(dataset["genes"], pos_genes, neg_genes)
+            if pos_only_neg_sign:
+                # R edge case: score = scale(-negScore) when no pos genes remain
+                score = self._score_genes_matrix(dataset["genes"], [], neg_genes, ratio=None)
+                # _score_genes_matrix with empty pos returns -negScore (standardized)
+                # which is correct since 0 - negScore = -negScore
+            else:
+                # use the corrected scoring method (geometric mean + ddof=1)
+                score = self._score_genes_matrix(
+                    dataset["genes"], pos_genes, neg_genes, ratio=ratio
+                )
             y_true = dataset["class"]
 
             # Validate that dimensions match
@@ -637,7 +745,7 @@ class GeneSearchOptimizer:
                     if len(np.unique(y_true)) < 2:
                         auc_val = 0.5
                     else:
-                        # 20260610dev Fix 3: use roc_auc_score for speed
+                        # use roc_auc_score for speed
                         auc_val = roc_auc_score(y_true, score)
 
                 warnings.warn(
@@ -648,7 +756,7 @@ class GeneSearchOptimizer:
                 if len(np.unique(y_true)) < 2:
                     auc_val = 0.5
                 else:
-                    # 20260610dev Fix 3: use roc_auc_score for speed
+                    # use roc_auc_score for speed
                     auc_val = roc_auc_score(y_true, score)
 
             aucs.append(auc_val)
@@ -666,7 +774,6 @@ class GeneSearchOptimizer:
 
         return weighted_auc
 
-    # 20260610dev
     def _precompute_gene_indices(self, gene_matrix, all_genes):
         """Precompute gene->row index mapping to cache gene index lookups."""
         index_map = {}
@@ -713,12 +820,12 @@ class GeneSearchOptimizer:
             total = (total - np.mean(total)) / std
         return total
 
-    # 20260610dev
     def _score_genes_matrix(
         self,
         gene_matrix: pd.DataFrame,
         pos_genes: List[str],
         neg_genes: List[str],
+        ratio: Optional[float] = None,
     ) -> np.ndarray:
         """Calculate scores from gene expression matrix using positive and negative signatures.
 
@@ -729,10 +836,21 @@ class GeneSearchOptimizer:
         component.  The resulting vector is then standardized to mean zero and unit
         variance.
 
+        When ratio is provided (used in inner search loops), the negative score is
+        scaled: score = posScore - ratio * negScore.  This matches R's backsearch
+        and forward search inner functions which balance the contribution of positive
+        and negative genes based on their relative counts.
+
         Args:
             gene_matrix (pd.DataFrame): Gene expression matrix with genes as rows and samples as columns.
             pos_genes (List[str]): List of genes in the positive signature.
             neg_genes (List[str]): List of genes in the negative signature.
+            ratio (Optional[float]): Scaling factor for negative gene score.
+                When None (default), score = posScore - negScore (used for overall
+                AUC calculation, matching R's .scoreGenesMtx).
+                When provided, score = posScore - ratio * negScore (used in inner
+                search loops, matching R's .backsearchPos/.backsearchNeg/
+                .forwardSearchPos/.forwardSearchNeg).
 
         Returns:
             np.ndarray: Standardized score vector for each sample.
@@ -757,31 +875,36 @@ class GeneSearchOptimizer:
                 neg_data = gene_matrix.loc[neg_present]
                 neg_score = self._geometric_mean(neg_data.values, axis=0)
 
-        # Calculate final score (positive - negative, equivalent to R logic)
-        if isinstance(pos_score, (int, float)) and isinstance(neg_score, (int, float)):
+        # Apply ratio scaling if provided (inner search loop balancing)
+        if ratio is not None:
+            neg_score_scaled = (
+                np.asarray(neg_score) * ratio
+                if not isinstance(neg_score, (int, float)) or neg_score != 0.0
+                else 0.0
+            )
+        else:
+            neg_score_scaled = neg_score
+
+        # Calculate final score (positive - [ratio *] negative)
+        if isinstance(pos_score, (int, float)) and isinstance(neg_score_scaled, (int, float)):
             # Handle scalar case
-            if pos_score == 0 and neg_score == 0:
+            if pos_score == 0 and neg_score_scaled == 0:
                 total_score = np.zeros(gene_matrix.shape[1])
             else:
-                total_score = np.full(gene_matrix.shape[1], pos_score - neg_score)
+                total_score = np.full(gene_matrix.shape[1], pos_score - neg_score_scaled)
         else:
             # Handle array case
-            total_score = np.asarray(pos_score) - np.asarray(neg_score)
+            total_score = np.asarray(pos_score) - np.asarray(neg_score_scaled)
 
         # Standardize scores (equivalent to R's scale function)
         if len(total_score) > 0 and np.std(total_score) > 0:
-            # 20260610dev
+
             # R's scale() function uses ddof=1 (sample standard deviation).
-            total_score = (total_score - np.mean(total_score)) / np.std(
-                total_score, ddof=1
-            )
-            # 20260610orig total_score = (total_score - np.mean(total_score)) / np.std(total_score)
+            total_score = (total_score - np.mean(total_score)) / np.std(total_score, ddof=1)
 
         return total_score
 
-    def _geometric_mean(
-        self, data: np.ndarray, axis: int = 0
-    ) -> Union[float, np.ndarray]:
+    def _geometric_mean(self, data: np.ndarray, axis: int = 0) -> Union[float, np.ndarray]:
         """
         Calculate geometric mean, handling zeros and negative values.
 
@@ -838,32 +961,24 @@ class GeneSearchOptimizer:
         missing_genes = all_specified - all_discovery_genes
 
         if missing_genes:
-            warnings.warn(
-                f"Some specified genes not found in discovery datasets: {missing_genes}"
-            )
+            warnings.warn(f"Some specified genes not found in discovery datasets: {missing_genes}")
 
         # Validate yes_pos and yes_neg are subsets
         if yes_pos:
             invalid_pos = set(yes_pos) - set(pos_genes)
             if invalid_pos:
-                raise ValueError(
-                    f"yes_pos contains genes not in pos_genes: {invalid_pos}"
-                )
+                raise ValueError(f"yes_pos contains genes not in pos_genes: {invalid_pos}")
 
         if yes_neg:
             invalid_neg = set(yes_neg) - set(neg_genes)
             if invalid_neg:
-                raise ValueError(
-                    f"yes_neg contains genes not in neg_genes: {invalid_neg}"
-                )
+                raise ValueError(f"yes_neg contains genes not in neg_genes: {invalid_neg}")
 
 
 # ------------------------------------------------------------------
 # Convenience functions for backward compatibility
 # ------------------------------------------------------------------
-def backward_search(
-    meta_object: Dict, filter_object: Dict, back_thresh: float = 0.0
-) -> Dict:
+def backward_search(meta_object: Dict, filter_object: Dict, back_thresh: float = 0.0) -> Dict:
     """
     Perform backward search for gene selection optimization.
 
@@ -912,6 +1027,4 @@ def forward_search(
         Dict: Resulting dictionary from the optimizer's forward search.
     """
     optimizer = GeneSearchOptimizer()
-    return optimizer.forward_search(
-        meta_object, filter_object, yes_pos, yes_neg, forward_thresh
-    )
+    return optimizer.forward_search(meta_object, filter_object, yes_pos, yes_neg, forward_thresh)
