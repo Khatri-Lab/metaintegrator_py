@@ -1,0 +1,12 @@
+run_example:
+  config: app.yaml
+  verbose: false
+
+preprocess_batch_effect_removalt:
+  csv_dir: data/data_csv    # Directory that contains the input CSV files (default: 'data/data_csv')
+  output_dir: data/data_out # If omitted, results are only printed.
+  debug: false              # If set, the script prints additional debugging information.
+
+io_example:
+  source: data
+  format: csv
