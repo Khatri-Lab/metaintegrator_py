@@ -23,9 +23,9 @@ from sklearn.metrics import (
 
 
 # ------------------------------------------------------------------
-# MetaAnalysisPlotter Class
+# EnhancedMetaAnalysisPlotter Class
 # ------------------------------------------------------------------
-class MetaAnalysisPlotter:
+class EnhancedMetaAnalysisPlotter:
     """Enhanced plotting class for meta-analysis visualizations."""
 
     CI_95_MULTIPLIER = 1.96
@@ -51,9 +51,7 @@ class MetaAnalysisPlotter:
         if style != "default":
             plt.style.use(style)
 
-    def _get_meta_data(
-        self, meta_object: Dict
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def _get_meta_data(self, meta_object: Dict) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
         Extract meta-analysis data from the provided meta-analysis object.
 
@@ -278,9 +276,7 @@ class MetaAnalysisPlotter:
         # Plot pooled diamond
         pooled_effect = pooled_results.loc[gene_name, "effectSize"]
         pooled_se = pooled_results.loc[gene_name, "effectSizeStandardError"]
-        self._draw_pooled_diamond(
-            ax, pooled_effect, pooled_se, n_studies, summary_color
-        )
+        self._draw_pooled_diamond(ax, pooled_effect, pooled_se, n_studies, summary_color)
 
         # Formatting
         ax.axvline(0, color=zero_line_color, linestyle="--", alpha=0.7)
@@ -350,9 +346,7 @@ class MetaAnalysisPlotter:
 
         effect_sizes, std_errors, pooled_results = self._get_meta_data(meta_object)
         n_rows = int(np.ceil(len(genes) / facet_cols))
-        fig, axes = plt.subplots(
-            n_rows, facet_cols, figsize=figsize, squeeze=False, sharey=True
-        )
+        fig, axes = plt.subplots(n_rows, facet_cols, figsize=figsize, squeeze=False, sharey=True)
         axes_flat = axes.flatten()
 
         for i, gene in enumerate(genes):
@@ -369,14 +363,10 @@ class MetaAnalysisPlotter:
             all_names = list(gene_effects.index) + ["Summary"]
 
             n_items = len(all_effects)
-            for j, (effect, se, name) in enumerate(
-                zip(all_effects, all_ses, all_names)
-            ):
+            for j, (effect, se, name) in enumerate(zip(all_effects, all_ses, all_names)):
                 y_pos = n_items - j - 1
                 if name == "Summary":
-                    self._draw_pooled_diamond(
-                        ax, effect, se, y_pos, "coral", ci_multiplier
-                    )
+                    self._draw_pooled_diamond(ax, effect, se, y_pos, "coral", ci_multiplier)
                 else:
                     # Draw study row (simplified logic for example)
                     ax.hlines(
@@ -427,9 +417,7 @@ class MetaAnalysisPlotter:
                 DataFrame containing the filtered and sorted heatmap data. Returns an
                 empty DataFrame if no valid genes are present.
         """
-        gene_names = filter_object.get("posGeneNames", []) + filter_object.get(
-            "negGeneNames", []
-        )
+        gene_names = filter_object.get("posGeneNames", []) + filter_object.get("negGeneNames", [])
         effect_sizes = meta_data["metaAnalysis"]["datasetEffectSizes"]
         pooled_results = meta_data["metaAnalysis"]["pooledResults"]
 
@@ -512,9 +500,7 @@ class MetaAnalysisPlotter:
         Raises:
             None
         """
-        heat_data = self._prepare_heatmap_data(
-            meta_data, filter_object, display_pooled, gene_order
-        )
+        heat_data = self._prepare_heatmap_data(meta_data, filter_object, display_pooled, gene_order)
 
         if heat_data.empty:
             warnings.warn("Must have at least 2 genes for heatmap")
@@ -605,9 +591,7 @@ class MetaAnalysisPlotter:
         colors = ["red" if p < 0.05 else "blue" for p in fdr_values]
 
         ax.scatter(x_positions, neg_log_fdr, c=colors, alpha=0.6, s=20)
-        ax.axhline(
-            -np.log10(0.05), color="red", linestyle="--", alpha=0.7, label="FDR = 0.05"
-        )
+        ax.axhline(-np.log10(0.05), color="red", linestyle="--", alpha=0.7, label="FDR = 0.05")
 
         ax.set_xlabel("Gene Index")
         ax.set_ylabel("-log₁₀(FDR)")
@@ -721,9 +705,7 @@ class MetaAnalysisPlotter:
             raise ValueError("Sensitivity and specificity must be provided")
 
         figsize = figsize or self.figsize
-        prevalence, ppv, npv = self._calculate_predictive_values(
-            sensitivity, specificity, n_steps
-        )
+        prevalence, ppv, npv = self._calculate_predictive_values(sensitivity, specificity, n_steps)
 
         # Convert to percentages for plotting
         prev_pct, ppv_pct, npv_pct = prevalence * 100, ppv * 100, npv * 100
@@ -749,9 +731,7 @@ class MetaAnalysisPlotter:
 
         ax.set_xlabel("Prevalence (%)")
         ax.set_ylabel("Predictive Value (%)")
-        ax.set_title(
-            title or self._get_predictive_plot_title(sensitivity, specificity, rounding)
-        )
+        ax.set_title(title or self._get_predictive_plot_title(sensitivity, specificity, rounding))
 
         ax.legend()
         ax.grid(True, alpha=0.3)
@@ -820,64 +800,7 @@ class MetaAnalysisPlotter:
         roc_auc = auc(fpr, tpr)
         return fpr, tpr, roc_auc
 
-    def roc_plot(
-        self,
-        y_true: np.ndarray,
-        y_scores: np.ndarray,
-        title: str = "ROC Curve",
-        label: Optional[str] = None,
-        color: str = "blue",
-        figsize: Optional[Tuple] = None,
-        save_path: Optional[str] = None,
-    ) -> plt.Figure:
-        """
-        Plots a Receiver Operating Characteristic (ROC) curve for the given true labels and predicted scores.
-
-        This method calculates the False Positive Rate (FPR) and True Positive Rate (TPR) from the provided true labels
-        and predicted scores to construct the ROC curve. It also computes the Area Under the Curve (AUC) and its
-        confidence interval. The generated ROC curve is then plotted and optionally saved to a file.
-
-        Args:
-            y_true (np.ndarray): True binary labels, where 1 represents the positive class and 0 represents the negative class.
-            y_scores (np.ndarray): Predicted scores or probabilities for the positive class. These values are typically the
-                output of a classifier and must be within the range [0, 1].
-            title (str, optional): Title of the ROC plot. Defaults to "ROC Curve".
-            label (Optional[str]): Custom label description for the ROC curve. If not provided, it generates a label
-                including the AUC score and confidence intervals.
-            color (str): Color of the ROC curve line. Defaults to "blue".
-            figsize (Optional[Tuple]): Figure size for the ROC plot. If not provided, a default value is used.
-            save_path (Optional[str]): Filepath where the plotted figure should be saved. If not provided, no file is saved.
-
-        Returns:
-            plt.Figure: The matplotlib figure object of the generated ROC curve plot.
-        """
-        figsize = figsize or self.figsize
-        fpr, tpr, roc_auc = self._calculate_roc_stats(y_true, y_scores)
-        ci_lower, ci_upper = self._calculate_auc_confidence_interval(y_true, roc_auc)
-
-        if label is None:
-            label = f"AUC = {roc_auc:.3f} (95% CI: {ci_lower:.3f}-{ci_upper:.3f})"
-
-        fig, ax = plt.subplots(figsize=figsize)
-        ax.plot(fpr, tpr, color=color, linewidth=2, label=label)
-        ax.plot([0, 1], [0, 1], "k--", alpha=0.6, label="Random")
-
-        ax.set_xlabel("False Positive Rate (1-Specificity)")
-        ax.set_ylabel("True Positive Rate (Sensitivity)")
-        ax.set_title(title)
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        ax.set_xlim([0, 1])
-        ax.set_ylim([0, 1])
-
-        plt.tight_layout()
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches="tight")
-        return fig
-
-    def _calculate_auc_ci(
-        self, y_true: np.ndarray, auc_value: float
-    ) -> Tuple[float, float]:
+    def _calculate_auc_ci(self, y_true: np.ndarray, auc_value: float) -> Tuple[float, float]:
         """
         Calculates the confidence interval for the Area Under the Curve (AUC) score.
 
@@ -1315,9 +1238,7 @@ class MetaAnalysisPlotter:
         colors = plt.cm.Set1(np.linspace(0, 1, len(datasets)))
 
         for i, dataset in enumerate(datasets):
-            precision, recall, _, label = self._get_dataset_prc_info(
-                i, dataset, filter_object
-            )
+            precision, recall, _, label = self._get_dataset_prc_info(i, dataset, filter_object)
             ax.plot(recall, precision, color=colors[i], linewidth=2, label=label)
 
         ax.set_xlabel("Recall")
@@ -1333,9 +1254,7 @@ class MetaAnalysisPlotter:
             plt.savefig(save_path, dpi=300, bbox_inches="tight")
         return fig
 
-    def _get_gene_indices(
-        self, dataset_keys: List[str], target_genes: List[str]
-    ) -> List[int]:
+    def _get_gene_indices(self, dataset_keys: List[str], target_genes: List[str]) -> List[int]:
         """
         Gets the indices of target genes from a list of dataset keys.
 
@@ -1409,12 +1328,8 @@ class MetaAnalysisPlotter:
         expr_matrix = dataset["expr"]
 
         # Simple implementation: mean of positive genes - mean of negative genes
-        pos_indices = self._get_gene_indices(
-            gene_keys, filter_object.get("posGeneNames", [])
-        )
-        neg_indices = self._get_gene_indices(
-            gene_keys, filter_object.get("negGeneNames", [])
-        )
+        pos_indices = self._get_gene_indices(gene_keys, filter_object.get("posGeneNames", []))
+        neg_indices = self._get_gene_indices(gene_keys, filter_object.get("negGeneNames", []))
 
         mean_pos_expr = self._get_mean_expression(expr_matrix, pos_indices)
         mean_neg_expr = self._get_mean_expression(expr_matrix, neg_indices)
@@ -1424,9 +1339,7 @@ class MetaAnalysisPlotter:
         if isinstance(scores, (int, float)):
             # If both indices are empty, return array of zeros with correct shape
             n_samples = (
-                expr_matrix.shape[1]
-                if hasattr(expr_matrix, "shape")
-                else len(expr_matrix.columns)
+                expr_matrix.shape[1] if hasattr(expr_matrix, "shape") else len(expr_matrix.columns)
             )
             return np.zeros(n_samples)
 
@@ -1474,7 +1387,7 @@ class MetaAnalysisPlotter:
             ValueError: If required columns are missing or data is invalid
 
         Examples:
-            >>> plotter = MetaAnalysisPlotter()
+            >>> plotter = EnhancedMetaAnalysisPlotter()
             >>> filter_obj = {'posGeneNames': ['GENE1', 'GENE2'],
             ...               'negGeneNames': ['GENE3']}
             >>> dataset = {'expr': expr_df, 'keys': keys, 'pheno': pheno_df,
@@ -1494,9 +1407,7 @@ class MetaAnalysisPlotter:
 
         # Check label column exists
         if label_column not in dataset_pheno.columns:
-            raise ValueError(
-                f"Column '{label_column}' not found in dataset_object['pheno']"
-            )
+            raise ValueError(f"Column '{label_column}' not found in dataset_object['pheno']")
 
         # Calculate scores
         scores = ScoreCalculator.calculate_score(
@@ -1567,11 +1478,7 @@ class MetaAnalysisPlotter:
         plot_data["x"] = pd.Categorical(plot_data["x"], categories=groups, ordered=True)
 
         # Calculate standard errors for each group
-        se_data = (
-            plot_data.groupby("x", observed=False)["y"]
-            .agg(["mean", "sem"])
-            .reset_index()
-        )
+        se_data = plot_data.groupby("x", observed=False)["y"].agg(["mean", "sem"]).reset_index()
         se_data = se_data.rename(columns={"mean": "y_mean", "sem": "se"})
 
         # Create figure
@@ -1681,9 +1588,7 @@ class MetaAnalysisPlotter:
         elif comparison_method.lower() in ["t.test", "t_test", "ttest"]:
             test_func = lambda x, y: ttest_ind(x, y, equal_var=True)
         else:
-            warnings.warn(
-                f"Unknown comparison method: {comparison_method}, using Wilcoxon"
-            )
+            warnings.warn(f"Unknown comparison method: {comparison_method}, using Wilcoxon")
             test_func = mannwhitneyu
 
         # Perform comparisons
@@ -1711,9 +1616,7 @@ class MetaAnalysisPlotter:
                 except Exception as e:
                     warnings.warn(f"Could not perform comparison: {e}")
 
-    def _draw_significance_bracket(
-        self, ax, x1: float, x2: float, y: float, p_value: float
-    ):
+    def _draw_significance_bracket(self, ax, x1: float, x2: float, y: float, p_value: float):
         """Draw significance bracket with p-value annotation."""
         # Determine significance stars
         if p_value < 0.001:
@@ -1729,9 +1632,7 @@ class MetaAnalysisPlotter:
         ax.plot([x1, x1, x2, x2], [y, y + 0.02, y + 0.02, y], "k-", linewidth=1)
 
         # Add text
-        ax.text(
-            (x1 + x2) / 2, y + 0.03, sig_text, ha="center", va="bottom", fontsize=12
-        )
+        ax.text((x1 + x2) / 2, y + 0.03, sig_text, ha="center", va="bottom", fontsize=12)
 
     def regression_plot(
         self,
@@ -1773,7 +1674,7 @@ class MetaAnalysisPlotter:
             ValueError: If required columns are missing
 
         Examples:
-            >>> plotter = MetaAnalysisPlotter()
+            >>> plotter = EnhancedMetaAnalysisPlotter()
             >>> filter_obj = {'posGeneNames': ['GENE1'], 'negGeneNames': []}
             >>> dataset = {'pheno': pheno_df, 'expr': expr_df, 'keys': keys}
             >>> fig = plotter.regression_plot(filter_obj, dataset,
@@ -1817,9 +1718,7 @@ class MetaAnalysisPlotter:
         else:
             # Try to pull a numeric value from the string
             # Example pattern: 'age: 61' → 61
-            extracted = continuous_col.astype(str).str.extract(
-                r"age:\s*([0-9]+(?:\.[0-9]+)?)"
-            )[0]
+            extracted = continuous_col.astype(str).str.extract(r"age:\s*([0-9]+(?:\.[0-9]+)?)")[0]
             # If extraction succeeded, use the extracted value, otherwise fall back
             # to the original column (coerce to numeric will create NaNs).
             dataset_pheno["continuous"] = pd.to_numeric(extracted, errors="coerce")
@@ -1827,9 +1726,7 @@ class MetaAnalysisPlotter:
             # If the extraction produced only NaNs (no 'age:' pattern found)
             # fall back to the original column.
             if dataset_pheno["continuous"].isna().all():
-                dataset_pheno["continuous"] = pd.to_numeric(
-                    continuous_col, errors="coerce"
-                )
+                dataset_pheno["continuous"] = pd.to_numeric(continuous_col, errors="coerce")
 
         # Ensure the score column is numeric (fails silently otherwise)
         dataset_pheno["score"] = pd.to_numeric(dataset_pheno["score"], errors="coerce")
@@ -1882,12 +1779,8 @@ class MetaAnalysisPlotter:
         plot_data = dataset_pheno[[comparison_column, score_column]].copy()
 
         # Convert both columns to numeric (drop rows that cannot be converted)
-        plot_data[comparison_column] = pd.to_numeric(
-            plot_data[comparison_column], errors="coerce"
-        )
-        plot_data[score_column] = pd.to_numeric(
-            plot_data[score_column], errors="coerce"
-        )
+        plot_data[comparison_column] = pd.to_numeric(plot_data[comparison_column], errors="coerce")
+        plot_data[score_column] = pd.to_numeric(plot_data[score_column], errors="coerce")
         plot_data = plot_data.dropna(subset=[comparison_column, score_column])
 
         x = plot_data[comparison_column].values
@@ -1912,17 +1805,13 @@ class MetaAnalysisPlotter:
         fig, ax = plt.subplots(figsize=figsize)
 
         # Scatter plot
-        ax.scatter(
-            x, y, alpha=0.6, s=50, color="steelblue", edgecolors="black", linewidth=0.5
-        )
+        ax.scatter(x, y, alpha=0.6, s=50, color="steelblue", edgecolors="black", linewidth=0.5)
 
         # Regression line
         z = np.polyfit(x, y, 1)
         p = np.poly1d(z)
         x_line = np.linspace(x.min(), x.max(), 100)
-        ax.plot(
-            x_line, p(x_line), "r-", alpha=0.8, linewidth=2, label="Regression line"
-        )
+        ax.plot(x_line, p(x_line), "r-", alpha=0.8, linewidth=2, label="Regression line")
 
         # Confidence interval for regression line (optional enhancement)
         from scipy import stats as sp_stats
@@ -1972,9 +1861,7 @@ class MetaAnalysisPlotter:
         ax.set_ylabel("Meta Score", fontsize=14)
         ax.set_title(formatted_name, fontsize=16)
         ax.grid(True, alpha=0.3)
-        ax.legend(
-            loc="upper left" if "bottom" in correlation_corner.lower() else "lower left"
-        )
+        ax.legend(loc="upper left" if "bottom" in correlation_corner.lower() else "lower left")
 
         plt.tight_layout()
 
@@ -1991,7 +1878,7 @@ def forest_plot(meta_object: Dict, gene_name: str, **kwargs) -> plt.Figure:
     """
     Generates a forest plot based on the provided meta-analysis data and gene name.
 
-    This function utilizes a MetaAnalysisPlotter to create a visual representation
+    This function utilizes an EnhancedMetaAnalysisPlotter to create a visual representation
     of meta-analysis results, typically used in the context of genetic studies. The
     forest plot provides a graphical representation of individual studies and their
     combined effect size, helping researchers understand the variability and overall
@@ -2009,7 +1896,7 @@ def forest_plot(meta_object: Dict, gene_name: str, **kwargs) -> plt.Figure:
     Returns:
         plt.Figure: A matplotlib figure object containing the forest plot.
     """
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     return plotter.forest_plot(meta_object, gene_name, **kwargs)
 
 
@@ -2033,7 +1920,7 @@ def gg_forest_plot(meta_object: Dict, genes: List[str], **kwargs) -> plt.Figure:
         plt.Figure: A matplotlib Figure object containing the generated
             forest plot.
     """
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     return plotter.gg_forest_plot(meta_object, genes, **kwargs)
 
 
@@ -2053,7 +1940,7 @@ def heatmap_plot(meta_object: Dict, filter_object: Dict, **kwargs) -> plt.Figure
         plt.Figure
             A matplotlib Figure object representing the generated heatmap plot.
     """
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     return plotter.heatmap_plot(meta_object, filter_object, **kwargs)
 
 
@@ -2061,7 +1948,7 @@ def manhattan_plot(meta_object: Dict, **kwargs) -> plt.Figure:
     """
     Generate a Manhattan plot based on a meta-analysis object and additional keyword arguments.
 
-    This function utilizes the MetaAnalysisPlotter class to produce a Manhattan plot
+    This function utilizes the EnhancedMetaAnalysisPlotter class to produce a Manhattan plot
     for visualizing genetic association study results. The input meta_object contains
     relevant meta-analysis data, while additional configurations can be provided through
     keyword arguments.
@@ -2069,24 +1956,22 @@ def manhattan_plot(meta_object: Dict, **kwargs) -> plt.Figure:
     Args:
         meta_object (Dict): A dictionary containing meta-analysis data. The structure and
             contents of this dictionary should be compatible with the requirements of the
-            MetaAnalysisPlotter class.
+            EnhancedMetaAnalysisPlotter class.
         kwargs: Additional keyword arguments passed directly to the plotting function of
-            the MetaAnalysisPlotter.
+            the EnhancedMetaAnalysisPlotter.
 
     Returns:
         plt.Figure: A Matplotlib Figure object containing the generated Manhattan plot.
     """
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     return plotter.manhattan_plot(meta_object, **kwargs)
 
 
-def predictive_value_plot(
-    sensitivity: float, specificity: float, **kwargs
-) -> plt.Figure:
+def predictive_value_plot(sensitivity: float, specificity: float, **kwargs) -> plt.Figure:
     """
     Generates a predictive value plot using given sensitivity and specificity values.
 
-    This function utilizes a MetaAnalysisPlotter object to create a plot that
+    This function utilizes an EnhancedMetaAnalysisPlotter object to create a plot that
     visualizes the predictive value based on the provided sensitivity and specificity
     values. Additional keyword arguments can be passed for further customization
     of the plot.
@@ -2099,17 +1984,15 @@ def predictive_value_plot(
     Returns:
         plt.Figure: The matplotlib Figure object containing the predictive value plot.
     """
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     return plotter.predictive_value_plot(sensitivity, specificity, **kwargs)
 
 
-def multiple_roc_plot(
-    datasets: List[Dict], filter_object: Dict, **kwargs
-) -> plt.Figure:
+def multiple_roc_plot(datasets: List[Dict], filter_object: Dict, **kwargs) -> plt.Figure:
     """
-    Generates a single ROC curve plot for multiple datasets using a MetaAnalysisPlotter.
+    Generates a single ROC curve plot for multiple datasets using a EnhancedMetaAnalysisPlotter.
 
-    This function uses a MetaAnalysisPlotter to create a ROC curve plot for the
+    This function uses an EnhancedMetaAnalysisPlotter to create a ROC curve plot for the
     provided datasets applying a specified filter. Additional customization can
     be passed via keyword arguments.
 
@@ -2128,19 +2011,17 @@ def multiple_roc_plot(
         plt.Figure:
             The resulting matplotlib Figure containing the ROC curve plot.
     """
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     return plotter.multiple_roc_plot(datasets, filter_object, **kwargs)
 
 
-def multiple_prc_plot(
-    datasets: List[Dict], filter_object: Dict, **kwargs
-) -> plt.Figure:
+def multiple_prc_plot(datasets: List[Dict], filter_object: Dict, **kwargs) -> plt.Figure:
     """
     Generates a precision-recall curve (PRC) plot for multiple datasets.
 
     This function facilitates the creation of a precision-recall curve
     (PRC) plot using data from multiple datasets. It utilizes the
-    MetaAnalysisPlotter class to handle the actual plotting. Additional
+    EnhancedMetaAnalysisPlotter class to handle the actual plotting. Additional
     filtering or configuration can be applied through the provided filter
     object and keyword arguments.
 
@@ -2155,7 +2036,7 @@ def multiple_prc_plot(
     Returns:
         plt.Figure: A matplotlib figure containing the PRC plot.
     """
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     return plotter.multiple_prc_plot(datasets, filter_object, **kwargs)
 
 
@@ -2174,7 +2055,7 @@ def roc_plot(y_true: np.ndarray, y_scores: np.ndarray, **kwargs) -> plt.Figure:
     Returns:
         plt.Figure: A matplotlib Figure object representing the generated ROC curve plot.
     """
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     return plotter.roc_plot(y_true, y_scores, **kwargs)
 
 
@@ -2200,5 +2081,37 @@ def prc_plot(y_true: np.ndarray, y_scores: np.ndarray, **kwargs) -> plt.Figure:
         plt.Figure: A Matplotlib figure object representing the generated precision-
             recall curve.
     """
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     return plotter.prc_plot(y_true, y_scores, **kwargs)
+
+
+# ------------------------------------------------------------------
+# Backward-compatible deprecated alias
+# ------------------------------------------------------------------
+# This class used to be named ``MetaAnalysisPlotter`` — the same name as
+# the unrelated, differently-scoped class in :mod:`visualization.plotting`
+# (volcano/forest/heatmap/effect-size-distribution/study-overview/
+# MA-summary plots). Having two independent classes share one name across
+# sibling modules was a real footgun: `from visualization.enhanced_plotting
+# import MetaAnalysisPlotter` and `from visualization.plotting import
+# MetaAnalysisPlotter` silently returned two different classes with no
+# overlapping methods. It is now ``EnhancedMetaAnalysisPlotter``.
+#
+# `__getattr__` (PEP 562) keeps `from visualization.enhanced_plotting
+# import MetaAnalysisPlotter` working for existing callers, with a
+# DeprecationWarning nudging them to the new name. New code should import
+# `EnhancedMetaAnalysisPlotter` directly.
+def __getattr__(name: str):
+    if name == "MetaAnalysisPlotter":
+        warnings.warn(
+            "visualization.enhanced_plotting.MetaAnalysisPlotter has been "
+            "renamed to EnhancedMetaAnalysisPlotter to avoid colliding "
+            "with the unrelated visualization.plotting.MetaAnalysisPlotter "
+            "class. Update your import: "
+            "`from visualization.enhanced_plotting import "
+            "EnhancedMetaAnalysisPlotter`.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return EnhancedMetaAnalysisPlotter
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
