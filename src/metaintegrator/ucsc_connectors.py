@@ -25,9 +25,7 @@ try:
     MYSQL_AVAILABLE = True
 except ImportError:
     MYSQL_AVAILABLE = False
-    warnings.warn(
-        "mysql-connector-python not available. UCSC database features will be limited."
-    )
+    warnings.warn("mysql-connector-python not available. UCSC database features will be limited.")
 
 
 @dataclass
@@ -56,9 +54,7 @@ class UCSDConnectionPool:
         self.max_connections = max_connections
         self._connections = {}
         self._connection_times = {}
-        self._max_connection_age = timedelta(
-            minutes=10
-        )  # Refresh connections after 10 min
+        self._max_connection_age = timedelta(minutes=10)  # Refresh connections after 10 min
 
     @contextmanager
     def get_connection(self, database: str):
@@ -88,11 +84,7 @@ class UCSDConnectionPool:
             conn_time = self._connection_times.get(database, now)
 
             # Check if connection is still valid and not too old
-            if (
-                conn
-                and conn.is_connected()
-                and now - conn_time < self._max_connection_age
-            ):
+            if conn and conn.is_connected() and now - conn_time < self._max_connection_age:
                 return conn
             else:
                 self._cleanup_connection(database)
@@ -208,9 +200,7 @@ class UCSDGenBankConnector:
         except sqlite3.Error as e:
             warnings.warn(f"Failed to initialize local cache: {str(e)}")
 
-    def get_genbank_table(
-        self, use_cache: bool = True, organism: int = 448
-    ) -> pd.DataFrame:
+    def get_genbank_table(self, use_cache: bool = True, organism: int = 448) -> pd.DataFrame:
         """
         Get complete GenBank mapping table.
 
@@ -281,9 +271,7 @@ class UCSDGenBankConnector:
                         df = df[df["name"].str.strip() != ""]
                         df = df[df["acc"].str.strip() != ""]
 
-                        print(
-                            f"Successfully fetched {len(df)} GenBank mappings from UCSC"
-                        )
+                        print(f"Successfully fetched {len(df)} GenBank mappings from UCSC")
                         return df
                     else:
                         warnings.warn("No data returned from UCSC GenBank query")
@@ -345,9 +333,7 @@ class UCSDGenBankConnector:
             with sqlite3.connect(self.local_db) as conn:
                 # Clear old data for this organism
                 cursor = conn.cursor()
-                cursor.execute(
-                    "DELETE FROM genbank_mappings WHERE organism = ?", (organism,)
-                )
+                cursor.execute("DELETE FROM genbank_mappings WHERE organism = ?", (organism,))
 
                 # Insert new data
                 for _, row in df.iterrows():
@@ -362,9 +348,7 @@ class UCSDGenBankConnector:
         except sqlite3.Error as e:
             warnings.warn(f"Failed to save to cache: {str(e)}")
 
-    def map_genbank_to_genes(
-        self, genbank_ids: List[str], organism: int = 448
-    ) -> Dict[str, str]:
+    def map_genbank_to_genes(self, genbank_ids: List[str], organism: int = 448) -> Dict[str, str]:
         """
         Map GenBank accession numbers to gene symbols.
 
@@ -494,9 +478,7 @@ class UCSDRefSeqConnector:
         except sqlite3.Error as e:
             warnings.warn(f"Failed to initialize local cache: {str(e)}")
 
-    def get_refseq_table(
-        self, use_cache: bool = True, database: str = "hg19"
-    ) -> pd.DataFrame:
+    def get_refseq_table(self, use_cache: bool = True, database: str = "hg19") -> pd.DataFrame:
         """
         Get complete RefSeq mapping table.
 
@@ -563,9 +545,7 @@ class UCSDRefSeqConnector:
                         df = df[df["name"].str.strip() != ""]
                         df = df[df["name2"].str.strip() != ""]
 
-                        print(
-                            f"Successfully fetched {len(df)} RefSeq mappings from UCSC"
-                        )
+                        print(f"Successfully fetched {len(df)} RefSeq mappings from UCSC")
                         return df
                     else:
                         warnings.warn("No data returned from UCSC RefSeq query")
@@ -637,9 +617,7 @@ class UCSDRefSeqConnector:
         except sqlite3.Error as e:
             warnings.warn(f"Failed to save to cache: {str(e)}")
 
-    def map_refseq_to_genes(
-        self, refseq_ids: List[str], database: str = "hg19"
-    ) -> Dict[str, str]:
+    def map_refseq_to_genes(self, refseq_ids: List[str], database: str = "hg19") -> Dict[str, str]:
         """
         Map RefSeq accession numbers to gene symbols.
 
@@ -709,9 +687,7 @@ class UCSDRefSeqConnector:
 
 
 # Convenience functions
-def get_ucsc_genbank_table(
-    cache_dir: Optional[str] = None, organism: int = 448
-) -> pd.DataFrame:
+def get_ucsc_genbank_table(cache_dir: Optional[str] = None, organism: int = 448) -> pd.DataFrame:
     """
     Convenience function to get UCSC GenBank mapping table.
 
@@ -729,9 +705,7 @@ def get_ucsc_genbank_table(
         connector.cleanup()
 
 
-def get_ucsc_refseq_table(
-    cache_dir: Optional[str] = None, database: str = "hg19"
-) -> pd.DataFrame:
+def get_ucsc_refseq_table(cache_dir: Optional[str] = None, database: str = "hg19") -> pd.DataFrame:
     """
     Convenience function to get UCSC RefSeq mapping table.
 

@@ -91,9 +91,7 @@ def validate_expression_matrix(
         errors.append(f"Too few genes: {n_genes} < {min_genes} (minimum required)")
 
     if n_samples < min_samples:
-        errors.append(
-            f"Too few samples: {n_samples} < {min_samples} (minimum required)"
-        )
+        errors.append(f"Too few samples: {n_samples} < {min_samples} (minimum required)")
 
     # Check data type (should be numeric)
     if not np.issubdtype(expr_matrix.dtype, np.number):
@@ -231,9 +229,7 @@ def validate_phenotype_data(
     if required_columns:
         missing_cols = set(required_columns) - set(pheno_data.columns)
         if missing_cols:
-            errors.append(
-                f"Missing required columns: {', '.join(sorted(missing_cols))}"
-            )
+            errors.append(f"Missing required columns: {', '.join(sorted(missing_cols))}")
 
     # Check for columns with all missing values
     all_na_cols = []
@@ -242,9 +238,7 @@ def validate_phenotype_data(
             all_na_cols.append(col)
 
     if all_na_cols:
-        warnings.warn(
-            f"Columns with all missing values: {', '.join(all_na_cols)}", UserWarning
-        )
+        warnings.warn(f"Columns with all missing values: {', '.join(all_na_cols)}", UserWarning)
 
     # Check for duplicate sample IDs (if geo_accession column exists)
     if "geo_accession" in pheno_data.columns:
@@ -318,9 +312,7 @@ def validate_geo_dataset(
             errors.append(f"Expression: {error}")
 
     # Validate phenotype data
-    pheno_valid, pheno_errors = validate_phenotype_data(
-        geo_data["pheno"], geo_data["expr"]
-    )
+    pheno_valid, pheno_errors = validate_phenotype_data(geo_data["pheno"], geo_data["expr"])
     if not pheno_valid:
         for error in pheno_errors:
             errors.append(f"Phenotype: {error}")
@@ -427,9 +419,7 @@ def validate_platform_annotation(
             break
 
     if symbol_col is None:
-        warnings.warn(
-            "No gene symbol column found. Annotation may be incomplete.", UserWarning
-        )
+        warnings.warn("No gene symbol column found. Annotation may be incomplete.", UserWarning)
         return len(errors) == 0, errors, stats
 
     # Calculate coverage statistics
@@ -447,9 +437,7 @@ def validate_platform_annotation(
 
     stats["mapped_probes"] = valid_symbols.sum()
     stats["coverage_pct"] = (
-        100.0 * stats["mapped_probes"] / stats["total_probes"]
-        if stats["total_probes"] > 0
-        else 0.0
+        100.0 * stats["mapped_probes"] / stats["total_probes"] if stats["total_probes"] > 0 else 0.0
     )
 
     # Count unique genes
@@ -472,9 +460,7 @@ def validate_platform_annotation(
 
         found_probes = requested_set & probe_set
         stats["requested_coverage_pct"] = (
-            100.0 * len(found_probes) / len(requested_set)
-            if len(requested_set) > 0
-            else 0.0
+            100.0 * len(found_probes) / len(requested_set) if len(requested_set) > 0 else 0.0
         )
 
         if stats["requested_coverage_pct"] < 80:
@@ -531,9 +517,7 @@ def check_data_compatibility(
     }
 
     if len(datasets) < 2:
-        warnings_list.append(
-            "Need at least 2 datasets for meta-analysis compatibility check"
-        )
+        warnings_list.append("Need at least 2 datasets for meta-analysis compatibility check")
         return True, warnings_list, stats
 
     # Extract platforms
@@ -600,8 +584,7 @@ def check_data_compatibility(
             if unique_samples < total_samples:
                 duplicates = total_samples - unique_samples
                 warnings_list.append(
-                    f"Sample overlap detected: {duplicates} duplicate samples "
-                    f"across datasets"
+                    f"Sample overlap detected: {duplicates} duplicate samples " f"across datasets"
                 )
                 stats["sample_overlap"] = True
 
@@ -672,9 +655,7 @@ def quick_validate_download(
         return False
 
 
-def print_validation_report(
-    geo_data: Dict[str, Any], title: str = "Dataset Validation Report"
-):
+def print_validation_report(geo_data: Dict[str, Any], title: str = "Dataset Validation Report"):
     """
     Print comprehensive validation report.
 
@@ -726,9 +707,7 @@ def print_validation_report(
     if "pheno" in geo_data:
         print("Phenotype Data:")
 
-        pheno_valid, pheno_errors = validate_phenotype_data(
-            geo_data["pheno"], geo_data.get("expr")
-        )
+        pheno_valid, pheno_errors = validate_phenotype_data(geo_data["pheno"], geo_data.get("expr"))
 
         n_samples = len(geo_data["pheno"])
         n_columns = len(geo_data["pheno"].columns)
@@ -757,9 +736,7 @@ def print_validation_report(
     if "fData" in geo_data:
         print("Feature Annotations:")
 
-        annot_valid, annot_errors, stats = validate_platform_annotation(
-            geo_data["fData"]
-        )
+        annot_valid, annot_errors, stats = validate_platform_annotation(geo_data["fData"])
 
         print(f"  Total probes: {stats['total_probes']:,}")
         print(f"  Mapped probes: {stats['mapped_probes']:,}")

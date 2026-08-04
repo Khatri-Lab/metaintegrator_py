@@ -128,24 +128,18 @@ def subset_original_data(
 
             # Check if any valid samples remain
             if not valid_samples:
-                raise ValueError(
-                    "No specified sample names are present in the dataset object."
-                )
+                raise ValueError("No specified sample names are present in the dataset object.")
 
             sample_names = valid_samples
             # Get indices for valid samples
-            sample_indices = [
-                expr_matrix.columns.get_loc(name) for name in sample_names
-            ]
+            sample_indices = [expr_matrix.columns.get_loc(name) for name in sample_names]
 
         elif all(isinstance(x, (int, np.integer)) for x in keep_samples):
             # List of sample indices
             sample_indices = keep_samples
 
             # Validate indices
-            invalid_indices = [
-                idx for idx in sample_indices if idx < 0 or idx >= n_samples
-            ]
+            invalid_indices = [idx for idx in sample_indices if idx < 0 or idx >= n_samples]
             if invalid_indices:
                 raise ValueError(
                     f"Invalid sample indices (must be 0-{n_samples - 1}): {invalid_indices}"
@@ -181,9 +175,7 @@ def subset_original_data(
                 subsetted_dataset["pheno"] = pheno_data.iloc[sample_indices, :].copy()
         else:
             # If pheno is not a DataFrame, just keep reference
-            warnings.warn(
-                "pheno data is not a DataFrame, cannot subset - keeping reference"
-            )
+            warnings.warn("pheno data is not a DataFrame, cannot subset - keeping reference")
             subsetted_dataset["pheno"] = pheno_data
 
     # Copy all other fields from original dataset

@@ -388,9 +388,7 @@ class BaseValidator(ABC):
         """
         pass
 
-    def _create_result(
-        self, object_type: str, object_stage: str = ""
-    ) -> ValidationResult:
+    def _create_result(self, object_type: str, object_stage: str = "") -> ValidationResult:
         """Create a new validation result.
 
         Args:
@@ -454,9 +452,7 @@ class DatasetValidator(BaseValidator):
 
         return result
 
-    def _validate_required_fields(
-        self, dataset: Dict[str, Any], result: ValidationResult
-    ) -> None:
+    def _validate_required_fields(self, dataset: Dict[str, Any], result: ValidationResult) -> None:
         """Check that required fields are present and not null.
 
         Args:
@@ -475,13 +471,9 @@ class DatasetValidator(BaseValidator):
                 result.add_issue("error", f"Dataset ${field} is null", field)
 
         if dataset.get("formattedName") is None:
-            result.add_issue(
-                "warning", "Dataset $formattedName is null", "formattedName"
-            )
+            result.add_issue("warning", "Dataset $formattedName is null", "formattedName")
 
-    def _validate_field_types(
-        self, dataset: Dict[str, Any], result: ValidationResult
-    ) -> None:
+    def _validate_field_types(self, dataset: Dict[str, Any], result: ValidationResult) -> None:
         """Validate types of dataset fields.
 
         Args:
@@ -510,9 +502,7 @@ class DatasetValidator(BaseValidator):
                 if not np.issubdtype(expr_data.dtype, np.number):
                     result.add_issue("error", "expr must contain numeric data", "expr")
             else:
-                result.add_issue(
-                    "error", "expr must be DataFrame or numpy array", "expr"
-                )
+                result.add_issue("error", "expr must be DataFrame or numpy array", "expr")
 
         # Validate class vector
         self._validate_class_vector(dataset, result)
@@ -527,9 +517,7 @@ class DatasetValidator(BaseValidator):
         if formatted_name is not None and not isinstance(formatted_name, str):
             result.add_issue("error", "formattedName must be a string", "formattedName")
 
-    def _validate_class_vector(
-        self, dataset: Dict[str, Any], result: ValidationResult
-    ) -> None:
+    def _validate_class_vector(self, dataset: Dict[str, Any], result: ValidationResult) -> None:
         """Validate the class vector.
 
         Args:
@@ -556,9 +544,7 @@ class DatasetValidator(BaseValidator):
         # This caused float(v) to try converting the whole array → TypeError
         if isinstance(class_vector, dict):
             values = list(class_vector.values())
-        elif isinstance(
-            class_vector, (pd.Series, list, np.ndarray)
-        ):  # ✅ FIXED: Added np.ndarray
+        elif isinstance(class_vector, (pd.Series, list, np.ndarray)):  # ✅ FIXED: Added np.ndarray
             values = list(class_vector)
         else:
             values = [class_vector]
@@ -567,9 +553,7 @@ class DatasetValidator(BaseValidator):
         try:
             numeric_values = [float(v) for v in values]
         except (ValueError, TypeError):
-            result.add_issue(
-                "error", "Class vector must contain numeric values", "class"
-            )
+            result.add_issue("error", "Class vector must contain numeric values", "class")
             return
 
         # Check if all values are valid (0, 1, or -1)
@@ -582,9 +566,7 @@ class DatasetValidator(BaseValidator):
                 )
                 break
 
-    def _validate_data_consistency(
-        self, dataset: Dict[str, Any], result: ValidationResult
-    ) -> None:
+    def _validate_data_consistency(self, dataset: Dict[str, Any], result: ValidationResult) -> None:
         """Check that dimensions and names match across data structures.
 
         FIXED VERSION - Handles unnamed class vectors and invalid expr types safely.
@@ -666,11 +648,7 @@ class DatasetValidator(BaseValidator):
             elif isinstance(expr_data, np.ndarray):
                 # Safe handling for numpy arrays
                 expr_samples = list(
-                    range(
-                        expr_data.shape[1]
-                        if len(expr_data.shape) > 1
-                        else len(expr_data)
-                    )
+                    range(expr_data.shape[1] if len(expr_data.shape) > 1 else len(expr_data))
                 )
             else:
                 # For invalid types (strings, etc.), skip this check
@@ -693,9 +671,7 @@ class DatasetValidator(BaseValidator):
             if isinstance(class_vector, dict):
                 class_samples = list(class_vector.keys())
                 has_names = True
-            elif hasattr(class_vector, "index") and hasattr(
-                class_vector.index, "tolist"
-            ):
+            elif hasattr(class_vector, "index") and hasattr(class_vector.index, "tolist"):
                 class_samples = class_vector.index.tolist()
                 has_names = True
             else:
@@ -715,9 +691,7 @@ class DatasetValidator(BaseValidator):
                     n_expr_samples = len(expr_data.columns)
                 elif isinstance(expr_data, np.ndarray):
                     n_expr_samples = (
-                        expr_data.shape[1]
-                        if len(expr_data.shape) > 1
-                        else len(expr_data)
+                        expr_data.shape[1] if len(expr_data.shape) > 1 else len(expr_data)
                     )
                 else:
                     # Invalid expr type - skip check
@@ -748,9 +722,7 @@ class DatasetValidator(BaseValidator):
                         "class/expr",
                     )
 
-    def _validate_data_quality(
-        self, dataset: Dict[str, Any], result: ValidationResult
-    ) -> None:
+    def _validate_data_quality(self, dataset: Dict[str, Any], result: ValidationResult) -> None:
         """Check for data quality issues.
 
         Args:
@@ -782,9 +754,7 @@ class DatasetValidator(BaseValidator):
         if keys is not None:
             if isinstance(keys, (list, np.ndarray, pd.Series)):
                 valid_keys = [
-                    k
-                    for k in keys
-                    if k is not None and str(k).lower() not in ["na", "nan", ""]
+                    k for k in keys if k is not None and str(k).lower() not in ["na", "nan", ""]
                 ]
                 if len(valid_keys) == 0:
                     formatted_name = dataset.get("formattedName", "Unknown")
@@ -838,9 +808,7 @@ class DatasetValidator(BaseValidator):
                     details["n_samples"] = len(expr_data.columns)
                 elif isinstance(expr_data, np.ndarray):
                     details["n_genes"] = expr_data.shape[0]
-                    details["n_samples"] = (
-                        expr_data.shape[1] if len(expr_data.shape) > 1 else 1
-                    )
+                    details["n_samples"] = expr_data.shape[1] if len(expr_data.shape) > 1 else 1
                 # Skip details for invalid types (string, etc.)
             except (AttributeError, IndexError, TypeError):
                 # If we can't get shape info, skip details
@@ -852,9 +820,7 @@ class DatasetValidator(BaseValidator):
             try:
                 if isinstance(class_vector, dict):
                     values = list(class_vector.values())
-                elif hasattr(class_vector, "__iter__") and not isinstance(
-                    class_vector, str
-                ):
+                elif hasattr(class_vector, "__iter__") and not isinstance(class_vector, str):
                     values = list(class_vector)
                 else:
                     values = [class_vector]
@@ -908,9 +874,7 @@ class DatasetValidator(BaseValidator):
         # Check if class vector length matches number of samples
         try:
             n_samples = (
-                expr_matrix.shape[1]
-                if hasattr(expr_matrix, "shape")
-                else len(expr_matrix.columns)
+                expr_matrix.shape[1] if hasattr(expr_matrix, "shape") else len(expr_matrix.columns)
             )
         except (AttributeError, IndexError):
             return False
@@ -940,9 +904,7 @@ class DatasetValidator(BaseValidator):
 
         original_names = list(meta_object["originalData"].keys())
 
-        valid_names = [
-            DatasetValidator.make_valid_name(name) for name in original_names
-        ]
+        valid_names = [DatasetValidator.make_valid_name(name) for name in original_names]
 
         return original_names == valid_names
 
@@ -1045,9 +1007,7 @@ class DatasetValidator(BaseValidator):
         else:
             unique_classes = np.unique(class_vector)
             if not np.array_equal(sorted(unique_classes), [0, 1]):
-                errors.append(
-                    "Class vector must contain only 0 (controls) and 1 (cases)"
-                )
+                errors.append("Class vector must contain only 0 (controls) and 1 (cases)")
 
         # Validate keys
         keys = study["keys"]
@@ -1057,9 +1017,7 @@ class DatasetValidator(BaseValidator):
         # Check dimension consistency
         if not errors:  # Only check if basic structure is valid
             try:
-                n_genes, n_samples = (
-                    expr.shape if isinstance(expr, np.ndarray) else expr.shape
-                )
+                n_genes, n_samples = expr.shape if isinstance(expr, np.ndarray) else expr.shape
 
                 if len(class_vector) != n_samples:
                     errors.append(
@@ -1069,8 +1027,7 @@ class DatasetValidator(BaseValidator):
 
                 if len(keys) != n_genes:
                     errors.append(
-                        f"Keys length ({len(keys)}) doesn't match "
-                        f"number of genes ({n_genes})"
+                        f"Keys length ({len(keys)}) doesn't match " f"number of genes ({n_genes})"
                     )
 
             except Exception as e:
@@ -1116,9 +1073,7 @@ class DatasetValidator(BaseValidator):
 
         # Validate each dataset
         for dataset_name, dataset in original_data.items():
-            is_valid, dataset_errors = DatasetValidator.validate_study_structure(
-                dataset
-            )
+            is_valid, dataset_errors = DatasetValidator.validate_study_structure(dataset)
             if not is_valid:
                 for error in dataset_errors:
                     errors.append(f"Dataset '{dataset_name}': {error}")
@@ -1356,18 +1311,12 @@ class MetaAnalysisValidator(BaseValidator):
             if isinstance(pooled_results, dict):
                 value = pooled_results.get(field)
             elif isinstance(pooled_results, pd.DataFrame):
-                value = (
-                    pooled_results[field].values
-                    if field in pooled_results.columns
-                    else None
-                )
+                value = pooled_results[field].values if field in pooled_results.columns else None
             else:
                 continue
 
             if value is not None:
-                if constraint_type == "non-negative" and not self._is_non_negative(
-                    value
-                ):
+                if constraint_type == "non-negative" and not self._is_non_negative(value):
                     result.add_issue(
                         "error",
                         f"pooledResults.{field} contains negative values",
@@ -1407,9 +1356,7 @@ class MetaAnalysisValidator(BaseValidator):
         except:
             return False
 
-    def _get_meta_analysis_details(
-        self, meta_analysis: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _get_meta_analysis_details(self, meta_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """Extract details about the meta analysis.
 
         Args:
@@ -1448,9 +1395,7 @@ class MetaAnalysisValidator(BaseValidator):
                 if first_key and hasattr(pooled_results[first_key], "__len__"):
                     details["n_genes"] = len(pooled_results[first_key])
 
-        details["analysis_description"] = meta_analysis.get(
-            "analysisDescription", "Unknown"
-        )
+        details["analysis_description"] = meta_analysis.get("analysisDescription", "Unknown")
 
         return details
 
@@ -1524,9 +1469,7 @@ class MetaFilterValidator(BaseValidator):
             if meta_filter.get(entry) is None:
                 result.add_issue("error", f"{entry} is null", entry)
 
-    def _validate_field_types(
-        self, meta_filter: Dict[str, Any], result: ValidationResult
-    ) -> None:
+    def _validate_field_types(self, meta_filter: Dict[str, Any], result: ValidationResult) -> None:
         """Validate field types and ranges.
 
         Args:
@@ -1573,9 +1516,7 @@ class MetaFilterValidator(BaseValidator):
                 if range_constraint:
                     constraint_type, constraint_value = range_constraint
                     if constraint_type == "non-negative" and value < 0:
-                        result.add_issue(
-                            "error", f"{field} must be non-negative", field
-                        )
+                        result.add_issue("error", f"{field} must be non-negative", field)
                     elif constraint_type == "range" and not (
                         constraint_value[0] <= value <= constraint_value[1]
                     ):
@@ -1704,9 +1645,7 @@ class MetaObjectValidator(BaseValidator):
         else:
             return []
 
-    def _validate_original_data(
-        self, meta_obj: Dict[str, Any], result: ValidationResult
-    ) -> None:
+    def _validate_original_data(self, meta_obj: Dict[str, Any], result: ValidationResult) -> None:
         """Validate originalData component.
 
         Args:
@@ -1732,9 +1671,7 @@ class MetaObjectValidator(BaseValidator):
             return
 
         if not isinstance(original_data, dict):
-            result.add_issue(
-                "error", "originalData must be a dictionary", "originalData"
-            )
+            result.add_issue("error", "originalData must be a dictionary", "originalData")
             return
 
         for dataset_name, dataset_obj in original_data.items():
@@ -1826,9 +1763,7 @@ class MetaObjectValidator(BaseValidator):
                     f"leaveOneOutAnalysis[{i}].{issue.field_path}",
                 )
 
-    def _validate_filter_results(
-        self, meta_obj: Dict[str, Any], result: ValidationResult
-    ) -> None:
+    def _validate_filter_results(self, meta_obj: Dict[str, Any], result: ValidationResult) -> None:
         """Validate filterResults component.
 
         Args:
@@ -1873,9 +1808,7 @@ class MetaObjectValidator(BaseValidator):
                     f"filterResults[{i}].{issue.field_path}",
                 )
 
-    def _get_meta_details(
-        self, meta_obj: Dict[str, Any], stage: ObjectStage
-    ) -> Dict[str, Any]:
+    def _get_meta_details(self, meta_obj: Dict[str, Any], stage: ObjectStage) -> Dict[str, Any]:
         """Extract details about the meta object.
 
         Args:
@@ -2108,9 +2041,7 @@ class ValidationReporter:
 # ------------------------------------------------------------------
 # Convenience Functions for Backward Compatibility
 # ------------------------------------------------------------------
-def check_data_object(
-    obj: Any, object_type: str, object_stage: str = "Pre-Analysis"
-) -> bool:
+def check_data_object(obj: Any, object_type: str, object_stage: str = "Pre-Analysis") -> bool:
     """
     Backward compatibility function.
 

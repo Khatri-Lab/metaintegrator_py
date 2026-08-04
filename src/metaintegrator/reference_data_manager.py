@@ -157,8 +157,7 @@ class ReferenceDataManager:
         # 2. Try bundled data
         if matrix is None:
             bundled_path = (
-                self.PACKAGE_DATA_DIR
-                / self.REFERENCE_MATRICES["immunostates"]["filename"]
+                self.PACKAGE_DATA_DIR / self.REFERENCE_MATRICES["immunostates"]["filename"]
             )
             if bundled_path.exists():
                 try:
@@ -169,9 +168,7 @@ class ReferenceDataManager:
 
         # 3. Try cached download
         if matrix is None:
-            cached_path = (
-                self.cache_dir / self.REFERENCE_MATRICES["immunostates"]["filename"]
-            )
+            cached_path = self.cache_dir / self.REFERENCE_MATRICES["immunostates"]["filename"]
             if cached_path.exists():
                 try:
                     matrix = self._load_matrix_from_file(cached_path)
@@ -336,9 +333,7 @@ class ReferenceDataManager:
         rng = np.random.RandomState(42)
 
         n_genes = 317  # Approximate size of actual immunoStates
-        cell_types = self.REFERENCE_MATRICES["immunostates"]["cell_type_names"][
-            :13
-        ]  # Use subset
+        cell_types = self.REFERENCE_MATRICES["immunostates"]["cell_type_names"][:13]  # Use subset
 
         # Generate gene names (use some real immune-related genes)
         real_immune_genes = [
@@ -386,13 +381,9 @@ class ReferenceDataManager:
         # Add cell-type specificity for first 100 genes
         for i in range(min(100, n_genes)):
             cell_type_idx = i % len(cell_types)
-            matrix_data[i, cell_type_idx] += rng.uniform(
-                2, 4
-            )  # Boost specific cell type
+            matrix_data[i, cell_type_idx] += rng.uniform(2, 4)  # Boost specific cell type
 
-        matrix = pd.DataFrame(
-            matrix_data, index=gene_names[:n_genes], columns=cell_types
-        )
+        matrix = pd.DataFrame(matrix_data, index=gene_names[:n_genes], columns=cell_types)
 
         return matrix
 

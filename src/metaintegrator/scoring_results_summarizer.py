@@ -173,9 +173,7 @@ class EnhancedResultSummarizer(LoggerMixin):
             # Validate inputs
             MetaAnalysisValidator.validate_dataframe(results)
 
-            self.logger.info(
-                f"Starting comprehensive summarization for {analysis_name}"
-            )
+            self.logger.info(f"Starting comprehensive summarization for {analysis_name}")
 
             # Core statistical analysis
             statistical_summary = self.statistical_analyzer.analyze(results)
@@ -230,14 +228,10 @@ class EnhancedResultSummarizer(LoggerMixin):
 
             # Auto‑export if requested
             if self.config.auto_export:
-                export_paths = self._auto_export(
-                    results, comprehensive_summary, analysis_name
-                )
+                export_paths = self._auto_export(results, comprehensive_summary, analysis_name)
                 comprehensive_summary["exports"] = export_paths
 
-            self.logger.info(
-                f"Comprehensive summarization completed for {analysis_name}"
-            )
+            self.logger.info(f"Comprehensive summarization completed for {analysis_name}")
             return comprehensive_summary
 
         except Exception as e:
@@ -286,9 +280,7 @@ class EnhancedResultSummarizer(LoggerMixin):
                 gene_analysis["significant_genes"][f"threshold_{threshold}"] = {
                     "count": len(sig_genes),
                     "percentage": (
-                        (len(sig_genes) / len(results) * 100)
-                        if len(results) > 0
-                        else 0.0
+                        (len(sig_genes) / len(results) * 100) if len(results) > 0 else 0.0
                     ),
                     "genes": sig_genes.index.tolist(),
                 }
@@ -301,17 +293,13 @@ class EnhancedResultSummarizer(LoggerMixin):
                 for threshold in self.config.effect_size_thresholds:
                     if len(data) > 0:
                         large_effects = data[np.abs(data) > threshold]
-                        gene_analysis["significant_genes"][
-                            f"{col}_above_{threshold}"
-                        ] = {
+                        gene_analysis["significant_genes"][f"{col}_above_{threshold}"] = {
                             "count": len(large_effects),
                             "percentage": (len(large_effects) / len(data) * 100),
                         }
                     else:
                         # Handle case when no valid data exists
-                        gene_analysis["significant_genes"][
-                            f"{col}_above_{threshold}"
-                        ] = {
+                        gene_analysis["significant_genes"][f"{col}_above_{threshold}"] = {
                             "count": 0,
                             "percentage": 0.0,
                         }
@@ -411,9 +399,7 @@ class EnhancedResultSummarizer(LoggerMixin):
                     "distribution_type": self._detect_distribution_pattern(data),
                     "trend_direction": self._detect_trend_direction(data),
                     "volatility": (
-                        float(np.std(data) / np.mean(data))
-                        if np.mean(data) != 0
-                        else np.nan
+                        float(np.std(data) / np.mean(data)) if np.mean(data) != 0 else np.nan
                     ),
                 }
 
@@ -421,16 +407,10 @@ class EnhancedResultSummarizer(LoggerMixin):
         if len(numeric_cols) > 1:
             corr_matrix = results[numeric_cols].corr()
             trend_analysis["correlation_trends"] = {
-                "strongest_positive": self._find_strongest_correlation(
-                    corr_matrix, positive=True
-                ),
-                "strongest_negative": self._find_strongest_correlation(
-                    corr_matrix, positive=False
-                ),
+                "strongest_positive": self._find_strongest_correlation(corr_matrix, positive=True),
+                "strongest_negative": self._find_strongest_correlation(corr_matrix, positive=False),
                 "average_correlation": float(
-                    np.abs(
-                        corr_matrix.values[np.triu_indices_from(corr_matrix.values, 1)]
-                    ).mean()
+                    np.abs(corr_matrix.values[np.triu_indices_from(corr_matrix.values, 1)]).mean()
                 ),
             }
 
@@ -502,17 +482,13 @@ class EnhancedResultSummarizer(LoggerMixin):
                         "gene_count": len(data),
                         "mean": float(np.mean(data)),
                         "std": float(np.std(data)),
-                        "missing_percentage": group[col].isna().sum()
-                        / len(group)
-                        * 100,
+                        "missing_percentage": group[col].isna().sum() / len(group) * 100,
                     }
             study_analysis["study_summary"][study] = study_stats
 
         # Cross‑study consistency analysis
         if len(study_groups) > 1:
-            study_analysis["cross_study_analysis"] = (
-                self._analyze_cross_study_consistency(results)
-            )
+            study_analysis["cross_study_analysis"] = self._analyze_cross_study_consistency(results)
 
         return study_analysis
 
@@ -726,9 +702,7 @@ class EnhancedResultSummarizer(LoggerMixin):
             "study_heterogeneity": {},
         }
 
-    def _generate_quality_recommendations(
-        self, quality_assessment: Dict[str, Any]
-    ) -> List[str]:
+    def _generate_quality_recommendations(self, quality_assessment: Dict[str, Any]) -> List[str]:
         """Create actionable suggestions for improving data quality.
 
         Recommendations are generated from three quality facets:
@@ -755,31 +729,22 @@ class EnhancedResultSummarizer(LoggerMixin):
         if missing_info:
             # Average missing percentage across all columns
             total_missing = sum(
-                col_info.get("missing_percentage", 0)
-                for col_info in missing_info.values()
+                col_info.get("missing_percentage", 0) for col_info in missing_info.values()
             )
             avg_missing_pct = total_missing / len(missing_info)
             if avg_missing_pct > 10:
-                recommendations.append(
-                    "Consider imputation strategies for missing data"
-                )
+                recommendations.append("Consider imputation strategies for missing data")
 
         # ---------- Outlier review ----------
         outlier_analysis = quality_assessment.get("outlier_analysis", {})
         problematic_cols = [
-            col
-            for col, info in outlier_analysis.items()
-            if info.get("outlier_percentage", 0) > 5
+            col for col, info in outlier_analysis.items() if info.get("outlier_percentage", 0) > 5
         ]
         if problematic_cols:
-            recommendations.append(
-                f"Review outliers in columns: {', '.join(problematic_cols)}"
-            )
+            recommendations.append(f"Review outliers in columns: {', '.join(problematic_cols)}")
 
         # ---------- Consistency checks ----------
-        consistency_issues = quality_assessment.get("data_consistency", {}).get(
-            "issues", []
-        )
+        consistency_issues = quality_assessment.get("data_consistency", {}).get("issues", [])
         if consistency_issues:
             recommendations.append(
                 "Address data consistency issues before proceeding with analysis"

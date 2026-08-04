@@ -200,9 +200,7 @@ class GEOparseSource(DataSource):
     def source_name(self) -> str:
         return "NCBI GEO (GEOparse/SOFT)"
 
-    def fetch(
-        self, dataset_id: str, use_soft: bool = True, **kwargs
-    ) -> List[RawDataset]:
+    def fetch(self, dataset_id: str, use_soft: bool = True, **kwargs) -> List[RawDataset]:
         """
         Fetch GEO dataset with ALL samples.
 
@@ -260,9 +258,7 @@ class GEOparseSource(DataSource):
                         f"GEOparse error: {e}. HTTP error: {e2}"
                     ) from e
             else:
-                raise RuntimeError(
-                    f"GEOparse download failed for {validated_id}: {e}"
-                ) from e
+                raise RuntimeError(f"GEOparse download failed for {validated_id}: {e}") from e
 
         if gse is None:
             raise RuntimeError(f"Failed to download {validated_id}")
@@ -296,8 +292,7 @@ class GEOparseSource(DataSource):
         """Process GSE object into RawDatasets."""
 
         log.info(
-            f"Downloaded {gse_id}: {len(gse.gsms)} total samples, "
-            f"{len(gse.gpls)} platforms"
+            f"Downloaded {gse_id}: {len(gse.gsms)} total samples, " f"{len(gse.gpls)} platforms"
         )
 
         # Create one RawDataset per platform
@@ -519,9 +514,7 @@ class NCBIGeoSource(DataSource):
 
         except Exception as e:
             log.error(f"Failed to fetch {validated_id}: {e}")
-            raise RuntimeError(
-                f"Series Matrix fetch failed for {validated_id}: {e}"
-            ) from e
+            raise RuntimeError(f"Series Matrix fetch failed for {validated_id}: {e}") from e
 
     def fetch_multiple(
         self, dataset_ids: List[str], stop_on_error: bool = False, **kwargs

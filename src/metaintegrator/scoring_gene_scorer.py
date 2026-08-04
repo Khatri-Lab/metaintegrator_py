@@ -106,9 +106,7 @@ class EnhancedScoringConfig(ScoringConfig):
         super().__post_init__()
 
         if self.outlier_handling not in ["clip", "remove", "robust", "none"]:
-            raise ValueError(
-                "outlier_handling must be one of: clip, remove, robust, none"
-            )
+            raise ValueError("outlier_handling must be one of: clip, remove, robust, none")
 
         if self.bootstrap_confidence <= 0 or self.bootstrap_confidence >= 1:
             raise ValueError("bootstrap_confidence must be between 0 and 1")
@@ -176,9 +174,7 @@ class ZScoreStrategy(ScoringStrategy):
     'handle_missing', which may be 'median', 'zero', or 'drop'.
     """
 
-    def compute_scores(
-        self, data: pd.DataFrame, config: EnhancedScoringConfig
-    ) -> pd.Series:
+    def compute_scores(self, data: pd.DataFrame, config: EnhancedScoringConfig) -> pd.Series:
         """Compute z-score based gene scores.
 
         Args:
@@ -234,9 +230,7 @@ class CombinedStrategy(ScoringStrategy):
     are inverted (e.g., lower FDR or heterogeneity gives a higher score).
     """
 
-    def compute_scores(
-        self, data: pd.DataFrame, config: EnhancedScoringConfig
-    ) -> pd.Series:
+    def compute_scores(self, data: pd.DataFrame, config: EnhancedScoringConfig) -> pd.Series:
         """Compute combined scores using weighted metrics.
 
         Args:
@@ -415,9 +409,7 @@ class EffectSizeStrategy(ScoringStrategy):
     column. Missing values are preserved as is.
     """
 
-    def compute_scores(
-        self, data: pd.DataFrame, config: EnhancedScoringConfig
-    ) -> pd.Series:
+    def compute_scores(self, data: pd.DataFrame, config: EnhancedScoringConfig) -> pd.Series:
         """Compute effect size based scores.
 
         Args:
@@ -453,9 +445,7 @@ class FDRInverseStrategy(ScoringStrategy):
     transformed with a negative log10 to give higher scores to lower FDR.
     """
 
-    def compute_scores(
-        self, data: pd.DataFrame, config: EnhancedScoringConfig
-    ) -> pd.Series:
+    def compute_scores(self, data: pd.DataFrame, config: EnhancedScoringConfig) -> pd.Series:
         """Compute scores by inverting the FDR.
 
         Args:
@@ -499,9 +489,7 @@ class FisherMinStrategy(ScoringStrategy):
     The values are assumed to already represent a suitable score for ranking.
     """
 
-    def compute_scores(
-        self, data: pd.DataFrame, config: EnhancedScoringConfig
-    ) -> pd.Series:
+    def compute_scores(self, data: pd.DataFrame, config: EnhancedScoringConfig) -> pd.Series:
         """Compute scores by returning the Fisher score column.
 
         Args:
@@ -608,9 +596,7 @@ class PathwayAggregator(LoggerMixin):
                         [weights.get(gene, 1.0) for gene in pathway_scores.index],
                         index=pathway_scores.index,  # FIX: Must specify index to align with pathway_scores
                     )
-                    return float(
-                        (pathway_scores * pathway_weights).sum() / pathway_weights.sum()
-                    )
+                    return float((pathway_scores * pathway_weights).sum() / pathway_weights.sum())
                 else:
                     return float(pathway_scores.mean())
 
@@ -784,9 +770,7 @@ class EnhancedGeneScorer(LoggerMixin):
                         and "original_result" not in meta_object
                         and "filterRes" not in meta_object
                     ):
-                        raise ValidationError(
-                            "Meta object must contain 'metaAnalysis' field"
-                        )
+                        raise ValidationError("Meta object must contain 'metaAnalysis' field")
 
             # Extract gene data
             gene_data = self._extract_gene_data(meta_object)
@@ -827,9 +811,7 @@ class EnhancedGeneScorer(LoggerMixin):
 
             # Cross‑validation reliability assessment
             if self.config.enable_cross_validation:
-                reliability_score = self._assess_scoring_reliability(
-                    processed_data, method
-                )
+                reliability_score = self._assess_scoring_reliability(processed_data, method)
                 self._last_reliability_score = reliability_score
 
             # Cache results
@@ -837,9 +819,7 @@ class EnhancedGeneScorer(LoggerMixin):
                 self._score_cache[cache_key] = final_scores
 
             method_str = method.value if hasattr(method, "value") else str(method)
-            self.logger.info(
-                f"Successfully scored {len(final_scores)} genes using {method_str}"
-            )
+            self.logger.info(f"Successfully scored {len(final_scores)} genes using {method_str}")
             return final_scores
 
         except Exception as e:
@@ -879,9 +859,7 @@ class EnhancedGeneScorer(LoggerMixin):
                     continue
 
                 # Check minimum genes requirement
-                available_genes = [
-                    gene for gene in pathway_genes if gene in gene_scores.index
-                ]
+                available_genes = [gene for gene in pathway_genes if gene in gene_scores.index]
                 if len(available_genes) < self.config.min_valid_genes:
                     self.logger.warning(
                         f"Pathway {pathway_name} has insufficient genes "
@@ -930,9 +908,7 @@ class EnhancedGeneScorer(LoggerMixin):
         elif "filterRes" in meta_object:
             return meta_object["filterRes"]
         else:
-            raise ValueError(
-                "Meta object must contain 'original_result' or 'filterRes'"
-            )
+            raise ValueError("Meta object must contain 'original_result' or 'filterRes'")
 
     def _preprocess_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """Preprocess data before scoring.
@@ -1064,9 +1040,7 @@ class EnhancedGeneScorer(LoggerMixin):
 
         bootstrap_scores = []
         for _ in range(self.config.bootstrap_iterations):
-            bootstrap_indices = np.random.choice(
-                n_samples, size=n_samples, replace=True
-            )
+            bootstrap_indices = np.random.choice(n_samples, size=n_samples, replace=True)
             bootstrap_data = data.iloc[bootstrap_indices]
 
             try:
@@ -1093,9 +1067,7 @@ class EnhancedGeneScorer(LoggerMixin):
 
         return confidence_intervals
 
-    def _assess_scoring_reliability(
-        self, data: pd.DataFrame, method: ScoringMethod
-    ) -> float:
+    def _assess_scoring_reliability(self, data: pd.DataFrame, method: ScoringMethod) -> float:
         """Assess the reliability of scoring using cross-validation.
 
         Args:

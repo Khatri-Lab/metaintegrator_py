@@ -1,16 +1,21 @@
 """
 MetaIntegrator Python Package
-Enhanced with comprehensive GEO data acquisition and processing capabilities.
 
-This package provides production-grade implementations of meta-analysis tools
-for gene expression data, including:
-- GEO data download and processing
-- Gene annotation and symbol mapping
-- Meta-analysis statistical methods
-- Visualization and reporting tools
+This package provides production-grade implementations of the core
+meta-analysis, filtering, scoring, power, and ROC/PRC statistical tools
+for gene expression data. It is one of several top-level packages that
+make up metaIntegrator-py:
 
-Python port of R MetaIntegrator package
-Original R package by Francesco Vallania, Andrew Tam, Ravi Shankar, Aditya M. Rao
+- ``preprocessing`` — GEO data download/loading and gene annotation
+  (``DataLoaderFactory``, ``GeneAnnotator``, ``EnsemblGeneValidator``, ...)
+- ``metaintegrator`` (this package) — meta-analysis engine, gene filtering,
+  scoring, power calculation, ROC/PRC analysis, COCONUT integration
+- ``visualization`` — plotting (forest, volcano, heatmap, violin, ROC/PRC)
+- ``coconut`` — the COCONUT batch-normalization algorithm itself
+
+Python port of R MetaIntegrator package.
+Original R package by Winston A. Haynes , Francesco Vallania , Aurelie Tomczak , Timothy Sweeney , Erika Bongen ,
+Aditya M. Rao , Purvesh Khatri (Khatri Lab, Stanford University).
 """
 
 # Core modules
@@ -22,10 +27,16 @@ from .scoring_core import *
 from .scoring_meta_integrator_orchestrator import *
 
 # Visualization modules (cross-package — resolved via src/ on sys.path)
+# NOTE: visualization.enhanced_plotting's plotter class was renamed from
+# MetaAnalysisPlotter to EnhancedMetaAnalysisPlotter to stop colliding with
+# the unrelated visualization.plotting.MetaAnalysisPlotter class — see
+# visualization/__init__.py's module docstring.
 try:
-    from visualization.enhanced_plotting import MetaAnalysisPlotter
+    from visualization.enhanced_plotting import EnhancedMetaAnalysisPlotter
+
+    _HAS_ENHANCED_PLOTTER = True
 except ImportError:
-    pass
+    _HAS_ENHANCED_PLOTTER = False
 
 # Data validation (comprehensive framework)
 from .validation import (
@@ -53,29 +64,34 @@ from .prc_analysis import *
 # Integration modules
 from .coconut_integration import *
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 __author__ = "Khatri Lab - Python port of R MetaIntegrator"
 
-# Main functions for easy access
+# Main functions for easy access.
+#
+# Every name below is verified to be bound in this package's namespace by
+# the imports above. GEO data loading and gene annotation are NOT part of
+# this list because they live in the separate ``preprocessing`` package
+# (see ``preprocessing.loader_factory.DataLoaderFactory`` and
+# ``preprocessing.gene_annotator.GeneAnnotator``); plotting utilities beyond
+# ``EnhancedMetaAnalysisPlotter`` live in the separate ``visualization``
+# package (see ``visualization.enhanced_plotting``).
 __all__ = [
-    # GEO Data Acquisition (NEW - Core functionality)
-    "get_geo_data",
-    "GEODataLoader",
-    "check_geo_log_scale",
-    # Gene Annotation (NEW - Core functionality)
-    "GeneAnnotationEngine",
-    "GEOPlatformAnnotator",
-    "annotate_geo_dataset",
-    "validate_geo_gene_symbols",
-    # Core meta-analysis functions
-    "run_meta_analysis",
+    # Core meta-analysis engine (core_analysis.py)
     "MetaAnalysisCore",
-    "EffectSizeResult",
+    "FisherCombination",
+    # Meta-analysis orchestration (analysis.py)
+    "MetaAnalyzer",
+    "MetaAnalysisFactory",
+    "MetaAnalysisEngine",
     "InverseVarianceEngine",
+    "RandomEffectsEngine",
     "FixedEffectsEngine",
-    "DatasetValidator",
-    "DataProcessor",
-    # Validation framework
+    "EffectSizeResult",
+    "FilterResult",
+    "run_meta_analysis",
+    "filter_genes",
+    # Validation framework (validation.py)
     "DatasetValidator",
     "MetaAnalysisValidator",
     "MetaObjectValidator",
@@ -83,34 +99,58 @@ __all__ = [
     "ValidationResult",
     "check_data_object",
     "validate_and_report",
-    # Data processing
+    # Data processing / labeling (data_processing.py, sample_ops.py, labeling.py)
     "DataProcessor",
     "subset_original_data",
     "subsetOriginalData",
     "assign_class_labels",
-    # Data loading and validation
-    "assess_data_quality",
-    # Gene symbol correction
-    "GeneSymbolCorrector",
-    "correct_gene_symbols",
-    # Analysis and scoring
-    "calculate_score",
-    "filter_genes",
-    "FilterResult",
-    "MetaAnalyzer",
-    "MetaIntegratorOrchestrator",
-    # Visualization
-    "create_forest_plot",
-    "create_violin_plot",
-    "create_heatmap_plot",
-    # Validation
-    "validate_meta_object",
-    "check_data_object",
-    # Biological annotation
+    # Biological annotation (biological_annotation.py)
     "BiologicalAnnotator",
-    "enrich_pathways",
-    # Specialized analyses
-    "ImmuneDeconvolution",
-    "PowerCalculator",
-    "ROCPRCAnalyzer",
+    "impute_sex",
+    # Statistical power analysis (power_calculation.py)
+    "MetaAnalysisPowerCalculator",
+    "PowerAnalysisResult",
+    "PowerAnalysisPlotter",
+    "PowerAnalysisSummary",
+    "calc_meta_power",
+    "print_power_summary",
+    # ROC/PRC analysis (prc_analysis.py)
+    "PRCAnalyzer",
+    "plot_roc_curve",
+    "plot_prc_curve",
+    "multiple_roc_plot",
+    "multiple_prc_plot",
+    "calculate_auc_ci",
+    "calculate_auprc_ci",
+    # COCONUT batch-correction integration (coconut_integration.py)
+    "COCONUTIntegrator",
+    "COCONUTDataProcessor",
+    "MetaIntegratorToCOCONUT",
+    "SampleLevelGeneExtractor",
+    "run_coconut_analysis",
+    "coconut_meta_integrator",
+    "gene_level_meta",
+    "get_sample_level_gene_data",
+    # Gene-signature scoring orchestration (scoring_meta_integrator_orchestrator.py)
+    "MetaIntegratorOrchestrator",
+    "EnhancedMetaIntegratorOrchestrator",
+    "OrchestratorConfig",
+    "OrchestrationResults",
+    # Scoring subsystem building blocks (scoring_core.py)
+    "FilterConfig",
+    "ScoringConfig",
+    "PathwayConfig",
+    "SummaryConfig",
+    "FilterResults",
+    "ScoringResults",
+    "create_default_filter_config",
+    "create_strict_filter_config",
+    "create_default_scoring_config",
+    "create_default_pathway_config",
+    "create_default_summary_config",
 ]
+
+# Only advertise the plotter if the cross-package import above succeeded,
+# so `from metaintegrator import *` never references an unbound name.
+if _HAS_ENHANCED_PLOTTER:
+    __all__.append("EnhancedMetaAnalysisPlotter")

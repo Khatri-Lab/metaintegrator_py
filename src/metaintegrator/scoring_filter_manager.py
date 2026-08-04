@@ -120,9 +120,7 @@ class FilterExtractor(LoggerMixin):
         super().__init__(**logger_kwargs)
         self.validator = validator
 
-    def extract_filter_summary(
-        self, meta_object: Dict, filter_name: str
-    ) -> FilterSummary:
+    def extract_filter_summary(self, meta_object: Dict, filter_name: str) -> FilterSummary:
         """
         Extract a summary for a single filter with enhanced validation.
 
@@ -192,9 +190,7 @@ class FilterExtractor(LoggerMixin):
         except Exception as e:
             # Get error message, handling Mock objects that might have empty str()
             error_msg = str(e) if str(e) else f"{type(e).__name__} (no message)"
-            self.logger.error(
-                f"Failed to extract filter summary for {filter_name}: {error_msg}"
-            )
+            self.logger.error(f"Failed to extract filter summary for {filter_name}: {error_msg}")
             raise FilteringError(f"Filter extraction failed: {error_msg}")
 
     def extract_all_filter_summaries(self, meta_object: Dict) -> List[FilterSummary]:
@@ -246,9 +242,7 @@ class OverlapCalculator(LoggerMixin):
         logger_kwargs = {k: v for k, v in kwargs.items() if k == "logger"}
         super().__init__(**logger_kwargs)
 
-    def calculate_overlaps(
-        self, filter_summaries: List[FilterSummary]
-    ) -> OverlapAnalysis:
+    def calculate_overlaps(self, filter_summaries: List[FilterSummary]) -> OverlapAnalysis:
         """
         Calculate comprehensive overlap analysis using core utilities.
 
@@ -272,12 +266,8 @@ class OverlapCalculator(LoggerMixin):
         negative_gene_sets = {s.name: set(s.negative_genes) for s in filter_summaries}
 
         # Use core utilities for calculations
-        pos_overlap_matrix = StatisticalUtils.calculate_overlap_matrix(
-            positive_gene_sets
-        )
-        neg_overlap_matrix = StatisticalUtils.calculate_overlap_matrix(
-            negative_gene_sets
-        )
+        pos_overlap_matrix = StatisticalUtils.calculate_overlap_matrix(positive_gene_sets)
+        neg_overlap_matrix = StatisticalUtils.calculate_overlap_matrix(negative_gene_sets)
 
         # Calculate Jaccard similarities using core utilities
         jaccard_similarities = self._calculate_jaccard_similarities(
@@ -285,9 +275,7 @@ class OverlapCalculator(LoggerMixin):
         )
 
         # Calculate unique genes
-        unique_genes = self._calculate_unique_genes(
-            positive_gene_sets, negative_gene_sets
-        )
+        unique_genes = self._calculate_unique_genes(positive_gene_sets, negative_gene_sets)
 
         # Create enhanced overlap analysis with additional statistics
         overlap_analysis = OverlapAnalysis(
@@ -301,9 +289,7 @@ class OverlapCalculator(LoggerMixin):
             overlap_statistics=self._calculate_overlap_statistics(
                 pos_overlap_matrix, neg_overlap_matrix
             ),
-            set_statistics=self._calculate_set_statistics(
-                positive_gene_sets, negative_gene_sets
-            ),
+            set_statistics=self._calculate_set_statistics(positive_gene_sets, negative_gene_sets),
         )
 
         self.logger.info(f"Calculated overlaps for {len(filter_summaries)} filters")
@@ -474,9 +460,7 @@ class OverlapCalculator(LoggerMixin):
             other_all_genes = set()
             for other_name in positive_sets.keys():
                 if other_name != name:
-                    other_all_genes |= (
-                        positive_sets[other_name] | negative_sets[other_name]
-                    )
+                    other_all_genes |= positive_sets[other_name] | negative_sets[other_name]
 
             all_genes = pos_genes | neg_genes
             unique_count = len(all_genes - other_all_genes)
@@ -622,12 +606,9 @@ class FilterManager(LoggerMixin):
             if filter_names is None:
                 summaries = self.extractor.extract_all_filter_summaries(meta_object)
             else:
-                valid_names = self.validator.validate_filter_names(
-                    meta_object, filter_names
-                )
+                valid_names = self.validator.validate_filter_names(meta_object, filter_names)
                 summaries = [
-                    self.extractor.extract_filter_summary(meta_object, name)
-                    for name in valid_names
+                    self.extractor.extract_filter_summary(meta_object, name) for name in valid_names
                 ]
 
             if len(summaries) < 2:
@@ -692,12 +673,9 @@ class FilterManager(LoggerMixin):
             if filter_names is None:
                 summaries = self.extractor.extract_all_filter_summaries(meta_object)
             else:
-                valid_names = self.validator.validate_filter_names(
-                    meta_object, filter_names
-                )
+                valid_names = self.validator.validate_filter_names(meta_object, filter_names)
                 summaries = [
-                    self.extractor.extract_filter_summary(meta_object, name)
-                    for name in valid_names
+                    self.extractor.extract_filter_summary(meta_object, name) for name in valid_names
                 ]
 
             if not summaries:
@@ -720,12 +698,8 @@ class FilterManager(LoggerMixin):
                     neg_counts[gene] += 1
 
             # Find consensus genes
-            consensus_pos = {
-                gene for gene, cnt in pos_counts.items() if cnt >= min_filters
-            }
-            consensus_neg = {
-                gene for gene, cnt in neg_counts.items() if cnt >= min_filters
-            }
+            consensus_pos = {gene for gene, cnt in pos_counts.items() if cnt >= min_filters}
+            consensus_neg = {gene for gene, cnt in neg_counts.items() if cnt >= min_filters}
 
             result = {
                 "positive": consensus_pos,
@@ -819,9 +793,7 @@ class FilterManager(LoggerMixin):
             insights["most_restrictive"] = summaries[0] if summaries else None
 
         try:
-            insights["most_permissive"] = max(
-                summaries, key=lambda x: getattr(x, "total_genes", 0)
-            )
+            insights["most_permissive"] = max(summaries, key=lambda x: getattr(x, "total_genes", 0))
         except (TypeError, AttributeError):
             insights["most_permissive"] = summaries[-1] if summaries else None
 
@@ -838,19 +810,11 @@ class FilterManager(LoggerMixin):
             if overlap_analysis.overlap_statistics:
                 overlap_stats = overlap_analysis.overlap_statistics
                 # Check if we can actually access the nested structure
-                if hasattr(overlap_stats, "__getitem__") or isinstance(
-                    overlap_stats, dict
-                ):
+                if hasattr(overlap_stats, "__getitem__") or isinstance(overlap_stats, dict):
                     insights["overlap_insights"] = {
-                        "mean_positive_overlap": overlap_stats["positive_overlaps"][
-                            "mean"
-                        ],
-                        "mean_negative_overlap": overlap_stats["negative_overlaps"][
-                            "mean"
-                        ],
-                        "overlap_variability": overlap_stats["positive_overlaps"][
-                            "std"
-                        ],
+                        "mean_positive_overlap": overlap_stats["positive_overlaps"]["mean"],
+                        "mean_negative_overlap": overlap_stats["negative_overlaps"]["mean"],
+                        "overlap_variability": overlap_stats["positive_overlaps"]["std"],
                     }
         except (TypeError, KeyError, AttributeError):
             # If accessing nested Mock fails, skip this insight

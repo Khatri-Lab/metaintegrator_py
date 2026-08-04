@@ -65,9 +65,7 @@ class EnsemblGeneValidator:
 
                 # Extract unique gene symbols from display_label column
                 self.valid_genes = set(df["display_label"].dropna().unique())
-                log.info(
-                    f"✓ Loaded {len(self.valid_genes)} valid gene symbols from bundled data"
-                )
+                log.info(f"✓ Loaded {len(self.valid_genes)} valid gene symbols from bundled data")
                 return
 
             except Exception as e:
@@ -79,9 +77,7 @@ class EnsemblGeneValidator:
                 log.info(f"Loading bundled Ensembl genes from {csv_path}")
                 df = pd.read_csv(csv_path)
                 self.valid_genes = set(df["display_label"].dropna().unique())
-                log.info(
-                    f"✓ Loaded {len(self.valid_genes)} valid gene symbols from bundled data"
-                )
+                log.info(f"✓ Loaded {len(self.valid_genes)} valid gene symbols from bundled data")
                 return
 
             except Exception as e:
@@ -93,9 +89,7 @@ class EnsemblGeneValidator:
                 log.info(f"Loading bundled Ensembl genes from {txt_path}")
                 with open(txt_path, "r") as f:
                     self.valid_genes = {line.strip() for line in f if line.strip()}
-                log.info(
-                    f"✓ Loaded {len(self.valid_genes)} valid gene symbols from text file"
-                )
+                log.info(f"✓ Loaded {len(self.valid_genes)} valid gene symbols from text file")
                 return
 
             except Exception as e:
@@ -242,13 +236,9 @@ def apply_ensembl_validation(
 
             # Categorize removed genes for diagnostics
             transcript_ids = [g for g in removed_genes if g.startswith("ENST")]
-            refseq_ids = [
-                g for g in removed_genes if g.startswith("NM_") or g.startswith("NR_")
-            ]
+            refseq_ids = [g for g in removed_genes if g.startswith("NM_") or g.startswith("NR_")]
             genbank_ids = [
-                g
-                for g in removed_genes
-                if len(g) > 2 and g[:2].isalpha() and g[2:].isdigit()
+                g for g in removed_genes if len(g) > 2 and g[:2].isalpha() and g[2:].isdigit()
             ]
 
             if transcript_ids:

@@ -72,9 +72,7 @@ def load_gse_data_from_csv_directory(
     debug_msg(f"📁 Found {len(csv_files)} CSV files")
 
     # Group files by dataset
-    datasets = _group_files_by_dataset(
-        csv_files, genes_pattern, pheno_pattern, object_prefix
-    )
+    datasets = _group_files_by_dataset(csv_files, genes_pattern, pheno_pattern, object_prefix)
 
     # Load each dataset
     gse_list = []
@@ -139,9 +137,7 @@ def _group_files_by_dataset(
             continue
 
         # Extract dataset name
-        dataset_name = _extract_dataset_name(
-            filename, object_prefix, genes_pattern, pheno_pattern
-        )
+        dataset_name = _extract_dataset_name(filename, object_prefix, genes_pattern, pheno_pattern)
 
         if dataset_name not in datasets:
             datasets[dataset_name] = {}
@@ -162,9 +158,7 @@ def _group_files_by_dataset(
             print(f"⚠️  Incomplete dataset {name}, missing: {missing}")
 
     if not valid_datasets:
-        raise ValueError(
-            "No complete datasets found (each needs both genes and pheno files)"
-        )
+        raise ValueError("No complete datasets found (each needs both genes and pheno files)")
 
     return valid_datasets
 
@@ -218,9 +212,7 @@ def _extract_dataset_name(
     return name_without_ext
 
 
-def _load_single_dataset(
-    dataset_name: str, file_info: Dict[str, Path]
-) -> Dict[str, pd.DataFrame]:
+def _load_single_dataset(dataset_name: str, file_info: Dict[str, Path]) -> Dict[str, pd.DataFrame]:
     """
     Loads a single dataset consisting of genes and phenotype information, validates their alignment,
     and performs corrections to ensure consistency.
@@ -259,29 +251,21 @@ def _load_single_dataset(
     # Load pheno file
     pheno_df = pd.read_csv(file_info["pheno"], index_col=0)
 
-    debug_msg(
-        f"   📋 Pheno: {pheno_df.shape[0]} samples × {pheno_df.shape[1]} attributes"
-    )
+    debug_msg(f"   📋 Pheno: {pheno_df.shape[0]} samples × {pheno_df.shape[1]} attributes")
     debug_msg(f"   📋 Sample names in pheno: {list(pheno_df.index[:3])}...")
 
     # Convert sample names to strings and strip whitespace for comparison
     genes_samples = set(str(col).strip() for col in genes_df.columns)
     pheno_samples = set(str(idx).strip() for idx in pheno_df.index)
 
-    debug_msg(
-        f"   🔍 Debug - Genes samples (cleaned): {sorted(list(genes_samples))[:3]}..."
-    )
-    debug_msg(
-        f"   🔍 Debug - Pheno samples (cleaned): {sorted(list(pheno_samples))[:3]}..."
-    )
+    debug_msg(f"   🔍 Debug - Genes samples (cleaned): {sorted(list(genes_samples))[:3]}...")
+    debug_msg(f"   🔍 Debug - Pheno samples (cleaned): {sorted(list(pheno_samples))[:3]}...")
 
     # Find common samples
     common_samples = genes_samples.intersection(pheno_samples)
 
     if not common_samples:
-        raise ValueError(
-            f"No common samples found between genes and pheno in {dataset_name}"
-        )
+        raise ValueError(f"No common samples found between genes and pheno in {dataset_name}")
 
     # Check if there's a mismatch and report it
     if genes_samples != pheno_samples:
@@ -368,12 +352,8 @@ def _print_dataset_summary(gse_list: List[Dict[str, pd.DataFrame]]) -> None:
         pheno_df = gse_data["pheno"]
 
         print(f"\n[{i}] Dataset {i}")
-        print(
-            f"    Genes: {genes_df.shape[0]} (rows) × {genes_df.shape[1]} samples (cols)"
-        )
-        print(
-            f"    Pheno: {pheno_df.shape[0]} samples × {pheno_df.shape[1]} attributes"
-        )
+        print(f"    Genes: {genes_df.shape[0]} (rows) × {genes_df.shape[1]} samples (cols)")
+        print(f"    Pheno: {pheno_df.shape[0]} samples × {pheno_df.shape[1]} attributes")
 
         # Show some column names from pheno
         key_columns = [
@@ -506,9 +486,7 @@ def _write_output_to_csv(
     print(f"✅ Genes saved: {genes_df.shape[0]} genes × {genes_df.shape[1]} samples")
 
     # Save genes as SAMPLES × GENES (transpose the matrix)
-    genes_transposed = (
-        genes_df.T
-    )  # Transpose: samples become rows, genes become columns
+    genes_transposed = genes_df.T  # Transpose: samples become rows, genes become columns
     genes_transposed.to_csv(samples_genes_file, index=True)  # Sample IDs as row index
     print(
         f"✅ Genes saved: {genes_transposed.shape[0]} samples × {genes_transposed.shape[1]} genes"
@@ -516,9 +494,7 @@ def _write_output_to_csv(
 
     # Save pheno (samples as rows, attributes as columns)
     pheno_df.to_csv(pheno_file, index=True)  # Keep sample IDs as row index
-    print(
-        f"✅ Pheno saved: {pheno_df.shape[0]} samples × {pheno_df.shape[1]} attributes"
-    )
+    print(f"✅ Pheno saved: {pheno_df.shape[0]} samples × {pheno_df.shape[1]} attributes")
 
     run_convert_floats_to_int64(pheno_file, pheno_file, debug_mode)
 

@@ -92,8 +92,7 @@ class MicroarrayHandler(DataHandler):
             return self._parse_series_matrix(raw_dataset)
         else:
             raise ValueError(
-                f"Unknown data format: {data_format}. "
-                "Expected 'SOFT' or 'SeriesMatrix'"
+                f"Unknown data format: {data_format}. " "Expected 'SOFT' or 'SeriesMatrix'"
             )
 
     def _parse_geoparse(self, raw_dataset: RawDataset) -> ProcessedDataset:
@@ -114,9 +113,7 @@ class MicroarrayHandler(DataHandler):
         # ============================================================
         # expr_df may have fewer samples if some were skipped
         actual_sample_ids = expr_df.columns.tolist()
-        filtered_samples = [
-            gsm for gsm in platform_samples if gsm.name in actual_sample_ids
-        ]
+        filtered_samples = [gsm for gsm in platform_samples if gsm.name in actual_sample_ids]
 
         # Build phenotype DataFrame (only for successfully processed samples)
         pheno_df = self._build_phenotype_dataframe(filtered_samples)
@@ -133,9 +130,7 @@ class MicroarrayHandler(DataHandler):
         # FIX: Verify it's a list with correct length
         # ========================================================================
         if not isinstance(gene_symbols_list, list):
-            log.warning(
-                f"gene_symbols is {type(gene_symbols_list)}, converting to list"
-            )
+            log.warning(f"gene_symbols is {type(gene_symbols_list)}, converting to list")
             gene_symbols_list = list(gene_symbols_list)
 
         if len(gene_symbols_list) != len(expr_df):
@@ -145,9 +140,7 @@ class MicroarrayHandler(DataHandler):
             )
             # Pad or truncate
             if len(gene_symbols_list) < len(expr_df):
-                gene_symbols_list.extend(
-                    [str(p) for p in expr_df.index[len(gene_symbols_list) :]]
-                )
+                gene_symbols_list.extend([str(p) for p in expr_df.index[len(gene_symbols_list) :]])
             else:
                 gene_symbols_list = gene_symbols_list[: len(expr_df)]
 
@@ -202,9 +195,7 @@ class MicroarrayHandler(DataHandler):
 
         has_spaces = sum(1 for k in sample if isinstance(k, str) and " " in k)
         if has_spaces > 5:
-            issues.append(
-                f"{has_spaces}/100 symbols contain spaces (likely descriptions)"
-            )
+            issues.append(f"{has_spaces}/100 symbols contain spaces (likely descriptions)")
 
         is_long = sum(1 for k in sample if isinstance(k, str) and len(k) > 20)
         if is_long > 5:
@@ -227,9 +218,7 @@ class MicroarrayHandler(DataHandler):
 
         valid_pattern = re.compile(r"^[A-Z][A-Z0-9]{1,9}$")
 
-        valid_format = sum(
-            1 for k in sample if isinstance(k, str) and valid_pattern.match(k)
-        )
+        valid_format = sum(1 for k in sample if isinstance(k, str) and valid_pattern.match(k))
 
         if valid_format < 50:  # Less than 50% look like gene symbols
             issues.append(
@@ -309,9 +298,7 @@ class MicroarrayHandler(DataHandler):
                 expr_values = None
                 for col_name in ["VALUE", "value", "Signal", "signal", "Expression"]:
                     if col_name in gsm.table.columns:
-                        expr_values = pd.to_numeric(
-                            gsm.table[col_name], errors="coerce"
-                        ).values
+                        expr_values = pd.to_numeric(gsm.table[col_name], errors="coerce").values
                         break
 
                 if expr_values is None:
@@ -320,9 +307,7 @@ class MicroarrayHandler(DataHandler):
                     if len(numeric_cols) > 0:
                         expr_values = gsm.table[numeric_cols[0]].values
                     else:
-                        log.warning(
-                            f"Cannot find expression values for {gsm.name}, skipping"
-                        )
+                        log.warning(f"Cannot find expression values for {gsm.name}, skipping")
                         failed_samples.append(gsm.name)
                         continue
 
@@ -395,15 +380,11 @@ class MicroarrayHandler(DataHandler):
         # FIX: Update sample_ids to match successfully processed samples
         # ============================================================
         processed_sample_ids = [
-            sid
-            for sid, gsm in zip(sample_ids, platform_samples)
-            if gsm.name not in failed_samples
+            sid for sid, gsm in zip(sample_ids, platform_samples) if gsm.name not in failed_samples
         ]
 
         # Create DataFrame
-        expr_df = pd.DataFrame(
-            np.array(expr_data).T, index=probe_ids, columns=processed_sample_ids
-        )
+        expr_df = pd.DataFrame(np.array(expr_data).T, index=probe_ids, columns=processed_sample_ids)
 
         # Convert to float64
         expr_df = expr_df.astype("float64")
@@ -479,9 +460,7 @@ class MicroarrayHandler(DataHandler):
                 expr_values = None
                 for col_name in ["VALUE", "value", "Signal", "signal", "Expression"]:
                     if col_name in gsm.table.columns:
-                        expr_values = pd.to_numeric(
-                            gsm.table[col_name], errors="coerce"
-                        ).values
+                        expr_values = pd.to_numeric(gsm.table[col_name], errors="coerce").values
                         break
 
                 if expr_values is None:
@@ -490,9 +469,7 @@ class MicroarrayHandler(DataHandler):
                     if len(numeric_cols) > 0:
                         expr_values = gsm.table[numeric_cols[0]].values
                     else:
-                        log.warning(
-                            f"Cannot find expression values for {gsm.name}, skipping"
-                        )
+                        log.warning(f"Cannot find expression values for {gsm.name}, skipping")
                         failed_samples.append(gsm.name)
                         continue
 
@@ -506,17 +483,13 @@ class MicroarrayHandler(DataHandler):
                     if len(expr_values) < len(probe_ids):
                         # Pad with NaN (R uses NA)
                         n_missing = len(probe_ids) - len(expr_values)
-                        expr_values = np.concatenate(
-                            [expr_values, np.full(n_missing, np.nan)]
-                        )
+                        expr_values = np.concatenate([expr_values, np.full(n_missing, np.nan)])
                         log.info(f"  Padded {gsm.name} with {n_missing} NaN values")
                     else:
                         # Truncate to match
                         n_extra = len(expr_values) - len(probe_ids)
                         expr_values = expr_values[: len(probe_ids)]
-                        log.info(
-                            f"  Truncated {gsm.name}, removed {n_extra} extra values"
-                        )
+                        log.info(f"  Truncated {gsm.name}, removed {n_extra} extra values")
 
                 # Check for too many NaN values
                 n_nan = pd.isna(expr_values).sum()
@@ -554,9 +527,7 @@ class MicroarrayHandler(DataHandler):
         # FIX: Update sample_ids to match successfully processed samples
         # ============================================================
         processed_sample_ids = [
-            sid
-            for sid, gsm in zip(sample_ids, platform_samples)
-            if gsm.name not in failed_samples
+            sid for sid, gsm in zip(sample_ids, platform_samples) if gsm.name not in failed_samples
         ]
 
         # Create DataFrame
@@ -625,9 +596,7 @@ class MicroarrayHandler(DataHandler):
                 "title": gsm.metadata.get("title", [""])[0],
                 "source_name": gsm.metadata.get("source_name_ch1", [""])[0],
                 "organism": gsm.metadata.get("organism_ch1", [""])[0],
-                "characteristics": "; ".join(
-                    gsm.metadata.get("characteristics_ch1", [])
-                ),
+                "characteristics": "; ".join(gsm.metadata.get("characteristics_ch1", [])),
                 "description": gsm.metadata.get("description", [""])[0],
             }
 
@@ -774,9 +743,7 @@ class MicroarrayHandler(DataHandler):
                     # then STOP. Do not process further /// entries.
                     if len(fields) >= 2:
                         candidate = fields[1].strip()
-                        candidate = (
-                            candidate.split()[0] if " " in candidate else candidate
-                        )
+                        candidate = candidate.split()[0] if " " in candidate else candidate
                         if candidate and candidate not in ("", "---", "NA"):
                             collected_genes.append(candidate)
                     else:
@@ -827,9 +794,7 @@ class MicroarrayHandler(DataHandler):
         try:
             validator = EnsemblGeneValidator()
             ensembl_genes = validator.valid_genes
-            log.info(
-                f"   ✓ Loaded Ensembl validator: {len(ensembl_genes):,} valid genes"
-            )
+            log.info(f"   ✓ Loaded Ensembl validator: {len(ensembl_genes):,} valid genes")
         except Exception as e:
             log.warning(f"   ⚠️  Could not load Ensembl validator: {e}")
             log.warning(f"   Skipping Ensembl validation (results may differ from R)")
@@ -878,9 +843,7 @@ class MicroarrayHandler(DataHandler):
             log.info(f"     - Valid unique genes : {unique_genes}")
             log.info(f"     - NA / unmapped      : {na_count}")
             if ensembl_genes is not None:
-                log.info(
-                    f"     - Ensembl-filtered   : {n_validated_out} probes had no valid genes"
-                )
+                log.info(f"     - Ensembl-filtered   : {n_validated_out} probes had no valid genes")
             log.info(f"   Sample symbols: {gene_symbols_list[:10]}")
 
             return gene_symbols_list

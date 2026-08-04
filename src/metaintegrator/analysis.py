@@ -220,25 +220,17 @@ class InverseVarianceEngine(MetaAnalysisEngine):
                 i + 1,
                 len(es),
                 "keys" in es.columns,
-                (
-                    f", unique genes: {es['keys'].nunique()}"
-                    if "keys" in es.columns
-                    else ""
-                ),
+                (f", unique genes: {es['keys'].nunique()}" if "keys" in es.columns else ""),
             )
             all_effect_sizes.append(es)
 
-        logger.debug(
-            "Combining effect sizes across %d studies...", len(all_effect_sizes)
-        )
+        logger.debug("Combining effect sizes across %d studies...", len(all_effect_sizes))
         combined = self.combine_effect_sizes(all_effect_sizes)
 
         pooled_es = combined.pooled_estimates.copy()
 
         logger.debug("Applying FDR correction...")
-        pooled_es["p_fdr"] = multipletests(
-            pooled_es["p_value"].fillna(1), method="fdr_bh"
-        )[1]
+        pooled_es["p_fdr"] = multipletests(pooled_es["p_value"].fillna(1), method="fdr_bh")[1]
 
         # Backward-compatible alias
         pooled_es["effect_size"] = pooled_es["summary"]
@@ -403,8 +395,7 @@ class InverseVarianceEngine(MetaAnalysisEngine):
         study_names = [f"study_{i}" for i in range(len(list_of_effects))]
 
         study_effects = [
-            self._collapse_study(ef, within_method, i)
-            for i, ef in enumerate(list_of_effects)
+            self._collapse_study(ef, within_method, i) for i, ef in enumerate(list_of_effects)
         ]
 
         merged_df = self._multimerge_effect_sizes(study_effects, study_names)
@@ -418,9 +409,7 @@ class InverseVarianceEngine(MetaAnalysisEngine):
         g_matrix, se_matrix = self._separate_matrices(merged_df)
 
         logger.debug("Pooling effect sizes (%s effects)", between_method)
-        pooled = self._core.pool_inverse_variance(
-            g_matrix, se_matrix, method=between_method
-        )
+        pooled = self._core.pool_inverse_variance(g_matrix, se_matrix, method=between_method)
         logger.debug("Pooled results: %d genes", len(pooled))
 
         if pooled.index.duplicated().any():
@@ -445,9 +434,7 @@ class InverseVarianceEngine(MetaAnalysisEngine):
         )
 
         if "keys" not in effects_df.columns:
-            logger.debug(
-                "Study %d: no 'keys' column — skipping collapse", study_index + 1
-            )
+            logger.debug("Study %d: no 'keys' column — skipping collapse", study_index + 1)
             return self._process_study_effects(effects_df, within_method)
 
         unique_genes = effects_df["keys"].nunique()
@@ -460,12 +447,8 @@ class InverseVarianceEngine(MetaAnalysisEngine):
             duplicate_keys,
         )
 
-        collapsed = self._core.collapse_probes_to_genes(
-            effects_df, method=within_method
-        )
-        logger.debug(
-            "Study %d after collapse: shape=%s", study_index + 1, collapsed.shape
-        )
+        collapsed = self._core.collapse_probes_to_genes(effects_df, method=within_method)
+        logger.debug("Study %d after collapse: shape=%s", study_index + 1, collapsed.shape)
 
         if collapsed.index.duplicated().any():
             logger.warning(
@@ -483,11 +466,7 @@ class InverseVarianceEngine(MetaAnalysisEngine):
         """Split merged DataFrame into (g_matrix, se_matrix)."""
         se_matrix = merged_df[[c for c in merged_df.columns if c.endswith("_se_g")]]
         g_matrix = merged_df[
-            [
-                c
-                for c in merged_df.columns
-                if c.endswith("_g") and not c.endswith("_se_g")
-            ]
+            [c for c in merged_df.columns if c.endswith("_g") and not c.endswith("_se_g")]
         ]
         logger.debug(
             "Effect size matrix: %s, Standard error matrix: %s",
@@ -496,17 +475,13 @@ class InverseVarianceEngine(MetaAnalysisEngine):
         )
         return g_matrix, se_matrix
 
-    def _process_study_effects(
-        self, effects: pd.DataFrame, method: str
-    ) -> pd.DataFrame:
+    def _process_study_effects(self, effects: pd.DataFrame, method: str) -> pd.DataFrame:
         """Legacy path for DataFrames missing a ``keys`` column."""
         effects_df = effects.copy()
         effects_df["keys"] = effects_df["keys"].astype(str)
 
         valid_mask = (
-            ~effects_df["g"].isna()
-            & ~effects_df["keys"].isna()
-            & (effects_df["keys"] != "NA")
+            ~effects_df["g"].isna() & ~effects_df["keys"].isna() & (effects_df["keys"] != "NA")
         )
         effects_df = effects_df[valid_mask]
         effects_df = self._core.expand_dataframe(effects_df)
@@ -529,16 +504,12 @@ class InverseVarianceEngine(MetaAnalysisEngine):
         return pd.concat(frames, axis=1).reindex(all_genes)
 
     @staticmethod
-    def _adjust_fisher(
-        fisher_output: pd.DataFrame, method: str = "fdr_bh"
-    ) -> pd.DataFrame:
+    def _adjust_fisher(fisher_output: pd.DataFrame, method: str = "fdr_bh") -> pd.DataFrame:
         """Adjust Fisher p-values for multiple testing."""
         fisher_adj = fisher_output.copy()
 
         if "F.pval.up" in fisher_adj.columns:
-            _, adjusted_up, _, _ = multipletests(
-                fisher_adj["F.pval.up"].fillna(1), method=method
-            )
+            _, adjusted_up, _, _ = multipletests(fisher_adj["F.pval.up"].fillna(1), method=method)
             fisher_adj["F.Qval.up"] = adjusted_up
 
         if "F.pval.down" in fisher_adj.columns:
@@ -833,13 +804,9 @@ class MetaAnalyzer:
         )
 
         logger.info("Computing Fisher's output...")
-        output_fisher = self._engine.compute_fisher_results(
-            original_data, use_old_method
-        )
+        output_fisher = self._engine.compute_fisher_results(original_data, use_old_method)
 
-        logger.debug(
-            "After Fisher computation: Fisher results genes = %d", len(output_fisher)
-        )
+        logger.debug("After Fisher computation: Fisher results genes = %d", len(output_fisher))
 
         final_results = self._engine.format_results(combined_results, output_fisher)
 
@@ -932,14 +899,12 @@ class MetaAnalyzer:
 
         if "metaAnalysis" not in meta_object or meta_object["metaAnalysis"] is None:
             raise ValueError(
-                "meta_object must contain 'metaAnalysis'. "
-                "Run run_meta_analysis() first."
+                "meta_object must contain 'metaAnalysis'. " "Run run_meta_analysis() first."
             )
         meta_analysis = meta_object["metaAnalysis"]
         if "pooledResults" not in meta_analysis:
             raise ValueError(
-                "metaAnalysis must contain 'pooledResults'. "
-                "Run run_meta_analysis() first."
+                "metaAnalysis must contain 'pooledResults'. " "Run run_meta_analysis() first."
             )
 
         pooled: pd.DataFrame = meta_analysis["pooledResults"].copy()
@@ -984,24 +949,16 @@ class MetaAnalyzer:
         if "fisherFDRUp" in pos_candidates.columns:
             pos_candidates = pos_candidates[pos_candidates["fisherFDRUp"] <= fdr_thresh]
         else:
-            logger.debug(
-                "fisherFDRUp column absent; skipping Fisher filter for pos genes"
-            )
+            logger.debug("fisherFDRUp column absent; skipping Fisher filter for pos genes")
 
         if "fisherFDRDown" in neg_candidates.columns:
-            neg_candidates = neg_candidates[
-                neg_candidates["fisherFDRDown"] <= fdr_thresh
-            ]
+            neg_candidates = neg_candidates[neg_candidates["fisherFDRDown"] <= fdr_thresh]
         else:
-            logger.debug(
-                "fisherFDRDown column absent; skipping Fisher filter for neg genes"
-            )
+            logger.debug("fisherFDRDown column absent; skipping Fisher filter for neg genes")
 
         pos_genes = pos_candidates.index.tolist()
         neg_genes = neg_candidates.index.tolist()
-        logger.debug(
-            "After Fisher FDR filter: %d pos, %d neg", len(pos_genes), len(neg_genes)
-        )
+        logger.debug("After Fisher FDR filter: %d pos, %d neg", len(pos_genes), len(neg_genes))
 
         # ---- step 6: leave-one-out consistency -----------------------
         if is_leave_one_out and meta_object.get("leaveOneOutAnalysis"):
@@ -1128,9 +1085,7 @@ class MetaAnalyzer:
                 results.append(analyze_subset(i))
         else:
             with ProcessPoolExecutor(max_workers=max_cores) as executor:
-                future_to_index = {
-                    executor.submit(analyze_subset, i): i for i in range(n_datasets)
-                }
+                future_to_index = {executor.submit(analyze_subset, i): i for i in range(n_datasets)}
                 results = [None] * n_datasets
                 for future in as_completed(future_to_index):
                     index = future_to_index[future]
@@ -1138,9 +1093,7 @@ class MetaAnalyzer:
                         results[index] = future.result()
                         logger.info("Completed subset %d/%d", index + 1, n_datasets)
                     except Exception as exc:
-                        logger.error(
-                            "Subset %d generated exception: %s", index + 1, exc
-                        )
+                        logger.error("Subset %d generated exception: %s", index + 1, exc)
                         results[index] = None
 
         return results
@@ -1175,9 +1128,7 @@ class MetaAnalyzer:
 
         meta_object = self._validator.convert_original_data_names(meta_object)
 
-        is_valid, errors = self._validator.validate_meta_object(
-            meta_object, "Meta", "Pre-Analysis"
-        )
+        is_valid, errors = self._validator.validate_meta_object(meta_object, "Meta", "Pre-Analysis")
         if not is_valid:
             raise ValueError("Error in input object:\n" + "\n".join(errors))
 
@@ -1185,9 +1136,7 @@ class MetaAnalyzer:
         class_checks = [self._validator.check_class_vector(ds) for ds in original_data]
         if not all(class_checks):
             failed = [
-                name
-                for name, ok in zip(meta_object["originalData"].keys(), class_checks)
-                if not ok
+                name for name, ok in zip(meta_object["originalData"].keys(), class_checks) if not ok
             ]
             raise ValueError(
                 f"Insufficient cases/controls in datasets: "
@@ -1195,9 +1144,7 @@ class MetaAnalyzer:
             )
 
         logger.info("Running main meta-analysis...")
-        meta_object["metaAnalysis"] = self.run_meta_analysis_core(
-            original_data, use_old_method
-        )
+        meta_object["metaAnalysis"] = self.run_meta_analysis_core(original_data, use_old_method)
 
         meta_object["leaveOneOutAnalysis"] = None
         if len(original_data) > 2 and run_leave_one_out:

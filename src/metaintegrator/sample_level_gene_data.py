@@ -26,9 +26,7 @@ class SampleLevelGeneDataProcessor:
     """
 
     @staticmethod
-    def get_sample_level_gene_data(
-        dataset_object: Dict, gene_names: List[str]
-    ) -> pd.DataFrame:
+    def get_sample_level_gene_data(dataset_object: Dict, gene_names: List[str]) -> pd.DataFrame:
         """
         Extract gene-level data from a given dataset object.
 
@@ -73,16 +71,10 @@ class SampleLevelGeneDataProcessor:
         genes_matrix = SampleLevelGeneDataProcessor._replace_values(
             genes_matrix, threshold_value=0, replace_value=1
         )
-        genes_matrix = SampleLevelGeneDataProcessor._replace_nans(
-            genes_matrix, replace_value=1
-        )
-        genes_matrix = SampleLevelGeneDataProcessor._replace_nas(
-            genes_matrix, replace_value=1
-        )
+        genes_matrix = SampleLevelGeneDataProcessor._replace_nans(genes_matrix, replace_value=1)
+        genes_matrix = SampleLevelGeneDataProcessor._replace_nas(genes_matrix, replace_value=1)
 
-        logger.info(
-            f"Successfully processed gene data. Result shape: {genes_matrix.shape}"
-        )
+        logger.info(f"Successfully processed gene data. Result shape: {genes_matrix.shape}")
         return genes_matrix
 
     @staticmethod
@@ -104,9 +96,7 @@ class SampleLevelGeneDataProcessor:
             raise ValueError("Expression matrix cannot be empty")
 
         if len(dataset_object["keys"]) != len(dataset_object["expr"]):
-            raise ValueError(
-                "Length of keys must match number of rows in expression matrix"
-            )
+            raise ValueError("Length of keys must match number of rows in expression matrix")
 
     @staticmethod
     def _validate_gene_names(gene_names: List[str]) -> None:
@@ -159,9 +149,7 @@ class SampleLevelGeneDataProcessor:
             summarized_results[gene_name] = summarized_gene
 
         # Convert to matrix format
-        gene_expression_matrix = pd.DataFrame.from_dict(
-            summarized_results, orient="index"
-        )
+        gene_expression_matrix = pd.DataFrame.from_dict(summarized_results, orient="index")
 
         # Ensure all requested genes are included (fill missing with NaN)
         missing_genes = set(unique_gene_names) - set(gene_expression_matrix.index)
@@ -363,9 +351,7 @@ def getSampleLevelGeneData(dataset_object: Dict, gene_names: List[str]) -> pd.Da
     Returns:
         pd.DataFrame: Gene-level expression data
     """
-    return SampleLevelGeneDataProcessor.get_sample_level_gene_data(
-        dataset_object, gene_names
-    )
+    return SampleLevelGeneDataProcessor.get_sample_level_gene_data(dataset_object, gene_names)
 
 
 def extractDataFromGEM(
@@ -382,9 +368,7 @@ def extractDataFromGEM(
     Returns:
         pd.DataFrame: Raw extracted gene data (before cleaning)
     """
-    return SampleLevelGeneDataProcessor._extract_data_from_gem(
-        dataset_object, gene_names, keys_sep
-    )
+    return SampleLevelGeneDataProcessor._extract_data_from_gem(dataset_object, gene_names, keys_sep)
 
 
 def replaceValues(
@@ -401,9 +385,7 @@ def replaceValues(
     Returns:
         pd.DataFrame: Data with values replaced
     """
-    return SampleLevelGeneDataProcessor._replace_values(
-        x, threshold_value, replace_value
-    )
+    return SampleLevelGeneDataProcessor._replace_values(x, threshold_value, replace_value)
 
 
 def replaceNaNs(x: pd.DataFrame, replace_value: float = 1) -> pd.DataFrame:

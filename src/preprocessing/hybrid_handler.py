@@ -308,9 +308,7 @@ class HybridMicroarrayHandler(DataHandler):
         if not self._validator_loaded:
             try:
                 self._validator = EnsemblGeneValidator()
-                log.info(
-                    f"  Ensembl validator: {len(self._validator.valid_genes):,} valid genes"
-                )
+                log.info(f"  Ensembl validator: {len(self._validator.valid_genes):,} valid genes")
             except Exception as e:
                 log.warning(f"  Could not load Ensembl validator: {e}")
                 self._validator = None

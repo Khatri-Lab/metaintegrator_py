@@ -61,9 +61,7 @@ class MetaAnalysisCore:
             ValueError: If any required key is missing from the study, if the "class"
                 vector is not coded as 0 or 1, or if "keys" is not a list or array.
         """
-        missing_keys = [
-            key for key in MetaAnalysisCore.REQUIRED_STUDY_KEYS if key not in study
-        ]
+        missing_keys = [key for key in MetaAnalysisCore.REQUIRED_STUDY_KEYS if key not in study]
 
         if missing_keys:
             raise ValueError(f"Missing required keys: {missing_keys}")
@@ -236,9 +234,9 @@ class MetaAnalysisCore:
 
         # Standard error of Hedge's G — match R exactly
         # R: se.g <- sqrt((n1+n2)/(n1*n2) + 0.5*g^2/(n1+n2-3.94))
-        variance_g = (n_cases + n_controls) / (
-            n_cases * n_controls
-        ) + 0.5 * effect_size_g**2 / (n_cases + n_controls - 3.94)
+        variance_g = (n_cases + n_controls) / (n_cases * n_controls) + 0.5 * effect_size_g**2 / (
+            n_cases + n_controls - 3.94
+        )
         se_effect_size = np.sqrt(variance_g)  # NO epsilon — match R
 
         return {
@@ -293,12 +291,8 @@ class MetaAnalysisCore:
 
         results = []
         for idx, (gene_id, expression_row) in enumerate(expr_matrix.iterrows()):
-            es_stats = MetaAnalysisCore.get_effect_size(
-                expression_row.values, class_vector
-            )
-            es_stats["keys"] = (
-                keys[idx] if isinstance(keys, (list, np.ndarray)) else keys
-            )
+            es_stats = MetaAnalysisCore.get_effect_size(expression_row.values, class_vector)
+            es_stats["keys"] = keys[idx] if isinstance(keys, (list, np.ndarray)) else keys
             results.append(es_stats)
 
         return pd.DataFrame(results)
@@ -368,9 +362,7 @@ class MetaAnalysisCore:
             if method == "fixed_iv":
                 # Fixed effects meta-analysis using inverse variance weighting
                 inverse_variances = 1 / (group["se_g"] ** 2)
-                pooled_g = np.sum(group["g"] * inverse_variances) / np.sum(
-                    inverse_variances
-                )
+                pooled_g = np.sum(group["g"] * inverse_variances) / np.sum(inverse_variances)
                 pooled_se = np.sqrt(1 / np.sum(inverse_variances))
                 grouped_results.append({"g": pooled_g, "se_g": pooled_se, "key": key})
             elif method == "extreme":
@@ -508,9 +500,7 @@ class MetaAnalysisCore:
                 )
             else:
                 # Multiple studies - compute full statistics
-                gene_stats = MetaAnalysisCore._compute_meta_summaries(
-                    g_valid, se_valid, method
-                )
+                gene_stats = MetaAnalysisCore._compute_meta_summaries(g_valid, se_valid, method)
                 results.append(gene_stats)
 
         # Create DataFrame with Python naming convention (underscores, not dots)
@@ -616,9 +606,7 @@ class MetaAnalysisCore:
         }
 
     @staticmethod
-    def get_ttest_pvalues(
-        expr_data: pd.DataFrame, class_vector: np.ndarray
-    ) -> pd.DataFrame:
+    def get_ttest_pvalues(expr_data: pd.DataFrame, class_vector: np.ndarray) -> pd.DataFrame:
         """
         Calculate t-test p-values for a given expression matrix and class vector.
 
@@ -657,9 +645,7 @@ class MetaAnalysisCore:
         n_controls = np.sum(control_mask)
 
         if n_cases < 2 or n_controls < 2:
-            logger.warning(
-                f"Insufficient samples: {n_cases} cases, {n_controls} controls"
-            )
+            logger.warning(f"Insufficient samples: {n_cases} cases, {n_controls} controls")
             n_genes = expr_data.shape[0]
             return pd.DataFrame(
                 {
@@ -667,11 +653,7 @@ class MetaAnalysisCore:
                     "P.down": np.nan,  # Changed from P_down to P.down
                     "P.up": np.nan,  # Changed from P_up to P.up
                 },
-                index=(
-                    expr_data.index
-                    if isinstance(expr_data, pd.DataFrame)
-                    else range(n_genes)
-                ),
+                index=(expr_data.index if isinstance(expr_data, pd.DataFrame) else range(n_genes)),
             )
 
         # Select cases and controls using proper indexing
@@ -839,9 +821,7 @@ class FisherCombination:
                 format or criteria for computation.
         """
         MetaAnalysisCore.check_metagem_study(study)
-        pvals = MetaAnalysisCore.get_ttest_pvalues(
-            study["expr"], np.array(study["class"])
-        )
+        pvals = MetaAnalysisCore.get_ttest_pvalues(study["expr"], np.array(study["class"]))
 
         # Keep P.up and P.down with dots (don't rename to underscores)
         # This is critical for compatibility with sum_of_logs() which filters by ".up" and ".down"
@@ -1017,9 +997,7 @@ class FisherCombination:
             df["keys"] = df["keys"].astype(str)
 
             # Filter valid entries
-            valid_mask = (
-                df.iloc[:, 0].notna() & df["keys"].notna() & (df["keys"] != "NA")
-            )
+            valid_mask = df.iloc[:, 0].notna() & df["keys"].notna() & (df["keys"] != "NA")
             df = df[valid_mask]
 
             # Preprocess and aggregate
@@ -1059,9 +1037,7 @@ class FisherCombination:
     def sum_of_logs(
         list_of_significance_matrices: List[pd.DataFrame],
     ) -> pd.DataFrame:
-        return FisherCombination.sum_of_logs_with_R_bugfix(
-            list_of_significance_matrices
-        )
+        return FisherCombination.sum_of_logs_with_R_bugfix(list_of_significance_matrices)
 
     @staticmethod
     def sum_of_logs_with_R_bugfix(
@@ -1089,9 +1065,7 @@ class FisherCombination:
             df["keys"] = df["keys"].astype(str)
 
             # Filter valid entries
-            valid_mask = (
-                df.iloc[:, 0].notna() & df["keys"].notna() & (df["keys"] != "NA")
-            )
+            valid_mask = df.iloc[:, 0].notna() & df["keys"].notna() & (df["keys"] != "NA")
             df = df[valid_mask]
 
             # ── BUGFIX: skip studies with no valid genes ─────────────────────
@@ -1110,8 +1084,7 @@ class FisherCombination:
             # but guard again just in case expand produced nothing
             if df.empty or "keys" not in df.columns:
                 logger.warning(
-                    f"Study index {study_idx}: empty after expand_dataframe. "
-                    "Skipping."
+                    f"Study index {study_idx}: empty after expand_dataframe. " "Skipping."
                 )
                 continue
 
@@ -1173,9 +1146,7 @@ class FisherCombination:
 
         # Use study_ prefix to create unique column names
         # This matches the expected behavior in tests
-        prefixed_dfs = [
-            df.add_prefix(f"study_{i}_") for i, df in enumerate(dataframe_list)
-        ]
+        prefixed_dfs = [df.add_prefix(f"study_{i}_") for i, df in enumerate(dataframe_list)]
 
         # pd.concat handles the union of indices and alignment automatically
         # CRITICAL: R does NOT make duplicate column names unique!

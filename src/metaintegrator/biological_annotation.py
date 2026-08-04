@@ -130,18 +130,14 @@ class BiologicalAnnotator:
         # Check if we have enough samples for clustering
         n_samples = sex_expr.shape[1]  # Columns are samples
         if n_samples < 2:
-            warnings.warn(
-                "Insufficient samples for clustering (need at least 2 samples)"
-            )
+            warnings.warn("Insufficient samples for clustering (need at least 2 samples)")
             return None
 
         # Run K-means clustering (k=2)
         # Cluster samples (columns)
         try:
             kmeans = KMeans(n_clusters=2, random_state=random_state, n_init=10)
-            cluster_labels = kmeans.fit_predict(
-                sex_expr.T
-            )  # Transpose for sample clustering
+            cluster_labels = kmeans.fit_predict(sex_expr.T)  # Transpose for sample clustering
         except Exception as e:
             warnings.warn(f"K-means clustering failed: {e}")
             return None
@@ -187,11 +183,7 @@ class BiologicalAnnotator:
             gene_set = set(genes)
 
             # Check for length mismatch between expr and keys
-            if (
-                hasattr(expr, "shape")
-                and len(expr.shape) >= 1
-                and len(keys) != expr.shape[0]
-            ):
+            if hasattr(expr, "shape") and len(expr.shape) >= 1 and len(keys) != expr.shape[0]:
                 warnings.warn(
                     f"Mismatch between expression matrix rows ({expr.shape[0]}) and keys ({len(keys)})"
                 )

@@ -42,7 +42,9 @@ class COCONUTIntegrator:
             - rawDiseaseList: Original unnormalized disease samples
             - controlList: Normalized control samples and parameters
         """
-        from coconut.coconut import coconut as coconut_analysis  # cross-package; resolved via src/ on sys.path
+        from coconut.coconut import (
+            coconut as coconut_analysis,
+        )  # cross-package; resolved via src/ on sys.path
 
         # Convert to gene-level meta format (dict of dicts)
         gene_level_data_dict = self.gene_level_meta(meta_object)
@@ -357,9 +359,7 @@ class SampleLevelGeneExtractor:
         if result_df.shape[1] == 0:
             # Create DataFrame with proper rows (genes) and columns (samples)
             # All values will be NaN, which will be filled with replacement value later
-            result_df = pd.DataFrame(
-                index=gene_names, columns=sample_names, dtype=float
-            )
+            result_df = pd.DataFrame(index=gene_names, columns=sample_names, dtype=float)
         else:
             # For non-empty DataFrames, assign columns normally
             result_df.columns = sample_names
@@ -474,11 +474,7 @@ class SampleLevelGeneExtractor:
             # Ensure doesn't start with number or dot followed by number
             if valid_name and (
                 valid_name[0].isdigit()
-                or (
-                    valid_name.startswith(".")
-                    and len(valid_name) > 1
-                    and valid_name[1].isdigit()
-                )
+                or (valid_name.startswith(".") and len(valid_name) > 1 and valid_name[1].isdigit())
             ):
                 valid_name = f"X{valid_name}"
 
@@ -579,9 +575,7 @@ def gene_level_meta(meta_object: Dict) -> Dict:
     return integrator.gene_level_meta(meta_object)
 
 
-def get_sample_level_gene_data(
-    dataset_object: Dict, gene_names: List[str]
-) -> pd.DataFrame:
+def get_sample_level_gene_data(dataset_object: Dict, gene_names: List[str]) -> pd.DataFrame:
     """
     Extract gene-level data from a dataset object.
 
@@ -603,9 +597,7 @@ class COCONUTDataProcessor:
     """Additional utilities for COCONUT data processing."""
 
     @staticmethod
-    def prepare_coconut_input(
-        meta_object: Dict, filter_results: Optional[Dict] = None
-    ) -> Dict:
+    def prepare_coconut_input(meta_object: Dict, filter_results: Optional[Dict] = None) -> Dict:
         """
         Prepares input data for COCONUT analysis by optionally filtering genes
         from a given filter results dictionary or by using all available genes
@@ -639,9 +631,7 @@ class COCONUTDataProcessor:
                 target_genes.extend(filter_results["negGeneNames"])
 
             if not target_genes:
-                warnings.warn(
-                    "No genes found in filter results, using all available genes"
-                )
+                warnings.warn("No genes found in filter results, using all available genes")
                 return integrator.gene_level_meta(meta_object)
 
             # Process each dataset with filtered genes
@@ -652,9 +642,7 @@ class COCONUTDataProcessor:
 
                 # Extract gene-level data for target genes only
                 extractor = SampleLevelGeneExtractor()
-                gene_level_data = extractor.get_sample_level_gene_data(
-                    dataset_object, target_genes
-                )
+                gene_level_data = extractor.get_sample_level_gene_data(dataset_object, target_genes)
 
                 coconut_data[dataset_name] = {
                     "pheno": dataset_pheno,
@@ -706,9 +694,7 @@ class COCONUTDataProcessor:
                 if not isinstance(pheno, pd.DataFrame):
                     errors.append(f"Dataset '{dataset_name}' pheno must be a DataFrame")
                 elif "class" not in pheno.columns:
-                    errors.append(
-                        f"Dataset '{dataset_name}' pheno missing 'class' column"
-                    )
+                    errors.append(f"Dataset '{dataset_name}' pheno missing 'class' column")
 
             # Validate gene data
             if "genes" in dataset:
@@ -836,9 +822,7 @@ class MetaIntegratorToCOCONUT:
         coconut_data = self.integrator.gene_level_meta(meta_object)
 
         if validate_output:
-            is_valid, errors = COCONUTDataProcessor.validate_coconut_format(
-                coconut_data
-            )
+            is_valid, errors = COCONUTDataProcessor.validate_coconut_format(coconut_data)
             if not is_valid:
                 raise ValueError(f"Output validation failed: {'; '.join(errors)}")
 
@@ -871,9 +855,7 @@ class MetaIntegratorToCOCONUT:
             required_keys = ["expr", "class", "keys"]
             for key in required_keys:
                 if key not in dataset:
-                    raise ValueError(
-                        f"Dataset '{dataset_name}' missing required key: {key}"
-                    )
+                    raise ValueError(f"Dataset '{dataset_name}' missing required key: {key}")
 
     def run_with_coconut(self, meta_object: Dict, **coconut_kwargs) -> Any:
         """

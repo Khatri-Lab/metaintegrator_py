@@ -342,9 +342,7 @@ def _get_or_compute_scores(filter_object, dataset_object):
     # Import here to avoid circular dependency
     from metaintegrator.score_calculation import ScoreCalculator
 
-    return ScoreCalculator.calculate_score(
-        filter_object, dataset_object, suppress_messages=True
-    )
+    return ScoreCalculator.calculate_score(filter_object, dataset_object, suppress_messages=True)
 
 
 def _resolve_groups(dataset_object, label_column):
@@ -408,9 +406,7 @@ def _draw_pvalue_brackets(ax, group_data, positions, method, colors):
         if method == "t":
             stat, pval = stats.ttest_ind(group_data[i], group_data[j], equal_var=False)
         else:
-            stat, pval = stats.mannwhitneyu(
-                group_data[i], group_data[j], alternative="two-sided"
-            )
+            stat, pval = stats.mannwhitneyu(group_data[i], group_data[j], alternative="two-sided")
 
         # Format p-value (ggpubr style)
         if pval < 0.0001:

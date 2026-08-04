@@ -215,9 +215,7 @@ def check_log_scale(
     input_data = input_data[~np.isnan(input_data)]
 
     if len(input_data) < 10:
-        warnings.warn(
-            "Insufficient data for log scale check. Assuming log scale.", UserWarning
-        )
+        warnings.warn("Insufficient data for log scale check. Assuming log scale.", UserWarning)
         return bool(True)
 
     # Handle negative values (from background subtraction)
@@ -240,9 +238,7 @@ def check_log_scale(
 
     # Sample data if too large
     if len(input_data) > sample_size:
-        sample_indices = np.random.choice(
-            len(input_data), size=sample_size, replace=False
-        )
+        sample_indices = np.random.choice(len(input_data), size=sample_size, replace=False)
         input_data = input_data[sample_indices]
 
     # Calculate QQ-plot correlations

@@ -224,9 +224,7 @@ class MetaAnalysisPlotter:
         fig, ax = plt.subplots(figsize=(10, 8))
 
         # 2. Plotting Steps
-        self._draw_volcano_points(
-            ax, x, y, pooled_df["effectSizeFDR"], es_threshold, fdr_threshold
-        )
+        self._draw_volcano_points(ax, x, y, pooled_df["effectSizeFDR"], es_threshold, fdr_threshold)
         self._add_volcano_thresholds(ax, es_threshold, fdr_threshold)
         if top_genes > 0:
             self._label_top_genes(ax, x, y, top_genes)
@@ -266,9 +264,7 @@ class MetaAnalysisPlotter:
               The FDR threshold below which data points are considered significant.
         """
         # Draw all points in background
-        ax.scatter(
-            x, y, alpha=0.4, s=30, c="gray", edgecolors="none", label="Not Significant"
-        )
+        ax.scatter(x, y, alpha=0.4, s=30, c="gray", edgecolors="none", label="Not Significant")
 
         # Color significant genes by direction
         sig_mask = (fdr <= fdr_thr) & (np.abs(x) >= es_thr)
@@ -276,9 +272,7 @@ class MetaAnalysisPlotter:
             up = sig_mask & (x > 0)
             down = sig_mask & (x < 0)
             ax.scatter(x[up], y[up], c="red", s=40, alpha=0.8, label="Up-regulated")
-            ax.scatter(
-                x[down], y[down], c="blue", s=40, alpha=0.8, label="Down-regulated"
-            )
+            ax.scatter(x[down], y[down], c="blue", s=40, alpha=0.8, label="Down-regulated")
 
     def _add_volcano_thresholds(self, ax, es_thr, fdr_thr):
         """
@@ -534,9 +528,7 @@ class MetaAnalysisPlotter:
         pooled_df = meta_object["metaAnalysis"]["pooledResults"]
 
         # 1. Select and Validate Genes
-        plot_genes = self._select_genes_for_heatmap(
-            genes, es_df, pooled_df, n_top_genes
-        )
+        plot_genes = self._select_genes_for_heatmap(genes, es_df, pooled_df, n_top_genes)
         if not plot_genes:
             raise ValueError("No valid genes found for heatmap")
 
@@ -545,9 +537,7 @@ class MetaAnalysisPlotter:
 
         # Check if we have any data left after dropping all-NaN rows
         if heat_df.empty or heat_df.isna().all().all():
-            raise ValueError(
-                "No valid data available for heatmap after removing NaN values"
-            )
+            raise ValueError("No valid data available for heatmap after removing NaN values")
 
         # 3. Setup Figure
         width = max(8, len(heat_df.columns) * 0.8)
@@ -615,9 +605,7 @@ class MetaAnalysisPlotter:
         # Sort by FDR and take top N
         return pooled_df.sort_values("effectSizeFDR").head(n_top).index.tolist()
 
-    def plot_study_overview(
-        self, meta_object: Dict, save_path: Optional[str] = None
-    ) -> plt.Figure:
+    def plot_study_overview(self, meta_object: Dict, save_path: Optional[str] = None) -> plt.Figure:
         """
         Plots an overview of studies, visualizing various statistics such as sample distribution,
         total sample size, gene count, and case/control balance in a grid of subplots.
@@ -839,9 +827,7 @@ class MetaAnalysisPlotter:
         self._plot_es_dist(ax1, pooled_df["effectSize"])
 
         # 2. Volcano-lite (ES vs P-value)
-        self._plot_volcano_lite(
-            ax2, pooled_df["effectSize"], pooled_df["effectSizePval"]
-        )
+        self._plot_volcano_lite(ax2, pooled_df["effectSize"], pooled_df["effectSizePval"])
 
         # 3. Studies per Gene
         self._plot_study_count_dist(ax3, pooled_df["numStudies"])
@@ -871,13 +857,9 @@ class MetaAnalysisPlotter:
         Returns:
             None
         """
-        ax.hist(
-            es_series.dropna(), bins=50, alpha=0.7, color="skyblue", edgecolor="black"
-        )
+        ax.hist(es_series.dropna(), bins=50, alpha=0.7, color="skyblue", edgecolor="black")
         ax.axvline(0, color="red", linestyle="--", alpha=0.7)
-        self._set_standard_labels(
-            ax, "Effect Size", "Frequency", "Distribution of Effect Sizes"
-        )
+        self._set_standard_labels(ax, "Effect Size", "Frequency", "Distribution of Effect Sizes")
 
     def _plot_volcano_lite(self, ax: plt.Axes, es: pd.Series, pvals: pd.Series) -> None:
         """
@@ -952,9 +934,7 @@ class MetaAnalysisPlotter:
             ax.axvline(0.05, color="red", linestyle="--", alpha=0.7, label="p=0.05")
             ax.legend()
         else:
-            ax.text(
-                0.5, 0.5, "No heterogeneity data", transform=ax.transAxes, ha="center"
-            )
+            ax.text(0.5, 0.5, "No heterogeneity data", transform=ax.transAxes, ha="center")
         self._set_standard_labels(
             ax, "Heterogeneity P-value", "Frequency", "Heterogeneity Test Results"
         )

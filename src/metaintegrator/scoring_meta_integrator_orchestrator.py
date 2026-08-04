@@ -249,19 +249,12 @@ class OrchestrationResults:
                 "export": bool(self.export_paths),
             },
             "total_genes_filtered": (
-                len(
-                    self.filter_results.pos_gene_names
-                    + self.filter_results.neg_gene_names
-                )
+                len(self.filter_results.pos_gene_names + self.filter_results.neg_gene_names)
                 if self.filter_results
                 else 0
             ),
-            "total_genes_scored": (
-                len(self.gene_scores) if self.gene_scores is not None else 0
-            ),
-            "total_pathways_scored": (
-                len(self.pathway_scores) if self.pathway_scores else 0
-            ),
+            "total_genes_scored": (len(self.gene_scores) if self.gene_scores is not None else 0),
+            "total_pathways_scored": (len(self.pathway_scores) if self.pathway_scores else 0),
             "error_count": len(self.errors),
             "warning_count": len(self.warnings),
         }
@@ -332,9 +325,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             OrchestrationResults: Comprehensive orchestration results.
         """
         start_time = datetime.now()
-        self.logger.info(
-            f"Starting complete analysis: {analysis_name} ({workflow_type})"
-        )
+        self.logger.info(f"Starting complete analysis: {analysis_name} ({workflow_type})")
 
         # Initialize result container
         results = OrchestrationResults(
@@ -399,9 +390,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                     f"Analysis completed successfully in {results.total_duration:.2f}s"
                 )
             else:
-                self.logger.error(
-                    f"Analysis failed after {results.total_duration:.2f}s"
-                )
+                self.logger.error(f"Analysis failed after {results.total_duration:.2f}s")
 
         return results
 
@@ -422,9 +411,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
         Returns:
             Dict[str, OrchestrationResults]: Mapping of analysis names to their orchestration results.
         """
-        self.logger.info(
-            f"Starting batch analysis: {batch_name} ({len(meta_objects)} analyses)"
-        )
+        self.logger.info(f"Starting batch analysis: {batch_name} ({len(meta_objects)} analyses)")
 
         batch_results = {}
 
@@ -432,9 +419,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             # Parallel execution
             with ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
                 futures = {
-                    executor.submit(
-                        self.run_complete_analysis, meta_obj, name, workflow_type
-                    ): name
+                    executor.submit(self.run_complete_analysis, meta_obj, name, workflow_type): name
                     for name, meta_obj in meta_objects.items()
                 }
 
@@ -443,13 +428,9 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                     try:
                         batch_results[analysis_name] = future.result()
                     except Exception as e:
-                        self.logger.error(
-                            f"Batch analysis failed for {analysis_name}: {e}"
-                        )
+                        self.logger.error(f"Batch analysis failed for {analysis_name}: {e}")
                         # Create error result
-                        batch_results[analysis_name] = self._create_error_result(
-                            analysis_name, e
-                        )
+                        batch_results[analysis_name] = self._create_error_result(analysis_name, e)
         else:
             # Sequential execution
             for analysis_name, meta_object in meta_objects.items():
@@ -459,9 +440,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                     )
                 except Exception as e:
                     self.logger.error(f"Batch analysis failed for {analysis_name}: {e}")
-                    batch_results[analysis_name] = self._create_error_result(
-                        analysis_name, e
-                    )
+                    batch_results[analysis_name] = self._create_error_result(analysis_name, e)
 
         # Generate batch summary
         self._generate_batch_summary(batch_results, batch_name)
@@ -487,14 +466,10 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
         self.logger.info("Step 1: Filtering meta-analysis results")
         try:
             start_time = time.time()
-            filter_results = self.meta_filter.filter_meta_analysis(
-                meta_object, strategy="standard"
-            )
+            filter_results = self.meta_filter.filter_meta_analysis(meta_object, strategy="standard")
             results.filter_results = filter_results
             results.performance_metrics["filtering_duration"] = time.time() - start_time
-            self.logger.info(
-                f"Filtered to {filter_results.total_genes} significant genes"
-            )
+            self.logger.info(f"Filtered to {filter_results.total_genes} significant genes")
         except Exception as e:
             self._handle_component_error("filtering", e, results)
             if self.config.fail_fast:
@@ -507,13 +482,9 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             self.logger.info("Step 2: Scoring genes")
             try:
                 start_time = time.time()
-                gene_scores = self.gene_scorer.score_genes(
-                    meta_object, ScoringMethod.COMBINED
-                )
+                gene_scores = self.gene_scorer.score_genes(meta_object, ScoringMethod.COMBINED)
                 results.gene_scores = gene_scores
-                results.performance_metrics["scoring_duration"] = (
-                    time.time() - start_time
-                )
+                results.performance_metrics["scoring_duration"] = time.time() - start_time
                 self.logger.info(f"Scored {len(gene_scores)} genes")
             except Exception as e:
                 self._handle_component_error("gene_scoring", e, results)
@@ -536,12 +507,8 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                     data, results.analysis_name
                 )
                 results.comprehensive_summary = comprehensive_summary
-                results.statistical_summary = comprehensive_summary.get(
-                    "statistical_summary"
-                )
-                results.performance_metrics["summarization_duration"] = (
-                    time.time() - start_time
-                )
+                results.statistical_summary = comprehensive_summary.get("statistical_summary")
+                results.performance_metrics["summarization_duration"] = time.time() - start_time
                 self.logger.info("Statistical analysis completed")
             except Exception as e:
                 self._handle_component_error("summarization", e, results)
@@ -593,18 +560,14 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                     meta_object, strategy="adaptive"
                 )
             except:
-                self.logger.warning(
-                    "Adaptive filtering failed, falling back to standard"
-                )
+                self.logger.warning("Adaptive filtering failed, falling back to standard")
                 filter_results = self.meta_filter.filter_meta_analysis(
                     meta_object, strategy="standard"
                 )
 
             results.filter_results = filter_results
             results.performance_metrics["filtering_duration"] = time.time() - start_time
-            self.logger.info(
-                f"Advanced filtering completed: {filter_results.total_genes} genes"
-            )
+            self.logger.info(f"Advanced filtering completed: {filter_results.total_genes} genes")
         except Exception as e:
             self._handle_component_error("advanced_filtering", e, results)
             if self.config.fail_fast:
@@ -624,13 +587,9 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                     adaptive_normalization=True,
                 )
                 enhanced_scorer = EnhancedGeneScorer(enhanced_config)
-                gene_scores = enhanced_scorer.score_genes(
-                    meta_object, ScoringMethod.COMBINED
-                )
+                gene_scores = enhanced_scorer.score_genes(meta_object, ScoringMethod.COMBINED)
                 results.gene_scores = gene_scores
-                results.performance_metrics["scoring_duration"] = (
-                    time.time() - start_time
-                )
+                results.performance_metrics["scoring_duration"] = time.time() - start_time
 
                 # Get confidence intervals if available
                 confidence_intervals = enhanced_scorer.get_last_confidence_intervals()
@@ -639,9 +598,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                         confidence_intervals
                     )
 
-                self.logger.info(
-                    f"Enhanced scoring completed: {len(gene_scores)} genes"
-                )
+                self.logger.info(f"Enhanced scoring completed: {len(gene_scores)} genes")
             except Exception as e:
                 self._handle_component_error("enhanced_scoring", e, results)
                 if self.config.fail_fast:
@@ -671,12 +628,8 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                     data, results.analysis_name
                 )
                 results.comprehensive_summary = comprehensive_summary
-                results.statistical_summary = comprehensive_summary.get(
-                    "statistical_summary"
-                )
-                results.quality_assessment = comprehensive_summary.get(
-                    "quality_assessment", {}
-                )
+                results.statistical_summary = comprehensive_summary.get("statistical_summary")
+                results.quality_assessment = comprehensive_summary.get("quality_assessment", {})
                 results.performance_metrics["comprehensive_analysis_duration"] = (
                     time.time() - start_time
                 )
@@ -704,9 +657,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
         self.logger.info("Step 1: Basic filtering")
         try:
             start_time = time.time()
-            filter_results = self.meta_filter.filter_meta_analysis(
-                meta_object, strategy="standard"
-            )
+            filter_results = self.meta_filter.filter_meta_analysis(meta_object, strategy="standard")
             results.filter_results = filter_results
             results.performance_metrics["filtering_duration"] = time.time() - start_time
         except Exception as e:
@@ -721,13 +672,9 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             self.logger.info("Step 2: Basic scoring")
             try:
                 start_time = time.time()
-                gene_scores = self.gene_scorer.score_genes(
-                    meta_object, ScoringMethod.EFFECT_SIZE
-                )
+                gene_scores = self.gene_scorer.score_genes(meta_object, ScoringMethod.EFFECT_SIZE)
                 results.gene_scores = gene_scores
-                results.performance_metrics["scoring_duration"] = (
-                    time.time() - start_time
-                )
+                results.performance_metrics["scoring_duration"] = time.time() - start_time
             except Exception as e:
                 self._handle_component_error("basic_scoring", e, results)
                 if self.config.fail_fast:
@@ -864,9 +811,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                 raise ValidationError("meta_object must be a dictionary")
 
             if not ("original_result" in meta_object or "filterRes" in meta_object):
-                raise ValidationError(
-                    "meta_object must contain 'original_result' or 'filterRes'"
-                )
+                raise ValidationError("meta_object must contain 'original_result' or 'filterRes'")
 
             # 2️⃣ Retrieve the data frame
             data = meta_object.get("original_result")
@@ -884,9 +829,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             missing_cols = [c for c in required_cols if c not in data.columns]
             if missing_cols:
                 if self.config.auto_fix_common_issues:
-                    self.logger.warning(
-                        f"Missing columns {missing_cols}, attempting to fix"
-                    )
+                    self.logger.warning(f"Missing columns {missing_cols}, attempting to fix")
                     # Very simple, future‑proofing: map legacy names
                     if "effect_fdr" not in data.columns and "fdr" in data.columns:
                         data["effect_fdr"] = data["fdr"]
@@ -933,9 +876,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
                 / (len(data) * len(data.columns))
                 * 100,
                 "duplicate_genes": data.index.duplicated().sum(),
-                "infinite_values": np.isinf(data.select_dtypes(include=[np.number]))
-                .sum()
-                .sum(),
+                "infinite_values": np.isinf(data.select_dtypes(include=[np.number])).sum().sum(),
             }
 
             # Quality score calculation
@@ -952,9 +893,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             results.quality_assessment = quality_metrics
 
             if quality_score < 50:
-                self.logger.warning(
-                    f"Low data quality detected (score: {quality_score:.1f})"
-                )
+                self.logger.warning(f"Low data quality detected (score: {quality_score:.1f})")
 
         except Exception as e:
             self._handle_component_error("quality_assessment", e, results)
@@ -1089,9 +1028,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
         results.errors.append(error_info)
         self.logger.error(f"Component {component} failed: {error}")
 
-    def _handle_orchestration_error(
-        self, error: Exception, results: OrchestrationResults
-    ) -> None:
+    def _handle_orchestration_error(self, error: Exception, results: OrchestrationResults) -> None:
         """
         Record a top‑level orchestration failure.
 
@@ -1131,9 +1068,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             # Validate filter results
             if results.filter_results:
                 if results.filter_results.total_genes == 0:
-                    validation_results["filter_results"] = (
-                        "warning: no genes passed filtering"
-                    )
+                    validation_results["filter_results"] = "warning: no genes passed filtering"
                 else:
                     validation_results["filter_results"] = "passed"
 
@@ -1149,15 +1084,12 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             # Check consistency between components
             if results.filter_results and results.gene_scores is not None:
                 filtered_genes = set(
-                    results.filter_results.pos_gene_names
-                    + results.filter_results.neg_gene_names
+                    results.filter_results.pos_gene_names + results.filter_results.neg_gene_names
                 )
                 scored_genes = set(results.gene_scores.index)
 
                 if not filtered_genes.issubset(scored_genes):
-                    validation_results["consistency"] = (
-                        "warning: some filtered genes not scored"
-                    )
+                    validation_results["consistency"] = "warning: some filtered genes not scored"
                 else:
                     validation_results["consistency"] = "passed"
 
@@ -1202,23 +1134,17 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             "total_duration": sum(r.total_duration for r in batch_results.values()),
             "average_duration": sum(r.total_duration for r in batch_results.values())
             / len(batch_results),
-            "individual_summaries": {
-                name: r.get_summary() for name, r in batch_results.items()
-            },
+            "individual_summaries": {name: r.get_summary() for name, r in batch_results.items()},
         }
 
         # Export batch summary
-        summary_path = (
-            self.config.default_output_dir / f"{batch_name}_batch_summary.json"
-        )
+        summary_path = self.config.default_output_dir / f"{batch_name}_batch_summary.json"
         with open(summary_path, "w") as f:
             json.dump(summary, f, indent=2, default=str)
 
         self.logger.info(f"Batch summary generated: {summary_path}")
 
-    def _create_error_result(
-        self, analysis_name: str, error: Exception
-    ) -> OrchestrationResults:
+    def _create_error_result(self, analysis_name: str, error: Exception) -> OrchestrationResults:
         """
         Build an OrchestrationResults object that represents a failed analysis.
 
@@ -1273,16 +1199,10 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
             ('initialized' or 'not_initialized') as values.
         """
         return {
-            "meta_filter": (
-                "initialized" if hasattr(self, "meta_filter") else "not_initialized"
-            ),
-            "gene_scorer": (
-                "initialized" if hasattr(self, "gene_scorer") else "not_initialized"
-            ),
+            "meta_filter": ("initialized" if hasattr(self, "meta_filter") else "not_initialized"),
+            "gene_scorer": ("initialized" if hasattr(self, "gene_scorer") else "not_initialized"),
             "result_summarizer": (
-                "initialized"
-                if hasattr(self, "result_summarizer")
-                else "not_initialized"
+                "initialized" if hasattr(self, "result_summarizer") else "not_initialized"
             ),
             "export_engine": (
                 "initialized" if hasattr(self, "export_engine") else "not_initialized"

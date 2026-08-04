@@ -58,13 +58,11 @@ def run(argv=None):
     parser.add_argument(
         "--config-file",
         help="Path to a global config file (YAML).  Subcommand-specific "
-             "settings from this file are merged with CLI flags.",
+        "settings from this file are merged with CLI flags.",
         default="config/default.yaml",
     )
 
-    subparsers = parser.add_subparsers(
-        dest="command", required=True, help="Available commands"
-    )
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
     # ==================================================================
     # Subcommand: coconut_batch_effect_removal
@@ -84,7 +82,7 @@ def run(argv=None):
         type=str,
         default=None,
         help="Optional directory to write the output files. "
-             "If omitted, results are only printed.",
+        "If omitted, results are only printed.",
     )
     prep_parser.add_argument(
         "--debug",
@@ -115,14 +113,13 @@ def run(argv=None):
         type=str,
         default=None,
         help="Path to a JSON or YAML config file describing the analysis.  "
-             "Required unless --generate-config is used.",
+        "Required unless --generate-config is used.",
     )
     ma_parser.add_argument(
         "--dry-run",
         action="store_true",
         default=False,
-        help="Validate the config and check connectivity without running "
-             "the full pipeline.",
+        help="Validate the config and check connectivity without running " "the full pipeline.",
     )
     ma_parser.add_argument(
         "--output-dir",

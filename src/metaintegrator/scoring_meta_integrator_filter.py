@@ -195,9 +195,7 @@ class EnhancedFilterResults(FilterResults):
 
         # Sort by gene scores
         candidate_scores = {gene: self.gene_scores.get(gene, 0) for gene in candidates}
-        sorted_genes = sorted(
-            candidate_scores.items(), key=lambda x: x[1], reverse=True
-        )
+        sorted_genes = sorted(candidate_scores.items(), key=lambda x: x[1], reverse=True)
 
         return [gene for gene, _ in sorted_genes[:n]]
 
@@ -324,9 +322,7 @@ class StandardFilteringStrategy(FilteringStrategy):
 
         # FDR filter (effect size FDR)
         if config.fdr_thresh < 1:
-            filtered_data = filtered_data[
-                filtered_data["effect_fdr"] <= config.fdr_thresh
-            ]
+            filtered_data = filtered_data[filtered_data["effect_fdr"] <= config.fdr_thresh]
 
         # Number of studies filter
         if config.number_studies_thresh > 1:
@@ -352,12 +348,10 @@ class StandardFilteringStrategy(FilteringStrategy):
 
         # Check if Fisher FDR columns exist (they should from meta-analysis)
         has_fisher_up = (
-            "fisherFDRUp" in pos_candidates.columns
-            or "fisher_fdr_up" in pos_candidates.columns
+            "fisherFDRUp" in pos_candidates.columns or "fisher_fdr_up" in pos_candidates.columns
         )
         has_fisher_down = (
-            "fisherFDRDown" in neg_candidates.columns
-            or "fisher_fdr_down" in neg_candidates.columns
+            "fisherFDRDown" in neg_candidates.columns or "fisher_fdr_down" in neg_candidates.columns
         )
 
         # Normalize column names (handle both camelCase and snake_case)
@@ -464,22 +458,16 @@ class AdaptiveFilteringStrategy(FilteringStrategy):
         # Adaptive effect size filter
         if config.min_effect_size_percentile > 0:
             effect_threshold = adaptive_thresholds["effect_size"]
-            filtered_data = filtered_data[
-                filtered_data["effect_size"].abs() >= effect_threshold
-            ]
+            filtered_data = filtered_data[filtered_data["effect_size"].abs() >= effect_threshold]
 
         # Adaptive heterogeneity filter
         if config.max_heterogeneity_percentile < 100:
             het_threshold = adaptive_thresholds["heterogeneity_pval"]
-            filtered_data = filtered_data[
-                filtered_data["heterogeneity_pval"] >= het_threshold
-            ]
+            filtered_data = filtered_data[filtered_data["heterogeneity_pval"] >= het_threshold]
 
         # Standard FDR and study count filters
         if config.fdr_thresh < 1:
-            filtered_data = filtered_data[
-                filtered_data["effect_fdr"] <= config.fdr_thresh
-            ]
+            filtered_data = filtered_data[filtered_data["effect_fdr"] <= config.fdr_thresh]
 
         if config.number_studies_thresh > 1:
             filtered_data = filtered_data[
@@ -593,9 +581,7 @@ class CombinedCriteriaFilteringStrategy(FilteringStrategy):
 
         # Apply basic significance filter
         if config.fdr_thresh < 1:
-            filtered_data = filtered_data[
-                filtered_data["effect_fdr"] <= config.fdr_thresh
-            ]
+            filtered_data = filtered_data[filtered_data["effect_fdr"] <= config.fdr_thresh]
 
         # Separate by effect direction
         pos_genes = filtered_data[filtered_data["effect_size"] > 0].index.tolist()
@@ -716,9 +702,7 @@ class EnhancedMetaIntegratorFilter(LoggerMixin):
             elif "filterRes" in meta_object:
                 data = meta_object["filterRes"]
             else:
-                raise ValueError(
-                    "Meta object must contain 'original_result' or 'filterRes'"
-                )
+                raise ValueError("Meta object must contain 'original_result' or 'filterRes'")
 
             self.logger.info(f"Starting {strategy} filtering for {len(data)} genes")
 
@@ -742,10 +726,7 @@ class EnhancedMetaIntegratorFilter(LoggerMixin):
 
             # Apply cross-study consistency check if requested
             cross_study_consistency = {}
-            if (
-                self.config.require_consistency_across_studies
-                and "study" in data.columns
-            ):
+            if self.config.require_consistency_across_studies and "study" in data.columns:
                 pos_genes, neg_genes, cross_study_consistency = (
                     self._filter_by_cross_study_consistency(data, pos_genes, neg_genes)
                 )
@@ -760,9 +741,7 @@ class EnhancedMetaIntegratorFilter(LoggerMixin):
                 )
 
             # Calculate filter performance metrics
-            filter_performance = self._assess_filter_performance(
-                data, pos_genes, neg_genes
-            )
+            filter_performance = self._assess_filter_performance(data, pos_genes, neg_genes)
 
             # Get adaptive thresholds if used
             adaptive_thresholds = {}
@@ -842,9 +821,7 @@ class EnhancedMetaIntegratorFilter(LoggerMixin):
                 # Create reduced dataset for next iteration
                 all_genes = results.pos_gene_names + results.neg_gene_names
                 if "original_result" in current_data:
-                    current_data["original_result"] = current_data[
-                        "original_result"
-                    ].loc[all_genes]
+                    current_data["original_result"] = current_data["original_result"].loc[all_genes]
                 elif "filterRes" in current_data:
                     current_data["filterRes"] = current_data["filterRes"].loc[all_genes]
 
@@ -1000,9 +977,7 @@ class EnhancedMetaIntegratorFilter(LoggerMixin):
         performance = {
             "genes_retained": total_filtered,
             "genes_original": total_original,
-            "retention_rate": (
-                total_filtered / total_original if total_original > 0 else 0
-            ),
+            "retention_rate": (total_filtered / total_original if total_original > 0 else 0),
             "positive_genes": len(pos_genes),
             "negative_genes": len(neg_genes),
             "direction_ratio": (

@@ -42,9 +42,7 @@ def debug_print(msg: str, debug: bool = False) -> None:
         sys.stderr.write(f"[DEBUG] {msg}\n")
 
 
-def find_matching_file(
-    folder: Path, partial: str, debug: bool = False
-) -> Optional[Path]:
+def find_matching_file(folder: Path, partial: str, debug: bool = False) -> Optional[Path]:
     """
     Return the first file in *folder* whose name contains partial. If no match is found, return None.
 
@@ -178,9 +176,9 @@ def compare_csvs(
                 return False, None
 
         # Index Alignment
-        id_col1, id_col2 = _find_sample_id_column(
-            df1, f1, debug
-        ), _find_sample_id_column(df2, f2, debug)
+        id_col1, id_col2 = _find_sample_id_column(df1, f1, debug), _find_sample_id_column(
+            df2, f2, debug
+        )
 
         debug_print(f"Using ID column '{id_col1}' for file 1", debug)
         debug_print(f"Using ID column '{id_col2}' for file 2", debug)
@@ -304,9 +302,7 @@ def compare_csvs(
                 col2_vals = df2_num[col].values
 
                 # Use np.isclose for element-wise comparison with NaN handling
-                is_close = np.isclose(
-                    col1_vals, col2_vals, rtol=rtol, atol=atol, equal_nan=True
-                )
+                is_close = np.isclose(col1_vals, col2_vals, rtol=rtol, atol=atol, equal_nan=True)
 
                 if not is_close.all():
                     numeric_identical = False
@@ -328,8 +324,7 @@ def compare_csvs(
                                 ),
                                 "rel_difference": (
                                     abs((val1 - val2) / val1)
-                                    if val1 != 0
-                                    and not (np.isnan(val1) or np.isnan(val2))
+                                    if val1 != 0 and not (np.isnan(val1) or np.isnan(val2))
                                     else np.nan
                                 ),
                                 "type": "numeric",
@@ -341,9 +336,7 @@ def compare_csvs(
                 arr1 = df1_num.values.astype(float)
                 arr2 = df2_num.values.astype(float)
                 diff = np.abs(arr1 - arr2)
-                diff_df = pd.DataFrame(
-                    diff, columns=numeric_columns, index=df1_num.index
-                )
+                diff_df = pd.DataFrame(diff, columns=numeric_columns, index=df1_num.index)
                 debug_print("Numeric values differ beyond tolerance.", debug)
             else:
                 debug_print("Numeric columns match within tolerance.", debug)
@@ -431,9 +424,7 @@ def compare_csvs(
 
                 print("Differences:")
                 for _, diff in sample_diffs.iterrows():
-                    if diff["type"] == "numeric" and not np.isnan(
-                        diff["abs_difference"]
-                    ):
+                    if diff["type"] == "numeric" and not np.isnan(diff["abs_difference"]):
                         print(
                             f"  {diff['column']}: abs_diff = {diff['abs_difference']:.2e}, rel_diff = {diff['rel_difference']:.2e}"
                         )
@@ -475,8 +466,7 @@ def main() -> None:
         type=str,
         nargs="+",
         required=True,
-        help="One or more partial strings that should appear in "
-        "the file names to be compared.",
+        help="One or more partial strings that should appear in " "the file names to be compared.",
     )
     parser.add_argument(
         "--rtol",
@@ -513,9 +503,7 @@ def main() -> None:
             print(f"[{partial}] ->  ❌  Missing file in one of the directories.")
             continue
 
-        identical, diff_df = compare_csvs(
-            f1, f2, rtol=args.rtol, atol=args.atol, debug=args.debug
-        )
+        identical, diff_df = compare_csvs(f1, f2, rtol=args.rtol, atol=args.atol, debug=args.debug)
 
         if identical:
             print(f"[{partial}] ->  ✅  Files are identical.")

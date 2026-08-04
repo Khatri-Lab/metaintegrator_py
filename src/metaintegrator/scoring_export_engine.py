@@ -124,9 +124,7 @@ class ExportEngine(LoggerMixin):
                 exported_files[fmt.value] = output_path
                 self.logger.info(f"Exported {analysis_name} results to {output_path}")
             except Exception as e:
-                self.logger.error(
-                    f"Failed to export {analysis_name} in {fmt.value} format: {e}"
-                )
+                self.logger.error(f"Failed to export {analysis_name} in {fmt.value} format: {e}")
 
         if additional_data:
             for data_name, data in additional_data.items():
@@ -138,19 +136,13 @@ class ExportEngine(LoggerMixin):
                             )
                             exported_files[f"{data_name}_{fmt.value}"] = output_path
                     else:
-                        output_path = self._export_json(
-                            data, f"{analysis_name}_{data_name}"
-                        )
+                        output_path = self._export_json(data, f"{analysis_name}_{data_name}")
                         exported_files[f"{data_name}_json"] = output_path
                 except Exception as e:
-                    self.logger.error(
-                        f"Failed to export additional data {data_name}: {e}"
-                    )
+                    self.logger.error(f"Failed to export additional data {data_name}: {e}")
 
         if self.config.include_metadata:
-            metadata_path = self._export_metadata(
-                results, analysis_name, exported_files
-            )
+            metadata_path = self._export_metadata(results, analysis_name, exported_files)
             exported_files["metadata"] = metadata_path
 
         self.export_registry[analysis_name] = {
@@ -188,9 +180,7 @@ class ExportEngine(LoggerMixin):
             "metadata": summary.metadata,
         }
 
-        json_path = self._export_json(
-            summary_data, f"{analysis_name}_statistical_summary"
-        )
+        json_path = self._export_json(summary_data, f"{analysis_name}_statistical_summary")
         exported_files["summary_json"] = json_path
 
         # Export individual components as CSV/Excel
@@ -277,9 +267,7 @@ class ExportEngine(LoggerMixin):
 
         return exported_files
 
-    def _export_dataframe(
-        self, df: pd.DataFrame, name: str, format_type: ExportFormat
-    ) -> Path:
+    def _export_dataframe(self, df: pd.DataFrame, name: str, format_type: ExportFormat) -> Path:
         """
         Export a pandas DataFrame to a file in the specified format.
 
@@ -445,14 +433,10 @@ class ExportEngine(LoggerMixin):
                     axes[0, 0].set_xlabel("Mean Value")
                     axes[0, 0].set_ylabel("Frequency")
                 else:
-                    axes[0, 0].text(
-                        0.5, 0.5, "No data available", ha="center", va="center"
-                    )
+                    axes[0, 0].text(0.5, 0.5, "No data available", ha="center", va="center")
                     axes[0, 0].set_title("Distribution of Means")
             else:
-                axes[0, 0].text(
-                    0.5, 0.5, "No mean data available", ha="center", va="center"
-                )
+                axes[0, 0].text(0.5, 0.5, "No mean data available", ha="center", va="center")
                 axes[0, 0].set_title("Distribution of Means")
 
             # Distribution of standard deviations
@@ -464,14 +448,10 @@ class ExportEngine(LoggerMixin):
                     axes[0, 1].set_xlabel("Standard Deviation")
                     axes[0, 1].set_ylabel("Frequency")
                 else:
-                    axes[0, 1].text(
-                        0.5, 0.5, "No data available", ha="center", va="center"
-                    )
+                    axes[0, 1].text(0.5, 0.5, "No data available", ha="center", va="center")
                     axes[0, 1].set_title("Distribution of Standard Deviations")
             else:
-                axes[0, 1].text(
-                    0.5, 0.5, "No std data available", ha="center", va="center"
-                )
+                axes[0, 1].text(0.5, 0.5, "No std data available", ha="center", va="center")
                 axes[0, 1].set_title("Distribution of Standard Deviations")
 
             # Missing data pattern
@@ -483,14 +463,10 @@ class ExportEngine(LoggerMixin):
                     axes[1, 0].set_xlabel("Variable Index")
                     axes[1, 0].set_ylabel("Missing Percentage")
                 else:
-                    axes[1, 0].text(
-                        0.5, 0.5, "No missing data info", ha="center", va="center"
-                    )
+                    axes[1, 0].text(0.5, 0.5, "No missing data info", ha="center", va="center")
                     axes[1, 0].set_title("Missing Data Percentage by Variable")
             else:
-                axes[1, 0].text(
-                    0.5, 0.5, "No missing data info", ha="center", va="center"
-                )
+                axes[1, 0].text(0.5, 0.5, "No missing data info", ha="center", va="center")
                 axes[1, 0].set_title("Missing Data Percentage by Variable")
 
             # Coefficient of variation
@@ -502,14 +478,10 @@ class ExportEngine(LoggerMixin):
                     axes[1, 1].set_xlabel("CV")
                     axes[1, 1].set_ylabel("Frequency")
                 else:
-                    axes[1, 1].text(
-                        0.5, 0.5, "No CV data available", ha="center", va="center"
-                    )
+                    axes[1, 1].text(0.5, 0.5, "No CV data available", ha="center", va="center")
                     axes[1, 1].set_title("Distribution of Coefficient of Variation")
             else:
-                axes[1, 1].text(
-                    0.5, 0.5, "No CV data available", ha="center", va="center"
-                )
+                axes[1, 1].text(0.5, 0.5, "No CV data available", ha="center", va="center")
                 axes[1, 1].set_title("Distribution of Coefficient of Variation")
 
             plt.tight_layout()
@@ -522,10 +494,7 @@ class ExportEngine(LoggerMixin):
             plot_paths["overview"] = overview_path
 
             # Correlation heatmap if available
-            if (
-                summary.correlation_stats
-                and "pearson_matrix" in summary.correlation_stats
-            ):
+            if summary.correlation_stats and "pearson_matrix" in summary.correlation_stats:
                 corr_matrix = pd.DataFrame(summary.correlation_stats["pearson_matrix"])
 
                 # Only create heatmap if we have data
@@ -555,9 +524,7 @@ class ExportEngine(LoggerMixin):
 
         return plot_paths
 
-    def _generate_statistical_report(
-        self, summary: StatisticalSummary, analysis_name: str
-    ) -> Path:
+    def _generate_statistical_report(self, summary: StatisticalSummary, analysis_name: str) -> Path:
         """
         Generate a comprehensive statistical report in Markdown format.
 
@@ -657,9 +624,7 @@ Generated on: {{ timestamp }}
         report_content = template.render(**template_data)
 
         # Save report
-        report_path = (
-            self.config.base_output_dir / f"{analysis_name}_statistical_report.md"
-        )
+        report_path = self.config.base_output_dir / f"{analysis_name}_statistical_report.md"
         with open(report_path, "w") as f:
             f.write(report_content)
 

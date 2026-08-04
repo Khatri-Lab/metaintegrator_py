@@ -139,17 +139,13 @@ class NCBINetwork:
 
             except Exception as e:
                 last_error = e
-                log.warning(
-                    f"FTP listing attempt {attempt + 1}/{self.max_retries} "
-                    f"failed: {e}"
-                )
+                log.warning(f"FTP listing attempt {attempt + 1}/{self.max_retries} " f"failed: {e}")
                 if attempt < self.max_retries - 1:
                     wait = self.retry_backoff**attempt
                     time.sleep(wait)
 
         raise ConnectionError(
-            f"FTP listing failed for {ftp_path} after "
-            f"{self.max_retries} attempts: {last_error}"
+            f"FTP listing failed for {ftp_path} after " f"{self.max_retries} attempts: {last_error}"
         )
 
     # ------------------------------------------------------------------ #
@@ -201,8 +197,7 @@ class NCBINetwork:
             except Exception as e:
                 last_error = e
                 log.warning(
-                    f"    HTTPS download attempt {attempt + 1}/"
-                    f"{self.max_retries} failed: {e}"
+                    f"    HTTPS download attempt {attempt + 1}/" f"{self.max_retries} failed: {e}"
                 )
                 # Remove partial file
                 if local.exists():
@@ -212,8 +207,7 @@ class NCBINetwork:
                     time.sleep(wait)
 
         raise RuntimeError(
-            f"Download failed for {filename} after "
-            f"{self.max_retries} attempts: {last_error}"
+            f"Download failed for {filename} after " f"{self.max_retries} attempts: {last_error}"
         )
 
     # ------------------------------------------------------------------ #

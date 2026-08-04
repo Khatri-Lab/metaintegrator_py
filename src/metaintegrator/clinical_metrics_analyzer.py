@@ -158,9 +158,7 @@ class YoudenJAnalyzer:
                 if roc_data.shape[1] >= 2:
                     return roc_data.iloc[:, 0].values, roc_data.iloc[:, 1].values
                 else:
-                    raise ValueError(
-                        "DataFrame must have at least 2 columns for FPR and TPR"
-                    )
+                    raise ValueError("DataFrame must have at least 2 columns for FPR and TPR")
 
         elif isinstance(roc_data, dict):
             if "fpr" in roc_data and "tpr" in roc_data:
@@ -168,9 +166,7 @@ class YoudenJAnalyzer:
             elif "FPR" in roc_data and "TPR" in roc_data:
                 return np.array(roc_data["FPR"]), np.array(roc_data["TPR"])
             else:
-                raise ValueError(
-                    "Dict must contain 'fpr' and 'tpr' (or 'FPR' and 'TPR') keys"
-                )
+                raise ValueError("Dict must contain 'fpr' and 'tpr' (or 'FPR' and 'TPR') keys")
 
         elif isinstance(roc_data, (tuple, list)) and len(roc_data) == 2:
             return np.array(roc_data[0]), np.array(roc_data[1])
@@ -186,9 +182,7 @@ class YoudenJAnalyzer:
             raise ValueError("FPR and TPR arrays cannot be empty")
 
         if len(fpr) != len(tpr):
-            raise ValueError(
-                f"FPR and TPR must have same length: {len(fpr)} vs {len(tpr)}"
-            )
+            raise ValueError(f"FPR and TPR must have same length: {len(fpr)} vs {len(tpr)}")
 
         if len(fpr) < 2:
             raise ValueError("Need at least 2 points for Youden's J calculation")
@@ -388,9 +382,7 @@ class ClinicalParametersAnalyzer:
         if not has_score:
             raise ValueError(f"Study {study_index + 1} must contain 'score' key")
         if not has_group:
-            raise ValueError(
-                f"Study {study_index + 1} must contain 'group' or 'class' key"
-            )
+            raise ValueError(f"Study {study_index + 1} must contain 'group' or 'class' key")
 
         # Extract scores
         scores = np.array(study_data["score"])
@@ -410,9 +402,7 @@ class ClinicalParametersAnalyzer:
                 f"Score and group arrays must have same length: {len(scores)} vs {len(groups)}"
             )
 
-        if (
-            len(scores) < 4
-        ):  # Need at least 4 samples for meaningful clinical parameters
+        if len(scores) < 4:  # Need at least 4 samples for meaningful clinical parameters
             warnings.warn(
                 f"Study {study_name} has only {len(scores)} samples, may produce unreliable results"
             )
@@ -435,9 +425,7 @@ class ClinicalParametersAnalyzer:
 
         return scores, groups, study_name
 
-    def _calculate_threshold(
-        self, scores: np.ndarray, groups: np.ndarray, method: str
-    ) -> float:
+    def _calculate_threshold(self, scores: np.ndarray, groups: np.ndarray, method: str) -> float:
         """Calculate decision threshold using specified method."""
         if method == "weighted_means":
             # R's original method: weighted combination of group means
@@ -451,9 +439,7 @@ class ClinicalParametersAnalyzer:
         else:
             raise ValueError(f"Unknown threshold method: {method}")
 
-    def _weighted_means_threshold(
-        self, scores: np.ndarray, groups: np.ndarray
-    ) -> float:
+    def _weighted_means_threshold(self, scores: np.ndarray, groups: np.ndarray) -> float:
         """
         Calculate threshold using R's weighted means method.
 
@@ -473,9 +459,7 @@ class ClinicalParametersAnalyzer:
 
         # Handle zero standard deviation
         if std_0 == 0 or std_1 == 0:
-            warnings.warn(
-                "Zero standard deviation detected, using simple mean threshold"
-            )
+            warnings.warn("Zero standard deviation detected, using simple mean threshold")
             return (mean_0 + mean_1) / 2
 
         # R's weighted means formula
@@ -484,9 +468,7 @@ class ClinicalParametersAnalyzer:
 
         return numerator / denominator
 
-    def _youden_optimal_threshold(
-        self, scores: np.ndarray, groups: np.ndarray
-    ) -> float:
+    def _youden_optimal_threshold(self, scores: np.ndarray, groups: np.ndarray) -> float:
         """Calculate threshold that maximizes Youden's J statistic."""
         from sklearn.metrics import roc_curve
 
@@ -498,9 +480,7 @@ class ClinicalParametersAnalyzer:
 
         return thresholds[optimal_idx]
 
-    def _closest_to_topleft_threshold(
-        self, scores: np.ndarray, groups: np.ndarray
-    ) -> float:
+    def _closest_to_topleft_threshold(self, scores: np.ndarray, groups: np.ndarray) -> float:
         """Calculate threshold for point closest to (0,1) in ROC space."""
         from sklearn.metrics import roc_curve
 
@@ -527,9 +507,7 @@ class ClinicalParametersAnalyzer:
 
         return tp, tn, fp, fn
 
-    def _calculate_clinical_metrics(
-        self, tp: int, tn: int, fp: int, fn: int
-    ) -> List[float]:
+    def _calculate_clinical_metrics(self, tp: int, tn: int, fp: int, fn: int) -> List[float]:
         """Calculate clinical performance metrics from confusion matrix elements."""
         # Calculate metrics with safe division
         total_pos = tp + fn
@@ -586,9 +564,7 @@ def calculate_optimal_cutoff(roc_data, sensitivity_target=0.95, return_details=F
         Optimal cutoff analysis or J statistic value
     """
     analyzer = YoudenJAnalyzer()
-    return analyzer.calculate_optimal_cutoff(
-        roc_data, sensitivity_target, return_details
-    )
+    return analyzer.calculate_optimal_cutoff(roc_data, sensitivity_target, return_details)
 
 
 def print_optimal_cutoff_summary(roc_data, sensitivity_target=0.95, precision=1):
@@ -619,9 +595,7 @@ def calculate_multi_study_clinical_parameters(
         DataFrame with clinical performance metrics
     """
     analyzer = ClinicalParametersAnalyzer()
-    return analyzer.calculate_multi_study_parameters(
-        study_data_list, threshold_method, **kwargs
-    )
+    return analyzer.calculate_multi_study_parameters(study_data_list, threshold_method, **kwargs)
 
 
 # ============================================================================

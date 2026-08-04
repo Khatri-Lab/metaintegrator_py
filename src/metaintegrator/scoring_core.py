@@ -124,8 +124,7 @@ class BaseConfig:
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
         return {
-            field.name: getattr(self, field.name)
-            for field in self.__dataclass_fields__.values()
+            field.name: getattr(self, field.name) for field in self.__dataclass_fields__.values()
         }
 
     @classmethod
@@ -170,9 +169,7 @@ class FilterConfig(BaseConfig):
         if self.number_studies_thresh < 1:
             raise ConfigurationError("Number of studies threshold must be at least 1")
         if not 0 <= self.heterogeneity_pval_thresh <= 1:
-            raise ConfigurationError(
-                "Heterogeneity p-value threshold must be between 0 and 1"
-            )
+            raise ConfigurationError("Heterogeneity p-value threshold must be between 0 and 1")
 
 
 # ------------------------------------------------------------------
@@ -263,9 +260,7 @@ class PathwayConfig(BaseConfig):
         if self.min_genes_per_pathway < 1:
             raise ConfigurationError("min_genes_per_pathway must be at least 1")
         if self.max_genes_per_pathway < self.min_genes_per_pathway:
-            raise ConfigurationError(
-                "max_genes_per_pathway must be >= min_genes_per_pathway"
-            )
+            raise ConfigurationError("max_genes_per_pathway must be >= min_genes_per_pathway")
 
 
 # ------------------------------------------------------------------
@@ -286,9 +281,7 @@ class SummaryConfig(BaseConfig):
 
     include_distributions: bool = True
     include_correlations: bool = False
-    significance_thresholds: List[float] = field(
-        default_factory=lambda: [0.05, 0.01, 0.001]
-    )
+    significance_thresholds: List[float] = field(default_factory=lambda: [0.05, 0.01, 0.001])
     effect_size_thresholds: List[float] = field(default_factory=lambda: [0.2, 0.5, 0.8])
     heterogeneity_threshold: float = 0.05
     min_studies_threshold: int = 2
@@ -346,11 +339,7 @@ class OverlapAnalysis:
         if self.overlap_matrix is not None and gene_type == "positive":
             return self.overlap_matrix
 
-        overlaps = (
-            self.positive_overlaps
-            if gene_type == "positive"
-            else self.negative_overlaps
-        )
+        overlaps = self.positive_overlaps if gene_type == "positive" else self.negative_overlaps
         return pd.DataFrame(overlaps).fillna(0)
 
     def get_jaccard_matrix(self) -> pd.DataFrame:
@@ -751,9 +740,7 @@ class MetaAnalysisValidator(BaseValidator):
 
         # Check required columns
         missing_required = [
-            col
-            for col in MetaAnalysisValidator.REQUIRED_COLUMNS
-            if col not in results.columns
+            col for col in MetaAnalysisValidator.REQUIRED_COLUMNS if col not in results.columns
         ]
         if missing_required:
             raise ValidationError(f"Missing required columns: {missing_required}")
@@ -763,9 +750,7 @@ class MetaAnalysisValidator(BaseValidator):
 
         # Warn about missing optional columns
         missing_optional = [
-            col
-            for col in MetaAnalysisValidator.OPTIONAL_COLUMNS
-            if col not in results.columns
+            col for col in MetaAnalysisValidator.OPTIONAL_COLUMNS if col not in results.columns
         ]
         if missing_optional:
             warnings.warn(f"Missing optional columns: {missing_optional}")
@@ -789,9 +774,7 @@ class MetaAnalysisValidator(BaseValidator):
 
         # Check required columns
         missing_required = [
-            col
-            for col in MetaAnalysisValidator.REQUIRED_COLUMNS
-            if col not in results.columns
+            col for col in MetaAnalysisValidator.REQUIRED_COLUMNS if col not in results.columns
         ]
         if missing_required:
             raise ValidationError(f"Missing required columns: {missing_required}")
@@ -801,9 +784,7 @@ class MetaAnalysisValidator(BaseValidator):
 
         # Warn about missing optional columns
         missing_optional = [
-            col
-            for col in MetaAnalysisValidator.OPTIONAL_COLUMNS
-            if col not in results.columns
+            col for col in MetaAnalysisValidator.OPTIONAL_COLUMNS if col not in results.columns
         ]
         if missing_optional:
             warnings.warn(f"Missing optional columns: {missing_optional}")
@@ -856,9 +837,7 @@ class FilterResultsValidator(BaseValidator):
             raise ValidationError("Filter results must be a dictionary")
 
         missing_required = [
-            field
-            for field in FilterResultsValidator.REQUIRED_FIELDS
-            if field not in filter_results
+            field for field in FilterResultsValidator.REQUIRED_FIELDS if field not in filter_results
         ]
         if missing_required:
             raise ValidationError(f"Missing required fields: {missing_required}")
@@ -966,9 +945,7 @@ class DataFrameUtils:
         return data
 
     @staticmethod
-    def safe_column_access(
-        df: pd.DataFrame, column: str, default_value: Any = None
-    ) -> pd.Series:
+    def safe_column_access(df: pd.DataFrame, column: str, default_value: Any = None) -> pd.Series:
         """
         Safely access a DataFrame column with a default value.
 
@@ -984,9 +961,7 @@ class DataFrameUtils:
         return pd.Series(default_value, index=df.index)
 
     @staticmethod
-    def validate_columns(
-        df: pd.DataFrame, required: List[str], optional: List[str] = None
-    ) -> None:
+    def validate_columns(df: pd.DataFrame, required: List[str], optional: List[str] = None) -> None:
         """
         Validate that a DataFrame contains required columns and warn about missing optional ones.
 
@@ -1035,9 +1010,7 @@ class DataFrameUtils:
         for col in df.columns:
             total_values = len(df)
             missing_count = df[col].isnull().sum()
-            missing_percentage = (
-                (missing_count / total_values) * 100 if total_values > 0 else 0
-            )
+            missing_percentage = (missing_count / total_values) * 100 if total_values > 0 else 0
 
             missing_analysis[col] = {
                 "missing_count": int(missing_count),

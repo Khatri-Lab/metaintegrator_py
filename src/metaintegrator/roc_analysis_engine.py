@@ -319,9 +319,7 @@ class ROCAnalysisEngine:
             return (ci_lower, ci_upper)
 
         except (ZeroDivisionError, ValueError, OverflowError) as e:
-            logger.warning(
-                f"AUC CI calculation failed: {str(e)}, returning point estimate"
-            )
+            logger.warning(f"AUC CI calculation failed: {str(e)}, returning point estimate")
             return (auc_val, auc_val)
 
     def _calculate_auc_pvalue(self, y_true: np.ndarray, auc_val: float) -> float:
@@ -433,9 +431,7 @@ class SignatureScoringEngine:
         else:
             raise ValueError(f"Method {method} not implemented")
 
-    def _get_gene_indices(
-        self, gene_keys: List[str], target_genes: List[str]
-    ) -> List[int]:
+    def _get_gene_indices(self, gene_keys: List[str], target_genes: List[str]) -> List[int]:
         """Get indices of target genes in gene_keys list."""
         indices = []
         for gene in target_genes:
@@ -546,9 +542,7 @@ class KesterBuntinxEngine:
 
                 # Check for invalid data: must have both positive and negative samples
                 if n_pos == 0 or n_neg == 0:
-                    logger.warning(
-                        f"Invalid data for {study_name}: n_pos={n_pos}, n_neg={n_neg}"
-                    )
+                    logger.warning(f"Invalid data for {study_name}: n_pos={n_pos}, n_neg={n_neg}")
                     results.append(
                         {
                             "study": study_name,
@@ -630,9 +624,7 @@ class KesterBuntinxEngine:
                         }
                     )
                 except (ValueError, RuntimeError) as e:
-                    logger.warning(
-                        f"Failed to fit K&B model for {study_name}: {str(e)}"
-                    )
+                    logger.warning(f"Failed to fit K&B model for {study_name}: {str(e)}")
                     # Return NaN for invalid/failed model fits
                     results.append(
                         {
@@ -697,17 +689,13 @@ class KesterBuntinxEngine:
         weights = self._calculate_kb_weights(y_true, y_scores, fpr, tpr)
 
         # Filter valid points
-        valid_mask = (
-            np.isfinite(S) & np.isfinite(D) & np.isfinite(weights) & (weights > 0)
-        )
+        valid_mask = np.isfinite(S) & np.isfinite(D) & np.isfinite(weights) & (weights > 0)
         S_valid = S[valid_mask]
         D_valid = D[valid_mask]
         weights_valid = weights[valid_mask]
 
         if len(S_valid) < min_points:
-            raise ValueError(
-                f"Insufficient valid points ({len(S_valid)}) for model fitting"
-            )
+            raise ValueError(f"Insufficient valid points ({len(S_valid)}) for model fitting")
 
         # Bootstrap estimation
         return self._bootstrap_kb_regression(S_valid, D_valid, weights_valid, boot_reps)
@@ -755,9 +743,7 @@ class KesterBuntinxEngine:
             weights_boot = weights[indices]
 
             try:
-                alpha_boot, beta_boot = self._weighted_least_squares(
-                    S_boot, D_boot, weights_boot
-                )
+                alpha_boot, beta_boot = self._weighted_least_squares(S_boot, D_boot, weights_boot)
                 alphas.append(alpha_boot)
                 betas.append(beta_boot)
             except:
@@ -796,9 +782,7 @@ class KesterBuntinxEngine:
 
         return alpha, beta
 
-    def generate_summary_roc(
-        self, alpha: float, beta: float, n_points: int = 100
-    ) -> pd.DataFrame:
+    def generate_summary_roc(self, alpha: float, beta: float, n_points: int = 100) -> pd.DataFrame:
         """Generate summary ROC curve from alpha and beta parameters."""
 
         # Bound beta to prevent numerical issues
@@ -909,9 +893,7 @@ class UnifiedROCAnalyzer:
             Dict with optimal cutoff analysis for each study
         """
         if analysis_results.get("method") != "simple":
-            raise ValueError(
-                "Optimal cutoffs can only be calculated for simple pooled analysis"
-            )
+            raise ValueError("Optimal cutoffs can only be calculated for simple pooled analysis")
 
         cutoff_results = {}
 
@@ -983,15 +965,11 @@ class UnifiedROCAnalyzer:
                 study_data_list.append(study_data)
 
             except Exception as e:
-                logger.warning(
-                    f"Failed to prepare {name} for clinical analysis: {str(e)}"
-                )
+                logger.warning(f"Failed to prepare {name} for clinical analysis: {str(e)}")
                 continue
 
         if not study_data_list:
-            raise ValueError(
-                "No studies could be prepared for clinical parameter analysis"
-            )
+            raise ValueError("No studies could be prepared for clinical parameter analysis")
 
         return self.clinical_analyzer.calculate_multi_study_parameters(
             study_data_list, threshold_method=threshold_method
@@ -1016,9 +994,7 @@ class UnifiedROCAnalyzer:
 
         # 1. Clinical parameters across studies
         try:
-            clinical_params = self.calculate_clinical_parameters(
-                meta_object, filter_object
-            )
+            clinical_params = self.calculate_clinical_parameters(meta_object, filter_object)
             print("\nClinical Parameters by Study:")
             print(clinical_params)
         except Exception as e:
@@ -1105,19 +1081,13 @@ class UnifiedROCAnalyzer:
             save_path=kwargs.get("save_path"),
         )
 
-    def summary_roc_plot(
-        self, meta_object: Dict, filter_object: Dict, **kwargs
-    ) -> plt.Figure:
+    def summary_roc_plot(self, meta_object: Dict, filter_object: Dict, **kwargs) -> plt.Figure:
         """Generate Kester & Buntinx summary ROC plot."""
         return self.pooled_roc_plot(meta_object, filter_object, smoothed=True, **kwargs)
 
-    def summary_roc_calc(
-        self, meta_object: Dict, filter_object: Dict, **kwargs
-    ) -> pd.DataFrame:
+    def summary_roc_calc(self, meta_object: Dict, filter_object: Dict, **kwargs) -> pd.DataFrame:
         """Calculate summary ROC statistics without plotting."""
-        results = self.pooled_roc_analysis(
-            meta_object, filter_object, "kester_buntinx", **kwargs
-        )
+        results = self.pooled_roc_analysis(meta_object, filter_object, "kester_buntinx", **kwargs)
 
         # Extract summary statistics
         summary_stats = results.get("summary_statistics", {})
@@ -1883,9 +1853,7 @@ def calculate_signature_scores(
     return engine.calculate_scores(expr_data, gene_keys, pos_genes, neg_genes, method)
 
 
-def analyze_roc_curve(
-    y_true: np.ndarray, y_scores: np.ndarray, **kwargs
-) -> Dict[str, Any]:
+def analyze_roc_curve(y_true: np.ndarray, y_scores: np.ndarray, **kwargs) -> Dict[str, Any]:
     """Analyze single ROC curve with comprehensive statistics."""
     analyzer = UnifiedROCAnalyzer()
     return analyzer.analyze_single_roc(y_true, y_scores, **kwargs)

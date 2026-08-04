@@ -95,9 +95,7 @@ class MetaAnalysisPowerCalculator:
             >>> print(f"Power: {result.power:.3f}")
         """
         # 1. Validation and Parameter Resolution
-        self._validate_inputs(
-            effect_size, avg_sample_size, num_studies, heterogeneity, tail, alpha
-        )
+        self._validate_inputs(effect_size, avg_sample_size, num_studies, heterogeneity, tail, alpha)
         het_val = self._resolve_heterogeneity(heterogeneity)
         n = avg_sample_size
 
@@ -395,9 +393,7 @@ class MetaAnalysisPowerCalculator:
                 break
 
         if required_studies is None:
-            warnings.warn(
-                f"Target power {target_power} not achieved within {max_studies} studies."
-            )
+            warnings.warn(f"Target power {target_power} not achieved within {max_studies} studies.")
 
         return {
             "required_studies": required_studies,
@@ -726,9 +722,7 @@ class PowerAnalysisPlotter:
         # Aggregate data by x_var and y_var to handle cases where there are
         # multiple varying parameters (e.g., effect_size, sample_size, num_studies)
         # This prevents "duplicate entries" error when pivoting
-        aggregated_data = power_grid.groupby([x_var, y_var], as_index=False)[
-            z_var
-        ].mean()
+        aggregated_data = power_grid.groupby([x_var, y_var], as_index=False)[z_var].mean()
 
         # Pivot and format labels
         heatmap_data = aggregated_data.pivot(index=y_var, columns=x_var, values=z_var)

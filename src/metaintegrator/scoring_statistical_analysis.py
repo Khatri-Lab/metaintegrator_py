@@ -151,9 +151,7 @@ class StatisticalAnalyzer(LoggerMixin):
 
         return basic_stats
 
-    def _calculate_distribution_statistics(
-        self, results: pd.DataFrame
-    ) -> Dict[str, Any]:
+    def _calculate_distribution_statistics(self, results: pd.DataFrame) -> Dict[str, Any]:
         """
         Calculate distribution‑related statistics for each numeric column.
 
@@ -194,9 +192,7 @@ class StatisticalAnalyzer(LoggerMixin):
                         "shapiro_stat": (
                             float(shapiro_stat) if not np.isnan(shapiro_stat) else None
                         ),
-                        "shapiro_p": (
-                            float(shapiro_p) if not np.isnan(shapiro_p) else None
-                        ),
+                        "shapiro_p": (float(shapiro_p) if not np.isnan(shapiro_p) else None),
                         "jarque_bera_stat": float(jarque_bera_stat),
                         "jarque_bera_p": float(jarque_bera_p),
                         "skewness": float(skewness),
@@ -212,9 +208,7 @@ class StatisticalAnalyzer(LoggerMixin):
 
         return dist_stats
 
-    def _calculate_correlation_statistics(
-        self, results: pd.DataFrame
-    ) -> Dict[str, Any]:
+    def _calculate_correlation_statistics(self, results: pd.DataFrame) -> Dict[str, Any]:
         """
         Calculate correlation statistics between numeric columns.
 
@@ -321,9 +315,7 @@ class StatisticalAnalyzer(LoggerMixin):
                 params = distribution.fit(data)
 
                 # Perform Kolmogorov‑Smirnov test
-                ks_stat, ks_p = stats.kstest(
-                    data, lambda x: distribution.cdf(x, *params)
-                )
+                ks_stat, ks_p = stats.kstest(data, lambda x: distribution.cdf(x, *params))
 
                 if ks_p > best_p:
                     best_dist = distribution.name
@@ -367,9 +359,7 @@ class StatisticalAnalyzer(LoggerMixin):
         mad_outliers = np.where(np.abs(modified_z_scores) > 3.5)[0]
 
         # Combine all outlier indices
-        all_outliers = np.unique(
-            np.concatenate([iqr_outliers, z_outliers, mad_outliers])
-        )
+        all_outliers = np.unique(np.concatenate([iqr_outliers, z_outliers, mad_outliers]))
 
         outliers["indices"] = all_outliers.tolist()
         outliers["values"] = data[all_outliers].tolist()
@@ -419,9 +409,7 @@ class StatisticalAnalyzer(LoggerMixin):
             strong_correlations_count, moderate_correlations_count,
             weak_correlations_count.
         """
-        upper_triangle = corr_matrix.where(
-            np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)
-        )
+        upper_triangle = corr_matrix.where(np.triu(np.ones_like(corr_matrix, dtype=bool), k=1))
         correlations = upper_triangle.stack().dropna()
 
         return {
@@ -469,9 +457,7 @@ class DistributionAnalyzer(LoggerMixin):
 
         return results
 
-    def _analyze_single_distribution(
-        self, data: np.ndarray, name: str
-    ) -> Dict[str, Any]:
+    def _analyze_single_distribution(self, data: np.ndarray, name: str) -> Dict[str, Any]:
         """Analyze a single distribution comprehensively.
         Args:
             data: One‑dimensional numeric array for the variable.
@@ -698,15 +684,13 @@ class DistributionAnalyzer(LoggerMixin):
 
                 if len(clean_data1) > 0 and len(clean_data2) > 0:
                     comparison_key = f"{name1}_vs_{name2}"
-                    comparison_results[comparison_key] = (
-                        self._compare_two_distributions(clean_data1, clean_data2)
+                    comparison_results[comparison_key] = self._compare_two_distributions(
+                        clean_data1, clean_data2
                     )
 
         return comparison_results
 
-    def _compare_two_distributions(
-        self, data1: np.ndarray, data2: np.ndarray
-    ) -> Dict[str, Any]:
+    def _compare_two_distributions(self, data1: np.ndarray, data2: np.ndarray) -> Dict[str, Any]:
         """
         Compare two distributions using multiple statistical tests.
 

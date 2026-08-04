@@ -147,9 +147,7 @@ class HybridGeoSource(DataSource):
 
         for platform_id, expr_df in sm_data.items():
             if platform_id not in gse.gpls:
-                log.warning(
-                    f"    GPL {platform_id} not found in GEOparse data, skipping"
-                )
+                log.warning(f"    GPL {platform_id} not found in GEOparse data, skipping")
                 continue
 
             gpl = gse.gpls[platform_id]
@@ -161,9 +159,7 @@ class HybridGeoSource(DataSource):
                     f"columns: {gpl.table.columns.tolist()[:6]}..."
                 )
             else:
-                log.error(
-                    f"    GPL table is EMPTY for {platform_id} — annotation will fail!"
-                )
+                log.error(f"    GPL table is EMPTY for {platform_id} — annotation will fail!")
 
             raw = RawDataset(
                 source_id=gse_id,
@@ -188,8 +184,7 @@ class HybridGeoSource(DataSource):
 
         if not raw_datasets:
             raise ValueError(
-                f"No platforms could be matched between Series Matrix "
-                f"and GEOparse for {gse_id}"
+                f"No platforms could be matched between Series Matrix " f"and GEOparse for {gse_id}"
             )
 
         return raw_datasets
@@ -228,9 +223,7 @@ class HybridGeoSource(DataSource):
                     raise
                 continue
 
-        log.info(
-            f"✓ Fetched {len(all_raw)} raw datasets " f"from {len(dataset_ids)} GSE IDs"
-        )
+        log.info(f"✓ Fetched {len(all_raw)} raw datasets " f"from {len(dataset_ids)} GSE IDs")
         return all_raw
 
     # ------------------------------------------------------------------ #

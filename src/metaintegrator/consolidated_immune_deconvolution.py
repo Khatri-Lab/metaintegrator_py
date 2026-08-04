@@ -264,9 +264,7 @@ class ImmunoStatesDeconvolver:
 
                 # Use sklearn's quantile_transform as it's more robust
                 # This closely matches R's preprocessCore behavior
-                normalized = quantile_transform(
-                    matrix, output_distribution="uniform", copy=True
-                )
+                normalized = quantile_transform(matrix, output_distribution="uniform", copy=True)
 
             # Restore NaN positions
             normalized[nan_mask] = np.nan
@@ -275,9 +273,7 @@ class ImmunoStatesDeconvolver:
             warnings.warn(f"Quantile normalization failed: {e}, returning original")
             return matrix
 
-    def immunostates_deconv(
-        self, meta_object: Dict, max_cores: Optional[int] = None
-    ) -> Dict:
+    def immunostates_deconv(self, meta_object: Dict, max_cores: Optional[int] = None) -> Dict:
         """
         Perform immunoStates deconvolution on meta object.
 
@@ -293,9 +289,7 @@ class ImmunoStatesDeconvolver:
         expression_matrices = {}
         for dataset_name, dataset in meta_object["originalData"].items():
             try:
-                expr_df = self._extract_data_for_genes_enhanced(
-                    dataset, promiscuous_probes=False
-                )
+                expr_df = self._extract_data_for_genes_enhanced(dataset, promiscuous_probes=False)
                 if expr_df is not None and not expr_df.empty:
                     expression_matrices[dataset_name] = expr_df
             except Exception as e:
@@ -309,9 +303,7 @@ class ImmunoStatesDeconvolver:
                 if deconv_result is not None and not deconv_result.empty:
                     enhanced_result = self._add_aggregate_cell_types(deconv_result)
                     output[dataset_name] = enhanced_result
-                    print(
-                        f"Successfully processed {dataset_name}: {len(enhanced_result)} samples"
-                    )
+                    print(f"Successfully processed {dataset_name}: {len(enhanced_result)} samples")
             except Exception as e:
                 print(f"Error in deconvolution for {dataset_name}: {e}")
 
@@ -494,9 +486,7 @@ class ImmunoStatesDeconvolver:
             scaled_expr = expr_clean - np.mean(expr_clean)
 
         # Run enhanced regression
-        regression_result = self._enhanced_linear_regression(
-            basis[valid_mask, :], scaled_expr
-        )
+        regression_result = self._enhanced_linear_regression(basis[valid_mask, :], scaled_expr)
 
         return {
             "sample": f"Sample_{sample_idx}",
@@ -525,9 +515,7 @@ class ImmunoStatesDeconvolver:
 
             # Convert coefficients to proportions (matches R behavior)
             coeff_sum = np.sum(coefficients)
-            proportions = (
-                coefficients / coeff_sum if coeff_sum > 0 else np.zeros(n_cell_types)
-            )
+            proportions = coefficients / coeff_sum if coeff_sum > 0 else np.zeros(n_cell_types)
 
             # Calculate fitted values and metrics
             fitted_values = model.predict(basis_matrix)
@@ -641,9 +629,7 @@ class ImmunoStatesCorrectionAnalyzer:
             ValueError: If the "immunoStates" field is missing or empty.
         """
         if "immunoStates" not in meta_object or not meta_object["immunoStates"]:
-            raise ValueError(
-                "Error: immunoStates must be run before correcting proportions."
-            )
+            raise ValueError("Error: immunoStates must be run before correcting proportions.")
 
         print("Correcting gene expression for cell type proportions...")
         corrected_expr = {}
@@ -659,14 +645,10 @@ class ImmunoStatesCorrectionAnalyzer:
                 if dataset_id not in meta_object["originalData"]:
                     print(f"Warning: No expression data found for {dataset_id}")
                     continue
-                expr_df = self._prepare_expr_data(
-                    meta_object["originalData"][dataset_id]["expr"]
-                )
+                expr_df = self._prepare_expr_data(meta_object["originalData"][dataset_id]["expr"])
 
                 # 3. Align Samples
-                common_samples = sorted(
-                    list(set(expr_df.columns) & set(cell_props.index))
-                )
+                common_samples = sorted(list(set(expr_df.columns) & set(cell_props.index)))
                 if not common_samples:
                     print(f"Warning: No common samples for {dataset_id}")
                     continue
@@ -682,9 +664,7 @@ class ImmunoStatesCorrectionAnalyzer:
         meta_object["iScorrExp"] = corrected_expr
         return meta_object
 
-    def _prepare_cell_props(
-        self, is_data: pd.DataFrame, dataset_id: str
-    ) -> Optional[pd.DataFrame]:
+    def _prepare_cell_props(self, is_data: pd.DataFrame, dataset_id: str) -> Optional[pd.DataFrame]:
         """
         Prepares cell proportions data for given dataset.
 
@@ -709,9 +689,7 @@ class ImmunoStatesCorrectionAnalyzer:
 
         props = is_data[available].copy()
         props["other_cell_types"] = 1.0 - props.sum(axis=1)
-        props.index = (
-            is_data["sample"] if "sample" in is_data.columns else is_data.index
-        )
+        props.index = is_data["sample"] if "sample" in is_data.columns else is_data.index
         return props
 
     def _prepare_expr_data(self, expr_data: Any) -> pd.DataFrame:
@@ -804,9 +782,7 @@ class ImmunoStatesCorrectionAnalyzer:
                 print(f"Warning: Failed to correct gene {gene_name}: {str(e)}")
                 corrected_rows.append(gene_expr.values)
 
-        return pd.DataFrame(
-            corrected_rows, index=expr_matrix.index, columns=expr_matrix.columns
-        )
+        return pd.DataFrame(corrected_rows, index=expr_matrix.index, columns=expr_matrix.columns)
 
 
 # ------------------------------------------------------------------
@@ -820,9 +796,7 @@ class ImmunoStatesMetaAnalyzer:
         self.deconvolver = ImmunoStatesDeconvolver()  # Always use fixed version
         self._use_enhanced = True
 
-    def __init__(
-        self, basis_matrix=None, basis_matrix_path=None, use_enhanced: bool = True
-    ):
+    def __init__(self, basis_matrix=None, basis_matrix_path=None, use_enhanced: bool = True):
         """Initialize the meta analyzer."""
         self.deconvolver = ImmunoStatesDeconvolver(
             basis_matrix=basis_matrix, basis_matrix_path=basis_matrix_path
@@ -874,9 +848,7 @@ class ImmunoStatesMetaAnalyzer:
         # Reconstruct meta_object to contain only the processed originalData
         return {"originalData": new_original_data}
 
-    def _handle_excluded_datasets(
-        self, immuno_result: Dict, successful_names: List[str]
-    ):
+    def _handle_excluded_datasets(self, immuno_result: Dict, successful_names: List[str]):
         """
         Handles the exclusion of datasets that were not successfully deconvolved.
 
@@ -940,9 +912,7 @@ class ImmunoStatesMetaAnalyzer:
 
         # Drop non-expression metrics
         exclude_cols = ["P_value", "Correlation", "RMSE"]
-        clean_expr = immuno_expr.drop(
-            columns=[c for c in exclude_cols if c in immuno_expr.columns]
-        )
+        clean_expr = immuno_expr.drop(columns=[c for c in exclude_cols if c in immuno_expr.columns])
 
         # Transpose: rows = cell types, columns = samples
         expr_t = clean_expr.T
@@ -1149,9 +1119,7 @@ class ImmunoStatesUtils:
         os.makedirs(output_dir, exist_ok=True)
         for dataset_name, df in results.items():
             if isinstance(df, pd.DataFrame):
-                output_file = os.path.join(
-                    output_dir, f"{dataset_name}_immunoStates.csv"
-                )
+                output_file = os.path.join(output_dir, f"{dataset_name}_immunoStates.csv")
                 df.to_csv(output_file, index=False)
         print(f"Deconvolution results exported to {output_dir}")
 
@@ -1195,12 +1163,8 @@ class ProductionImmunoStatesUtils:
         # Add some cell-type specific patterns
         for i, cell_type in enumerate(cell_types):
             # Some genes are specifically expressed in certain cell types
-            specific_genes = np.random.choice(
-                n_genes, size=n_genes // 20, replace=False
-            )
-            basis_data[specific_genes, i] += np.random.uniform(
-                2, 5, size=len(specific_genes)
-            )
+            specific_genes = np.random.choice(n_genes, size=n_genes // 20, replace=False)
+            basis_data[specific_genes, i] += np.random.uniform(2, 5, size=len(specific_genes))
 
         # Normalize to make more realistic
         basis_data = np.maximum(basis_data, 0)  # Ensure non-negative
@@ -1235,10 +1199,8 @@ class ProductionImmunoStatesUtils:
         }
 
         for dataset_name, df in results.items():
-            dataset_errors, dataset_stats = (
-                ProductionImmunoStatesUtils._validate_dataset_enhanced(
-                    dataset_name, df, strict=strict
-                )
+            dataset_errors, dataset_stats = ProductionImmunoStatesUtils._validate_dataset_enhanced(
+                dataset_name, df, strict=strict
             )
             errors.extend(dataset_errors)
 
@@ -1252,12 +1214,9 @@ class ProductionImmunoStatesUtils:
 
                 # Calculate proportion statistics
                 if all(
-                    col in df.columns
-                    for col in ProductionImmunoStatesUtils.REQUIRED_CELL_TYPES
+                    col in df.columns for col in ProductionImmunoStatesUtils.REQUIRED_CELL_TYPES
                 ):
-                    prop_sums = df[ProductionImmunoStatesUtils.REQUIRED_CELL_TYPES].sum(
-                        axis=1
-                    )
+                    prop_sums = df[ProductionImmunoStatesUtils.REQUIRED_CELL_TYPES].sum(axis=1)
                     stats["proportion_sum_stats"][dataset_name] = {
                         "mean": float(prop_sums.mean()),
                         "std": float(prop_sums.std()),
@@ -1310,21 +1269,15 @@ class ProductionImmunoStatesUtils:
             else:
                 # Lenient validation
                 if (prop_sums > 2.0).any():
-                    errors.append(
-                        f"Dataset {name}: Extremely high proportion sums (>2.0)"
-                    )
+                    errors.append(f"Dataset {name}: Extremely high proportion sums (>2.0)")
                 if (prop_sums < 0.1).any():
-                    errors.append(
-                        f"Dataset {name}: Extremely low proportion sums (<0.1)"
-                    )
+                    errors.append(f"Dataset {name}: Extremely low proportion sums (<0.1)")
 
             # Check for negative proportions
             negative_props = (df[cell_cols] < 0).any()
             if negative_props.any():
                 neg_cols = negative_props[negative_props].index.tolist()
-                errors.append(
-                    f"Dataset {name}: Negative proportions in columns {neg_cols}"
-                )
+                errors.append(f"Dataset {name}: Negative proportions in columns {neg_cols}")
 
             # Check for NaN values
             nan_props = df[cell_cols].isna().any()
@@ -1418,9 +1371,7 @@ class ProductionImmunoStatesUtils:
                         f.write(f"  {dataset}:\n")
                         f.write(f"    Mean: {prop_stats['mean']:.3f}\n")
                         f.write(f"    Std:  {prop_stats['std']:.3f}\n")
-                        f.write(
-                            f"    Range: [{prop_stats['min']:.3f}, {prop_stats['max']:.3f}]\n"
-                        )
+                        f.write(f"    Range: [{prop_stats['min']:.3f}, {prop_stats['max']:.3f}]\n")
 
         print(f"Enhanced results exported to {output_dir}")
         if not is_valid:

@@ -133,9 +133,7 @@ def run_convert_floats_to_int64(
             sys.stderr.write(f"Wrote transformed CSV to {output_path}\n")
     else:
         # Print to stdout if no output path is provided
-        print(
-            f"Transformed CSV: {df.shape[0]} rows, {df.shape[1]} columns; {df.head(3)}"
-        )
+        print(f"Transformed CSV: {df.shape[0]} rows, {df.shape[1]} columns; {df.head(3)}")
 
 
 # --------------------------------------------------------------------------- #

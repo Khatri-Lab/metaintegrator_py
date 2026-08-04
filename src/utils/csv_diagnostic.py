@@ -59,9 +59,7 @@ def diagnose_csv_files(csv_directory: str):
             print(f"Shape: {genes_df.shape}")
             print(f"Index (genes): {list(genes_df.index[:3])}...")
             print(f"Columns (samples): {list(genes_df.columns)}")
-            print(
-                f"Column types: {[type(col).__name__ for col in genes_df.columns[:3]]}"
-            )
+            print(f"Column types: {[type(col).__name__ for col in genes_df.columns[:3]]}")
 
         except Exception as e:
             print(f"❌ Error reading genes file: {e}")

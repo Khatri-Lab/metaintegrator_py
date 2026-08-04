@@ -89,9 +89,7 @@ class PRCAnalyzer:
             "auprc": auprc_value,
             "auprc_ci": auprc_ci,
             "baseline": baseline_precision,
-            "prc_curve": pd.DataFrame(
-                {"precision": precision_plot, "recall": recall_plot}
-            ),
+            "prc_curve": pd.DataFrame({"precision": precision_plot, "recall": recall_plot}),
         }
 
     def _calculate_auprc_ci(
@@ -184,9 +182,7 @@ class PRCAnalyzer:
             linewidth=2,
             label=curve_label,
         )
-        ax.axhline(
-            y=baseline, color="k", linestyle="--", alpha=0.6, label=baseline_label
-        )
+        ax.axhline(y=baseline, color="k", linestyle="--", alpha=0.6, label=baseline_label)
 
         # 3. Finalize Plot Aesthetics
         self._configure_prc_axes(ax, title)
@@ -290,9 +286,7 @@ def plot_prc_curve(y_true: np.ndarray, y_scores: np.ndarray, **kwargs) -> plt.Fi
     return analyzer.plot_prc_curve(y_true, y_scores, **kwargs)
 
 
-def multiple_roc_plot(
-    datasets: List[Dict], filter_object: Dict, **kwargs
-) -> plt.Figure:
+def multiple_roc_plot(datasets: List[Dict], filter_object: Dict, **kwargs) -> plt.Figure:
     """Plot multiple ROC curves on a single figure.
 
     Args:
@@ -309,9 +303,7 @@ def multiple_roc_plot(
     return analyzer.multiple_roc_plot(datasets, filter_object, **kwargs)
 
 
-def multiple_prc_plot(
-    datasets: List[Dict], filter_object: Dict, **kwargs
-) -> plt.Figure:
+def multiple_prc_plot(datasets: List[Dict], filter_object: Dict, **kwargs) -> plt.Figure:
     """Plot multiple PRC curves on a single figure.
 
     Args:

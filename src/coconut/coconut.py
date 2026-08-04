@@ -84,9 +84,7 @@ def _get_common_genes(datasets: List[Dict[str, pd.DataFrame]]) -> List[str]:
     for ds in datasets:
         if "genes" in ds and not ds["genes"].empty:
             genes = ds["genes"].index
-            valid_genes = genes[
-                pd.notnull(genes) & (genes.astype(str).str.strip() != "")
-            ]
+            valid_genes = genes[pd.notnull(genes) & (genes.astype(str).str.strip() != "")]
             gene_sets.append(set(valid_genes))
 
     if not gene_sets:
@@ -159,9 +157,7 @@ def _get_data_subset(
 
         # Check if filter column exists
         if filter_col not in pheno_df.columns:
-            raise ValueError(
-                f"Filter column '{filter_col}' not found in phenotype data"
-            )
+            raise ValueError(f"Filter column '{filter_col}' not found in phenotype data")
 
         # Get sample indices based on control/disease status
         if is_control:
@@ -246,9 +242,7 @@ def _validate_config(
         def get_plat_list(gse_list):
             plats = set()
             for ds in gse_list:
-                cols = [
-                    c for c in ds["pheno"].columns if platform_col.lower() in c.lower()
-                ]
+                cols = [c for c in ds["pheno"].columns if platform_col.lower() in c.lower()]
                 if cols:
                     plats.add(str(ds["pheno"][cols[0]].iloc[0]))
             return sorted(list(plats))
@@ -311,9 +305,7 @@ def coconut(
         raise ValueError("No common genes found across datasets")
 
     # 2. Isolate control samples
-    control_datasets = _get_data_subset(
-        gses, common_genes, control_0_col, is_control=True
-    )
+    control_datasets = _get_data_subset(gses, common_genes, control_0_col, is_control=True)
 
     # 3. Validation
     _validate_config(gses, control_datasets, by_platform, platform_col)
@@ -383,9 +375,7 @@ def combine_coco_output(coconut_out: CoconutOutput) -> CombinedCoconutOutput:
     pheno_common_cols = reduce(
         pd.Index.intersection, [ds["pheno"].columns for ds in processed_datasets]
     )
-    pheno_mat = pd.concat(
-        [ds["pheno"][pheno_common_cols] for ds in processed_datasets], axis=0
-    )
+    pheno_mat = pd.concat([ds["pheno"][pheno_common_cols] for ds in processed_datasets], axis=0)
 
     combined_labels = np.concatenate([ds["class_labels"] for ds in processed_datasets])
 
@@ -434,9 +424,7 @@ def _process_dataset_pair(control_data: dict, disease_data: dict) -> dict:
     genes = pd.concat([control_data["genes"], disease_data["genes"]], axis=1)
 
     # Combine pheno (row-wise concatenation) - only common columns are kept
-    common_cols = control_data["pheno"].columns.intersection(
-        disease_data["pheno"].columns
-    )
+    common_cols = control_data["pheno"].columns.intersection(disease_data["pheno"].columns)
     pheno = pd.concat(
         [control_data["pheno"][common_cols], disease_data["pheno"][common_cols]],
         axis=0,
@@ -448,9 +436,7 @@ def _process_dataset_pair(control_data: dict, disease_data: dict) -> dict:
 
     # The "class_labels" vector is explicitly cast to float to facilitate usage in libraries that expect continuous
     # class vectors (e.g., scikit‑learn, statsmodels).
-    group_labels = np.concatenate(
-        [np.zeros(control_count), np.ones(disease_count)]
-    ).astype(float)
+    group_labels = np.concatenate([np.zeros(control_count), np.ones(disease_count)]).astype(float)
 
     return {"genes": genes, "pheno": pheno, "class_labels": group_labels}
 
@@ -560,15 +546,11 @@ def _apply_quantile_normalization(
         # Calculate rank means across samples in the batch
         # Ranking uses method="first" so that ties receive the same rank (the first occurrence).
         rank_mean = (
-            plat_data.stack()
-            .groupby(plat_data.rank(method="first").stack().astype(int))
-            .mean()
+            plat_data.stack().groupby(plat_data.rank(method="first").stack().astype(int)).mean()
         )
 
         # Map original ranks to the calculated means
-        qnormed = (
-            plat_data.rank(method="first").stack().astype(int).map(rank_mean).unstack()
-        )
+        qnormed = plat_data.rank(method="first").stack().astype(int).map(rank_mean).unstack()
         combined_data.iloc[:, idx] = qnormed
 
 
@@ -646,9 +628,7 @@ def _combat_custom(
             gse_list, combined_data, batches, par_prior, it_conv, parallel, mc_cores
         )
 
-    return _handle_combat_have_phase(
-        gse_list, combined_data, batches, bayes_params, get_platforms
-    )
+    return _handle_combat_have_phase(gse_list, combined_data, batches, bayes_params, get_platforms)
 
 
 def _handle_combat_get_phase(
@@ -894,9 +874,7 @@ def _combat_get_params_no_cov(
 
     # 3. Estimating batch effects (L/S Model)
     print("Fitting L/S model and finding priors")
-    gamma_hat, delta_hat = _fit_ls_model(
-        s_data, design[:, :n_batches_count], batches_idx
-    )
+    gamma_hat, delta_hat = _fit_ls_model(s_data, design[:, :n_batches_count], batches_idx)
 
     # 4. Empirical Bayes adjustments
     print(f"Finding {'parametric' if par_prior else 'nonparametric'} adjustments")
@@ -977,9 +955,7 @@ def _standardize_data(data, design, n_batches, n_batch_count):
     # 3. Estimate pooled variance
     #    The residual variance after removing the batch effects is calculated; a lower bound of 1e‑8 is a safety
     #    measure (clamping) to ensure that the variance is never zero and
-    var_pooled = np.maximum(
-        np.mean((data - (design @ b_hat).T) ** 2, axis=1, keepdims=True), 1e-8
-    )
+    var_pooled = np.maximum(np.mean((data - (design @ b_hat).T) ** 2, axis=1, keepdims=True), 1e-8)
 
     # 4. Standardize data
     #    stand_mean broadcasts the grand mean across all samples so it matches the shape of the data
@@ -1028,9 +1004,7 @@ def _fit_ls_model(s_data, batch_design, batches_idx):
     # This usually happens if there are empty batches or if the batch variables are perfectly collinear.
     try:
         # np.linalg.solve is more numerically stable than explicitly calculating the inverse of the matrix
-        gamma_hat = np.linalg.solve(
-            batch_design.T @ batch_design, batch_design.T @ s_data.T
-        )
+        gamma_hat = np.linalg.solve(batch_design.T @ batch_design, batch_design.T @ s_data.T)
     except np.linalg.LinAlgError:
         raise ValueError(
             "Singular matrix encountered during L/S model fitting. Check for empty batches."
@@ -1038,17 +1012,12 @@ def _fit_ls_model(s_data, batch_design, batches_idx):
 
     # Calculate the variance of the data within each batch.
     delta_hat = np.array(
-        [
-            np.maximum(np.var(s_data[:, idx], axis=1, ddof=1), 1e-8)
-            for idx in batches_idx
-        ]
+        [np.maximum(np.var(s_data[:, idx], axis=1, ddof=1), 1e-8) for idx in batches_idx]
     )
     return gamma_hat, delta_hat
 
 
-def _estimate_bayesian_params(
-    s_data, batches_idx, gamma_hat, delta_hat, par_prior, it_conv
-):
+def _estimate_bayesian_params(s_data, batches_idx, gamma_hat, delta_hat, par_prior, it_conv):
     """
     Estimate the Bayesian batch‐effect parameters for each batch.
 
@@ -1115,9 +1084,7 @@ def _estimate_bayesian_params(
     return np.array(gamma_star), np.array(delta_star)
 
 
-def _adjust_data_final(
-    s_data, batches_idx, gamma_star, delta_star, var_pooled, stand_mean
-):
+def _adjust_data_final(s_data, batches_idx, gamma_star, delta_star, var_pooled, stand_mean):
     """
     Apply the final ComBat data adjustment and revert to the original scale.
 
@@ -1307,9 +1274,7 @@ def _it_sol(
     change = 1.0
     iteration = 0
 
-    while (
-        change > convergence_threshold and iteration < PARAMETRIC_BAYES_MAX_ITERATIONS
-    ):
+    while change > convergence_threshold and iteration < PARAMETRIC_BAYES_MAX_ITERATIONS:
         iteration += 1
 
         # Posterior mean for gamma (location parameter)
@@ -1318,10 +1283,7 @@ def _it_sol(
             denominator = prior_gamma_var * num_samples + delta_old
             gamma_new = np.where(
                 denominator > PARAMETRIC_BAYES_EPSILON,
-                (
-                    prior_gamma_var * num_samples * initial_gamma
-                    + delta_old * prior_gamma_mean
-                )
+                (prior_gamma_var * num_samples * initial_gamma + delta_old * prior_gamma_mean)
                 / denominator,
                 initial_gamma,
             )
@@ -1553,9 +1515,7 @@ def _compute_gene_weighted_estimates(
 
     # Calculate log-likelihood for numerical stability
     # L = (2π*d)^(-n/2) * exp(-Σ(x-g)²/(2*d))
-    residuals_squared_sum = np.sum(
-        (x_i.reshape(1, -1) - g_others.reshape(-1, 1)) ** 2, axis=1
-    )
+    residuals_squared_sum = np.sum((x_i.reshape(1, -1) - g_others.reshape(-1, 1)) ** 2, axis=1)
 
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
         log_likelihood = (-n / 2.0 * np.log(2 * np.pi * d_others_safe)) - (

@@ -142,8 +142,7 @@ class DataLoaderFactory:
 
         if source_type not in source_map:
             raise ValueError(
-                f"Unknown source type: {source_type}. "
-                f"Options: {list(source_map.keys())}"
+                f"Unknown source type: {source_type}. " f"Options: {list(source_map.keys())}"
             )
 
         return DataLoaderFactory.create_geo_loader(
@@ -168,8 +167,7 @@ class DataLoaderFactory:
         Placeholder — not yet implemented.
         """
         raise NotImplementedError(
-            "RNA-seq loader not yet implemented. "
-            "Coming in Phase 2 of architecture rollout."
+            "RNA-seq loader not yet implemented. " "Coming in Phase 2 of architecture rollout."
         )
 
     @staticmethod
@@ -184,8 +182,7 @@ class DataLoaderFactory:
         Placeholder — not yet implemented.
         """
         raise NotImplementedError(
-            "Single-cell loader not yet implemented. "
-            "Coming in Phase 3 of architecture rollout."
+            "Single-cell loader not yet implemented. " "Coming in Phase 3 of architecture rollout."
         )
 
 

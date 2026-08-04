@@ -188,9 +188,7 @@ class NCBIFetcher:
             # Use platform IDs from file content (most reliable)
             # Fallback to filename extraction if none found
             if not platform_ids:
-                log.warning(
-                    f"No platform IDs in {mfile} metadata, trying filename extraction"
-                )
+                log.warning(f"No platform IDs in {mfile} metadata, trying filename extraction")
                 platform_ids = [self._probe_platform_from_filename(mfile)]
 
             # Handle multiple platforms in one file

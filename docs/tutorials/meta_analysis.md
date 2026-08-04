@@ -33,7 +33,8 @@ from metaintegrator.core_analysis import (
     FisherCombination      # Fisher's method for p-values
 )
 
-from preprocessing.geo_data_loader import get_geo_data
+from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 import numpy as np
 import pandas as pd
 
@@ -46,12 +47,13 @@ Meta-analysis requires defining which samples are cases vs. controls:
 
 ```python
 # Load datasets (uses cache)
-meta_object = get_geo_data(
-    gse_vector=["GSE5847", "GSE28750"],
-    formatted_names=["Breast_Cancer", "Sepsis"],
-    q_norm=True,
-    cache_dir="./geo_cache"
-)
+loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir="./geo_cache")
+datasets = loader.load_multiple(["GSE5847", "GSE28750"])
+meta_object = {"originalData": {
+    ds.geo_id: {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+                "formattedName": ds.geo_id, "class": None}
+    for ds in datasets
+}}
 
 print("🎯 Assigning class labels...")
 print("-" * 70)
@@ -186,10 +188,7 @@ print("\n📈 Running meta-analysis across all studies...")
 print("-" * 70)
 
 # Initialize meta-analyzer
-analyzer = MetaAnalyzer(
-    max_cores=4,  # Use parallel processing
-    verbose=True   # Show progress
-)
+analyzer = MetaAnalyzer(max_cores=4)  # Use parallel processing
 
 # Run meta-analysis
 # This performs:
@@ -243,16 +242,16 @@ print("\n📊 Meta-Analysis Results Summary")
 print("=" * 70)
 
 # Extract pooled results
-pooled = meta_results['pooled_estimates']
+pooled = meta_results['pooledResults']
 
 # Overall statistics
 print(f"\nOverall Statistics:")
 print(f"   Total genes analyzed: {len(pooled):,}")
 
 # Count significant genes at different thresholds
-sig_fdr_05 = (pooled['p_fdr'] < 0.05).sum() if 'p_fdr' in pooled.columns else 0
-sig_fdr_01 = (pooled['p_fdr'] < 0.01).sum() if 'p_fdr' in pooled.columns else 0
-sig_nominal = (pooled['p_value'] < 0.05).sum() if 'p_value' in pooled.columns else 0
+sig_fdr_05 = (pooled['effectSizeFDR'] < 0.05).sum() if 'effectSizeFDR' in pooled.columns else 0
+sig_fdr_01 = (pooled['effectSizeFDR'] < 0.01).sum() if 'effectSizeFDR' in pooled.columns else 0
+sig_nominal = (pooled['effectSizePval'] < 0.05).sum() if 'effectSizePval' in pooled.columns else 0
 
 print(f"\nSignificance Summary:")
 print(f"   Significant at FDR < 0.05: {sig_fdr_05:,} genes ({sig_fdr_05/len(pooled)*100:.1f}%)")
@@ -260,7 +259,7 @@ print(f"   Highly significant (FDR < 0.01): {sig_fdr_01:,} genes ({sig_fdr_01/le
 print(f"   Nominally significant (p < 0.05): {sig_nominal:,} genes ({sig_nominal/len(pooled)*100:.1f}%)")
 
 # Effect size distribution
-effect_col = 'effect_size' if 'effect_size' in pooled.columns else 'pooled_es'
+effect_col = 'effectSize'
 if effect_col in pooled.columns:
     effects = pooled[effect_col]
     
@@ -315,7 +314,7 @@ print("\n🏆 Top 20 Most Significant Genes")
 print("=" * 70)
 
 # Sort by FDR-adjusted p-value
-p_col = 'p_fdr' if 'p_fdr' in pooled.columns else 'p_value'
+p_col = 'effectSizeFDR'
 top_genes = pooled.nsmallest(20, p_col)
 
 # Display table
@@ -323,9 +322,9 @@ print(f"\n{'Rank':<6} {'Gene':<15} {'Effect Size':<15} {'P-value':<15} {'FDR':<1
 print("-" * 70)
 
 for idx, (gene_name, row) in enumerate(top_genes.iterrows(), 1):
-    effect = row.get('effect_size', row.get('pooled_es', np.nan))
-    pval = row.get('p_value', np.nan)
-    fdr = row.get('p_fdr', np.nan)
+    effect = row.get('effectSize', np.nan)
+    pval = row.get('effectSizePval', np.nan)
+    fdr = row.get('effectSizeFDR', np.nan)
     
     # Format values
     effect_str = f"{effect:.3f}" if not pd.isna(effect) else "N/A"
@@ -335,10 +334,10 @@ for idx, (gene_name, row) in enumerate(top_genes.iterrows(), 1):
     print(f"{idx:<6} {gene_name:<15} {effect_str:<15} {pval_str:<15} {fdr_str:<15}")
 
 # Categorize top genes
-sig_genes_fdr05 = pooled[pooled['p_fdr'] < 0.05] if 'p_fdr' in pooled.columns else pd.DataFrame()
+sig_genes_fdr05 = pooled[pooled['effectSizeFDR'] < 0.05]
 
 if not sig_genes_fdr05.empty:
-    effect_col = 'effect_size' if 'effect_size' in sig_genes_fdr05.columns else 'pooled_es'
+    effect_col = 'effectSize'
     
     up_regulated = sig_genes_fdr05[sig_genes_fdr05[effect_col] > 0]
     down_regulated = sig_genes_fdr05[sig_genes_fdr05[effect_col] < 0]
@@ -376,7 +375,7 @@ print("\n🔍 Per-Study Consistency Analysis")
 print("=" * 70)
 
 # Get top 10 genes
-top_10_genes = pooled.nsmallest(10, 'p_fdr').index.tolist()
+top_10_genes = pooled.nsmallest(10, 'effectSizeFDR').index.tolist()
 
 print("\nTop 10 genes - consistency across studies:")
 print("-" * 70)
@@ -448,12 +447,12 @@ output_dir = Path("./meta_analysis_results")
 output_dir.mkdir(exist_ok=True)
 
 # 1. Export top 100 genes
-top_100 = pooled.nsmallest(100, 'p_fdr')
+top_100 = pooled.nsmallest(100, 'effectSizeFDR')
 top_100.to_csv(output_dir / "top_100_genes.csv")
 print(f"   ✅ Saved: top_100_genes.csv")
 
 # 2. Export all significant genes (FDR < 0.05)
-sig_genes = pooled[pooled['p_fdr'] < 0.05]
+sig_genes = pooled[pooled['effectSizeFDR'] < 0.05]
 sig_genes.to_csv(output_dir / "significant_genes_fdr05.csv")
 print(f"   ✅ Saved: significant_genes_fdr05.csv ({len(sig_genes)} genes)")
 
@@ -480,7 +479,7 @@ Fixed effects assumes all studies measure the same true effect. Random effects (
 # Random effects (recommended)
 meta_results = analyzer.run_meta_analysis_core(
     original_data=original_data_list,
-    use_random_effects=True  # Default
+    use_old_method=False,  # modern Fisher combination; pooling is always random-effects
 )
 
 # Fixed effects (only if studies are very homogeneous)
@@ -518,9 +517,9 @@ High heterogeneity suggests studies measure different effects:
 
 ```python
 # Heterogeneity statistics are in pooled results
-if 'Q' in pooled.columns and 'pval_het' in pooled.columns:
+if 'cochranesQ' in pooled.columns and 'heterogeneityPval' in pooled.columns:
     # High Q or low pval_het indicates heterogeneity
-    high_het_genes = pooled[pooled['pval_het'] < 0.05]
+    high_het_genes = pooled[pooled['heterogeneityPval'] < 0.05]
     
     print(f"Genes with significant heterogeneity: {len(high_het_genes)}")
     print("💡 High heterogeneity may indicate:")
@@ -560,7 +559,7 @@ Computationally, very small p-values become 0:
 
 ```python
 # Handle p-value = 0
-pooled['p_value_safe'] = pooled['p_value'].replace(0, 1e-300)
+pooled['p_value_safe'] = pooled['effectSizePval'].replace(0, 1e-300)
 neg_log_p = -np.log10(pooled['p_value_safe'])
 ```
 

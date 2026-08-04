@@ -12,7 +12,7 @@ Pipeline stages
 3. **Label** — assign binary case/control class vectors
 4. **Analyse** — run meta-analysis (with optional leave-one-out)
 5. **Filter** — extract significant genes
-6. **Search** — backward and/or forward gene-set optimization
+6. **Search** — backward and/or forward gene-set optimisation
 7. **Score & Evaluate** — compute signature scores, ROC, PRC
 8. **Plot** — generate all requested figures
 9. **Export** — write CSVs and plots to the output directory
@@ -156,7 +156,7 @@ def run_pipeline(
     _report_filter_summary(meta_object)
 
     # ── 6. Gene search ───────────────────────────────────────────────
-    _banner("STAGE 6 / 8 — GENE SEARCH OPTIMIZATION")
+    _banner("STAGE 6 / 8 — GENE SEARCH OPTIMISATION")
     meta_object = _run_gene_search(meta_object, config)
 
     # ── 7. Score & evaluate ──────────────────────────────────────────
@@ -377,7 +377,7 @@ def _filter_genes(meta_object: Dict, config: Dict) -> Dict:
 
 
 def _run_gene_search(meta_object: Dict, config: Dict) -> Dict:
-    """Stage 6: Run backward and/or forward gene search optimization."""
+    """Stage 6: Run backward and/or forward gene search optimisation."""
     gs_cfg = config["gene_search"]
     run_backward = gs_cfg.get("run_backward", True)
     run_forward = gs_cfg.get("run_forward", True)
@@ -527,17 +527,15 @@ def _export_results(
     # ── Filter results ────────────────────────────────────────────────
     fr = meta_object.get("filterResults")
     if fr:
-
-        fr_dict = fr.to_dict()
         for key in ("posGeneNames", "negGeneNames"):
-            genes = fr_dict.get(key)
+            genes = fr.get(key)
             if genes is not None and len(genes) > 0:
                 path = plot_data_dir / f"filter_{key}.csv"
                 pd.DataFrame({key: genes}).to_csv(path, index=False)
                 logger.info(f"  Saved: {path}")
 
         for key in ("backwardSearchGenes", "forwardSearchGenes"):
-            genes = fr_dict.get(key)
+            genes = fr.get(key)
             if genes is not None:
                 genes_list = list(genes) if not isinstance(genes, list) else genes
                 if genes_list:
@@ -629,18 +627,16 @@ def _safe_plot(fn_name: str, *args, **kwargs) -> None:
 
 
 def _plot_forest(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: int) -> None:
-    from visualization.enhanced_plotting import MetaAnalysisPlotter
+    from visualization.enhanced_plotting import EnhancedMetaAnalysisPlotter
 
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     gene = config["output"].get("forest_gene")
 
     if gene is None:
         # Pick the top gene by absolute effect size from filterResults
         fr = meta_object.get("filterResults", {})
-
-        fr_dict = fr.to_dict()
-        pos = fr_dict.get("posGeneNames", [])
-        neg = fr_dict.get("negGeneNames", [])
+        pos = fr.get("posGeneNames", [])
+        neg = fr.get("negGeneNames", [])
         candidates = list(pos) + list(neg)
         if candidates:
             gene = candidates[0]
@@ -657,9 +653,9 @@ def _plot_forest(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dp
 
 
 def _plot_heatmap(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: int) -> None:
-    from visualization.enhanced_plotting import MetaAnalysisPlotter
+    from visualization.enhanced_plotting import EnhancedMetaAnalysisPlotter
 
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     fig = plotter.heatmap_plot(meta_object)
     if fig is not None:
         path = output_dir / f"heatmap_effect_sizes.{fmt}"
@@ -772,9 +768,9 @@ def _plot_regression(meta_object: Dict, config: Dict, output_dir: Path, fmt: str
         logger.warning(f"Dataset '{reg_dataset}' not found or has no scores.")
         return
 
-    from visualization.enhanced_plotting import MetaAnalysisPlotter
+    from visualization.enhanced_plotting import EnhancedMetaAnalysisPlotter
 
-    plotter = MetaAnalysisPlotter()
+    plotter = EnhancedMetaAnalysisPlotter()
     try:
         fig = plotter.regression_plot(ds_obj, covariate_column=reg_column, dataset_name=reg_dataset)
         if fig is not None:
@@ -825,10 +821,8 @@ def _report_filter_summary(meta_object: Dict) -> None:
     if fr is None:
         logger.warning("  No filter results produced.")
         return
-
-    fr_dict = fr.to_dict()
-    pos = fr_dict.get("posGeneNames", [])
-    neg = fr_dict.get("negGeneNames", [])
+    pos = fr.get("posGeneNames", [])
+    neg = fr.get("negGeneNames", [])
     logger.info(f"  Filtered genes: {len(pos)} up-regulated, {len(neg)} down-regulated")
 
 

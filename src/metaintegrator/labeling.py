@@ -73,8 +73,7 @@ def assign_class_labels(
     pheno = dataset_object["pheno"]
     if column_name not in pheno.columns:
         raise ValueError(
-            f"Column '{column_name}' not found in pheno. "
-            f"Available: {list(pheno.columns)}"
+            f"Column '{column_name}' not found in pheno. " f"Available: {list(pheno.columns)}"
         )
 
     label = dataset_name or "dataset"
@@ -110,8 +109,7 @@ def assign_class_labels(
     dataset_object["class"] = class_vec
 
     _log.info(
-        "%s: assigned class labels — %d cases, %d controls "
-        "(column='%s', disease_terms=%s)",
+        "%s: assigned class labels — %d cases, %d controls " "(column='%s', disease_terms=%s)",
         label,
         n_disease,
         n_control,

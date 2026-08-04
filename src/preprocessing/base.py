@@ -97,8 +97,7 @@ class ProcessedDataset:
             )
         if len(self.keys) != len(self.expr):
             raise ValueError(
-                f"keys length ({len(self.keys)}) must match "
-                f"expr row count ({len(self.expr)})"
+                f"keys length ({len(self.keys)}) must match " f"expr row count ({len(self.expr)})"
             )
 
 
@@ -370,9 +369,7 @@ class DataLoader:
             except Exception as e:
                 # Create full dataset identifier for better error messages
                 dataset_id = (
-                    f"{raw.source_id}_{raw.platform_id}"
-                    if raw.platform_id
-                    else raw.source_id
+                    f"{raw.source_id}_{raw.platform_id}" if raw.platform_id else raw.source_id
                 )
                 failed.append((dataset_id, str(e)))
                 if stop_on_error:
@@ -382,15 +379,9 @@ class DataLoader:
             import logging
 
             log = logging.getLogger(__name__)
-            log.warning(
-                f"Failed to process {len(failed)} datasets: "
-                f"{[f[0] for f in failed]}"
-            )
+            log.warning(f"Failed to process {len(failed)} datasets: " f"{[f[0] for f in failed]}")
 
         return processed_datasets
 
     def __repr__(self) -> str:
-        return (
-            f"DataLoader(source={self.source.source_name}, "
-            f"handler={self.handler.data_type})"
-        )
+        return f"DataLoader(source={self.source.source_name}, " f"handler={self.handler.data_type})"

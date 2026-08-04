@@ -65,14 +65,10 @@ class ScoreCalculator:
 
         # Get the positive and negative genes, remove empty gene names
         pos_genes = [
-            g
-            for g in filter_object.get("posGeneNames", [])
-            if g not in ["", None] and pd.notna(g)
+            g for g in filter_object.get("posGeneNames", []) if g not in ["", None] and pd.notna(g)
         ]
         neg_genes = [
-            g
-            for g in filter_object.get("negGeneNames", [])
-            if g not in ["", None] and pd.notna(g)
+            g for g in filter_object.get("negGeneNames", []) if g not in ["", None] and pd.notna(g)
         ]
 
         # Adjust expression values so that they are all positive
@@ -95,9 +91,7 @@ class ScoreCalculator:
             pos_genes_matrix = SampleLevelGeneDataProcessor.get_sample_level_gene_data(
                 dataset_temp, pos_genes
             )
-            pos_score = pos_genes_matrix.apply(
-                ScoreCalculator._geometric_mean, axis=0
-            ).values
+            pos_score = pos_genes_matrix.apply(ScoreCalculator._geometric_mean, axis=0).values
 
         # Calculate the score of the negative genes from our signature
         neg_score = np.zeros(expr_data.shape[1])
@@ -106,9 +100,7 @@ class ScoreCalculator:
             neg_genes_matrix = SampleLevelGeneDataProcessor.get_sample_level_gene_data(
                 dataset_temp, neg_genes
             )
-            neg_score = neg_genes_matrix.apply(
-                ScoreCalculator._geometric_mean, axis=0
-            ).values
+            neg_score = neg_genes_matrix.apply(ScoreCalculator._geometric_mean, axis=0).values
 
         # Handle cases based on what data we have
         if pos_genes_matrix is None and neg_genes_matrix is None:
@@ -196,9 +188,7 @@ class ScoreCalculator:
             raise TypeError("filter_object must be a dictionary")
 
         if "posGeneNames" not in filter_object and "negGeneNames" not in filter_object:
-            raise ValueError(
-                "filter_object must contain at least 'posGeneNames' or 'negGeneNames'"
-            )
+            raise ValueError("filter_object must contain at least 'posGeneNames' or 'negGeneNames'")
 
     @staticmethod
     def _validate_dataset_object(dataset_object: Dict) -> None:
@@ -232,6 +222,4 @@ def calculateScore(
     Returns:
         np.ndarray: Array of Z-scores
     """
-    return ScoreCalculator.calculate_score(
-        filter_object, dataset_object, suppress_messages
-    )
+    return ScoreCalculator.calculate_score(filter_object, dataset_object, suppress_messages)

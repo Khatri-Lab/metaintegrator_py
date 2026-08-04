@@ -139,9 +139,7 @@ class PhenotypeProcessor:
                     # Only remove if it contains GEO-type status values
                     unique_vals = pheno[col].dropna().astype(str).str.lower().unique()
                     geo_status_vals = {"public", "private", "submitted"}
-                    if unique_vals.size > 0 and all(
-                        val in geo_status_vals for val in unique_vals
-                    ):
+                    if unique_vals.size > 0 and all(val in geo_status_vals for val in unique_vals):
                         cols_to_remove.add(col)
                     # Otherwise keep it - it contains meaningful phenotype data
                 else:
@@ -174,12 +172,9 @@ class PhenotypeProcessor:
                 and reorganized, and all remaining data is included.
         """
         is_characteristic_col = {
-            col: pheno[col].astype(str).str.contains(": ").any()
-            for col in pheno.columns
+            col: pheno[col].astype(str).str.contains(": ").any() for col in pheno.columns
         }
-        characteristics_cols = [
-            col for col, is_char in is_characteristic_col.items() if is_char
-        ]
+        characteristics_cols = [col for col, is_char in is_characteristic_col.items() if is_char]
 
         if not characteristics_cols:
             return pheno
@@ -187,24 +182,18 @@ class PhenotypeProcessor:
         print(f"Found {len(characteristics_cols)} characteristics columns")
         self._warn_if_scrambled(pheno, characteristics_cols)
 
-        all_sample_values = [
-            self._extract_row_metadata(pheno, idx) for idx in pheno.index
-        ]
+        all_sample_values = [self._extract_row_metadata(pheno, idx) for idx in pheno.index]
 
         new_pheno = self._build_new_pheno_dataframe(all_sample_values, pheno.index)
 
         # Filter and combine with non-characteristic data
         ch1_cols = [col for col in pheno.columns if ":ch1" in col]
         non_char_cols = [
-            col
-            for col in pheno.columns
-            if not is_characteristic_col[col] and col not in ch1_cols
+            col for col in pheno.columns if not is_characteristic_col[col] and col not in ch1_cols
         ]
 
         combined_pheno = (
-            pd.concat([new_pheno, pheno[non_char_cols]], axis=1)
-            if non_char_cols
-            else new_pheno
+            pd.concat([new_pheno, pheno[non_char_cols]], axis=1) if non_char_cols else new_pheno
         )
 
         if len(combined_pheno.columns) != len(set(combined_pheno.columns)):
@@ -238,11 +227,7 @@ class PhenotypeProcessor:
 
             for idx in pheno.index:
                 row_data = pheno.loc[idx, col]
-                if (
-                    pd.notna(row_data)
-                    and isinstance(row_data, str)
-                    and ": " in str(row_data)
-                ):
+                if pd.notna(row_data) and isinstance(row_data, str) and ": " in str(row_data):
                     # Extract the key (part before ': ')
                     key = str(row_data).split(": ", 1)[0].strip()
                     if key:
@@ -309,13 +294,10 @@ class PhenotypeProcessor:
                 A DataFrame constructed from the provided sample values and index, with
                 numeric conversion applied where possible.
         """
-        all_categories = sorted(
-            {cat for chars in sample_values for cat in chars.keys()}
-        )
+        all_categories = sorted({cat for chars in sample_values for cat in chars.keys()})
 
         new_data = {
-            cat: [chars.get(cat, np.nan) for chars in sample_values]
-            for cat in all_categories
+            cat: [chars.get(cat, np.nan) for chars in sample_values] for cat in all_categories
         }
         df = pd.DataFrame(new_data, index=index)
         return df.apply(self._convert_to_numeric_if_possible)
@@ -488,9 +470,7 @@ class PhenotypeProcessor:
         labels = df[column].dropna().astype(str).str.strip().unique()
 
         # Partition labels into control and potential disease
-        control_terms = [
-            term for term in labels if any(kw in term.lower() for kw in control_kw)
-        ]
+        control_terms = [term for term in labels if any(kw in term.lower() for kw in control_kw)]
 
         # Any term that is not a control is a potential disease term
         potential_disease_terms = [term for term in labels if term not in control_terms]
@@ -636,9 +616,7 @@ def clean_up_pheno(dataset: Dict) -> Dict:
     return processor.clean_up_pheno(dataset)
 
 
-def class_function(
-    dataset: Dict, column: str, disease_terms: Union[str, List[str]]
-) -> Dict:
+def class_function(dataset: Dict, column: str, disease_terms: Union[str, List[str]]) -> Dict:
     """
     Executes a classification function on the provided dataset using phenotype processor.
 

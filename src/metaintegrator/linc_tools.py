@@ -39,9 +39,7 @@ class LincsDataManager:
         """Initialize LINCS data manager."""
         self._data_cache = {}
         self._data_loaded = False
-        self.data_url = (
-            "http://khatrilab.stanford.edu/_media/metaintegrator/lincsdata.zip"
-        )
+        self.data_url = "http://khatrilab.stanford.edu/_media/metaintegrator/lincsdata.zip"
 
     def load_data(self, force_reload: bool = False) -> bool:
         """
@@ -148,9 +146,7 @@ class LincsDataManager:
         if "lincs_ann" in self._data_cache:
             lincs_ann = self._data_cache["lincs_ann"]
             lincs_ann["merge"] = (
-                lincs_ann["pert_iname"]
-                .str.upper()
-                .str.replace(r"[^\w]", "", regex=True)
+                lincs_ann["pert_iname"].str.upper().str.replace(r"[^\w]", "", regex=True)
             )
             self._data_cache["lincs_ann"] = lincs_ann.drop_duplicates(subset=["merge"])
 
@@ -259,9 +255,7 @@ class LincsDataManager:
                 .str.strip()
             )
             # Convert to numeric, handling non-numeric values
-            filtered_qc["pert_itime"] = pd.to_numeric(
-                filtered_qc["pert_itime"], errors="coerce"
-            )
+            filtered_qc["pert_itime"] = pd.to_numeric(filtered_qc["pert_itime"], errors="coerce")
 
         # Sort by perturbagen name, gold status, cell line, dose, and time
         sort_columns = []
@@ -364,9 +358,7 @@ class LincsAnalyzer:
 
         return filtered_identifiers
 
-    def _apply_sorting(
-        self, df: pd.DataFrame, column: str, direction: str
-    ) -> pd.DataFrame:
+    def _apply_sorting(self, df: pd.DataFrame, column: str, direction: str) -> pd.DataFrame:
         """
         Sorts a pandas DataFrame based on the specified column and direction. The sorting behavior changes based
         on the value of the provided direction.
@@ -448,9 +440,7 @@ class LincsAnalyzer:
             tri_ann = self.data_manager.get_data("tri_ann")
             if tri_ann is not None:
                 result = result.T.reset_index().rename(columns={"index": "merge"})
-                result = result.merge(tri_ann, on="merge", how="left").sort_values(
-                    "HighestPhase"
-                )
+                result = result.merge(tri_ann, on="merge", how="left").sort_values("HighestPhase")
 
         return result
 
@@ -523,8 +513,7 @@ class LincsAnalyzer:
 
         if dataset == "CP":
             lincs_subset.columns = [
-                c[1:] if c.startswith("X") and c[1:].isdigit() else c
-                for c in lincs_subset.columns
+                c[1:] if c.startswith("X") and c[1:].isdigit() else c for c in lincs_subset.columns
             ]
 
         if drop_string:
@@ -562,15 +551,11 @@ class LincsAnalyzer:
             # Fallback if false_discovery_control is not available
             from statsmodels.stats.multitest import multipletests
 
-            _, results_df["fdr"], _, _ = multipletests(
-                results_df["pval"], method="fdr_bh"
-            )
+            _, results_df["fdr"], _, _ = multipletests(results_df["pval"], method="fdr_bh")
 
         if just_clin:
             results_df = results_df[
-                results_df["merge"].isin(
-                    self._filter_by_clinical(results_df["merge"].tolist())
-                )
+                results_df["merge"].isin(self._filter_by_clinical(results_df["merge"].tolist()))
             ]
 
         results_df = self._apply_sorting(results_df, "Sig_Corr", direction)
@@ -642,15 +627,11 @@ class LincsAnalyzer:
             return dataset_data
 
         if sub_sig is not None:
-            dataset_data = dataset_data.loc[
-                [g for g in sub_sig.index if g in dataset_data.index]
-            ]
+            dataset_data = dataset_data.loc[[g for g in sub_sig.index if g in dataset_data.index]]
 
         if bait_type is None:
             bait_compounds = [b for b in (baits or []) if b in dataset_data.columns]
-            other_compounds = [
-                c for c in dataset_data.columns if c not in bait_compounds
-            ]
+            other_compounds = [c for c in dataset_data.columns if c not in bait_compounds]
             if not bait_compounds or not other_compounds:
                 return {"error": "insufficient baits or compounds found"}
 
@@ -703,9 +684,9 @@ class LincsAnalyzer:
         if dataset == "CP":
             tri_ann = self.data_manager.get_data("tri_ann")
             if tri_ann is not None:
-                output["hits_clin"] = results_df.merge(
-                    tri_ann, on="merge", how="left"
-                ).sort_values("mean_cor", ascending=(direction != "aggravate"))
+                output["hits_clin"] = results_df.merge(tri_ann, on="merge", how="left").sort_values(
+                    "mean_cor", ascending=(direction != "aggravate")
+                )
 
         return output
 
@@ -740,9 +721,7 @@ class LincsAnalyzer:
             raise ValueError(f"Dataset must be one of {valid_datasets}")
 
         scores = correlate_output["hit_list"].copy()
-        scores.columns = [
-            c if c != "Sig_Corr" else "Signature_Correlation" for c in scores.columns
-        ]
+        scores.columns = [c if c != "Sig_Corr" else "Signature_Correlation" for c in scores.columns]
         scores["pert_iname"] = (
             scores.index if scores.index.name else scores.get("merge", scores.index)
         )
@@ -760,9 +739,7 @@ class LincsAnalyzer:
         )
 
         if interactor_score.empty:
-            warnings.warn(
-                "No gene overlap found between correlation results and signature"
-            )
+            warnings.warn("No gene overlap found between correlation results and signature")
             return {
                 "interactor_score": pd.DataFrame(),
                 "interactor_expression": pd.DataFrame(),
@@ -775,24 +752,18 @@ class LincsAnalyzer:
         )
 
         # Apply dataset-specific filters based on biological expectations
-        if (
-            dataset == "SH"
-        ):  # shRNA should reduce expression, negative interaction expected
-            interactor_score = interactor_score[
-                interactor_score["interaction.score"] < 0
-            ]
+        if dataset == "SH":  # shRNA should reduce expression, negative interaction expected
+            interactor_score = interactor_score[interactor_score["interaction.score"] < 0]
         elif dataset in [
             "OE",
             "LIG",
         ]:  # Overexpression/ligands should increase, positive expected
-            interactor_score = interactor_score[
-                interactor_score["interaction.score"] > 0
-            ]
+            interactor_score = interactor_score[interactor_score["interaction.score"] > 0]
 
         # Calculate driver score - absolute interaction weighted by signature direction
-        interactor_score["driver.score"] = abs(
-            interactor_score["interaction.score"]
-        ) * np.sign(interactor_score[signature_col])
+        interactor_score["driver.score"] = abs(interactor_score["interaction.score"]) * np.sign(
+            interactor_score[signature_col]
+        )
 
         # Sort by driver score
         interactor_score = interactor_score.sort_values("driver.score", ascending=False)
@@ -814,17 +785,13 @@ class LincsAnalyzer:
         # Find common genes between signature and dataset
         common_genes = [g for g in signature.index if g in dataset_data.index]
         interactor_names = final_interactors["pert_iname"].tolist()
-        available_interactors = [
-            i for i in interactor_names if i in dataset_data.columns
-        ]
+        available_interactors = [i for i in interactor_names if i in dataset_data.columns]
 
         if not common_genes or not available_interactors:
             warnings.warn("Insufficient overlap between genes and interactors")
             expression_data = pd.DataFrame()
         else:
-            expression_data = dataset_data.loc[
-                common_genes, available_interactors
-            ].copy()
+            expression_data = dataset_data.loc[common_genes, available_interactors].copy()
             expression_data["sig"] = signature.loc[common_genes].iloc[:, 0]
             expression_data["anti.sig"] = -signature.loc[common_genes].iloc[:, 0]
 
@@ -1011,9 +978,7 @@ class LincsReporter:
 
         # Create interactive Plotly figures if requested
         if include_plotly:
-            figures.update(
-                self._create_plotly_visualizations(results, report_folder, report_title)
-            )
+            figures.update(self._create_plotly_visualizations(results, report_folder, report_title))
 
         # Create summary correlation plot
         summary_fig = self._create_summary_correlation_plot(results, signature)
@@ -1043,9 +1008,7 @@ class LincsReporter:
                 )
                 fig.update_layout(width=800, height=600)
 
-                html_path = (
-                    Path(report_folder) / f"{report_title}_interactive_correlation.html"
-                )
+                html_path = Path(report_folder) / f"{report_title}_interactive_correlation.html"
                 fig.write_html(html_path)
                 plotly_figures["interactive_correlation_path"] = str(html_path)
 
@@ -1061,9 +1024,7 @@ class LincsReporter:
                 hit_list = data["hit_list"]
                 if "pval" in hit_list.columns and "Sig_Corr" in hit_list.columns:
                     fig = self._create_volcano_plot(hit_list, key)
-                    html_path = (
-                        Path(report_folder) / f"{report_title}_{key}_volcano.html"
-                    )
+                    html_path = Path(report_folder) / f"{report_title}_{key}_volcano.html"
                     fig.write_html(html_path)
                     plotly_figures[f"{key}_volcano_path"] = str(html_path)
 
@@ -1428,8 +1389,7 @@ class LincsReporter:
                 sig_data["abs_effect"] = abs(sig_data.iloc[:, 0])
                 top_genes = sig_data.nlargest(10, "abs_effect")
                 signature_preview = [
-                    (gene, effect)
-                    for gene, effect in zip(top_genes.index, top_genes.iloc[:, 0])
+                    (gene, effect) for gene, effect in zip(top_genes.index, top_genes.iloc[:, 0])
                 ]
 
             # Count total correlations
@@ -1608,9 +1568,7 @@ class LincsVisualizer:
             plt.savefig(out_file, dpi=300, bbox_inches="tight")
         return fig
 
-    def _get_top_hits(
-        self, hit_list: pd.DataFrame, direction: str, top_n: int
-    ) -> pd.DataFrame:
+    def _get_top_hits(self, hit_list: pd.DataFrame, direction: str, top_n: int) -> pd.DataFrame:
         """
         Returns the top N entries from a DataFrame based on the specified direction.
 
@@ -1717,10 +1675,7 @@ def lincs_tools(
     neg_genes = filter_object.get("negGeneNames", [])
     signature_genes = pos_genes + neg_genes
 
-    if (
-        "metaAnalysis" not in meta_object
-        or "pooledResults" not in meta_object["metaAnalysis"]
-    ):
+    if "metaAnalysis" not in meta_object or "pooledResults" not in meta_object["metaAnalysis"]:
         raise ValueError("Meta-analysis results not found")
 
     pooled_results = meta_object["metaAnalysis"]["pooledResults"]
@@ -1783,10 +1738,7 @@ def _prepare_signature_frame(meta_object: Dict, filter_object: Dict) -> pd.DataF
     neg_genes = filter_object.get("negGeneNames", [])
     sig_genes = pos_genes + neg_genes
 
-    if (
-        "metaAnalysis" not in meta_object
-        or "pooledResults" not in meta_object["metaAnalysis"]
-    ):
+    if "metaAnalysis" not in meta_object or "pooledResults" not in meta_object["metaAnalysis"]:
         raise ValueError("Meta-analysis results not found in meta_object")
 
     pooled_results = meta_object["metaAnalysis"]["pooledResults"]
@@ -1972,9 +1924,7 @@ def lincs_interactors(
     return analyzer.lincs_interactors(correlate_output, signature_frame, dataset)
 
 
-def lincs_qc_access(
-    dataset: str, perturbagens: List[str], just_gold: bool = False
-) -> pd.DataFrame:
+def lincs_qc_access(dataset: str, perturbagens: List[str], just_gold: bool = False) -> pd.DataFrame:
     """
     NEW FUNCTION: High-level interface for LINCS quality control data access.
 
