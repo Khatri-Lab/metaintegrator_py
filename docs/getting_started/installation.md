@@ -34,13 +34,14 @@ print(metaintegrator.__version__)
 
 ## Dependencies
 
-Core packages:
-- numpy >= 1.21.0
-- pandas >= 1.3.0
-- scipy >= 1.7.0
-- matplotlib >= 3.4.0
-- seaborn >= 0.11.0
-- scikit-learn >= 0.24.0
+Core packages (see `requirements.txt` for the authoritative list):
+
+- pandas >= 1.5.0, numpy >= 1.21.0, scipy >= 1.9.0, scikit-learn >= 0.24.0 — scientific stack
+- statsmodels >= 0.14.2 — additional statistical analysis
+- matplotlib >= 3.10.8, seaborn >= 0.13.2, plotly >= 5.0.0 — plotting
+- GEOparse >= 2.0.3, requests >= 2.25.0, lxml >= 4.6.0 — GEO data access
+- openpyxl >= 3.0.0, xlrd >= 2.0.0 — Excel file support
+- PyYAML >= 6.0.3, tqdm >= 4.60.0 — configuration and progress bars
 
 ## Optional Dependencies
 

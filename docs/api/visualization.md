@@ -6,9 +6,30 @@ This module provides tools for creating publication-quality visualizations of me
 
 | Module | Focus |
 |--------|-------|
-| `plotting.py` | `MetaAnalysisPlotter` — volcano, forest, heatmap, effect-size distribution |
-| `enhanced_plotting.py` | Extended plotter — multi-dataset ROC/PRC, summary panels |
+| `plotting.py` | `MetaAnalysisPlotter` — volcano, forest, heatmap, effect-size distribution, study overview, MA summary |
+| `enhanced_plotting.py` | `EnhancedMetaAnalysisPlotter` plus module-level functions — forest/heatmap/Manhattan/predictive-value/single- and multi-dataset ROC/PRC/violin/regression plots |
 | `violin_plot.py` | R-parity violin plots with ggplot2/ggpubr styling |
+
+> **Naming history.** `enhanced_plotting`'s plotter class used to also be
+> named `MetaAnalysisPlotter` — an unrelated class in a different module
+> that happened to share the same name as `plotting.MetaAnalysisPlotter`,
+> with a completely disjoint method set. It has been renamed to
+> `EnhancedMetaAnalysisPlotter` to remove the collision. A deprecated,
+> warning-emitting alias (`visualization.enhanced_plotting.MetaAnalysisPlotter`)
+> is kept for old imports, but new code should use `EnhancedMetaAnalysisPlotter`
+> directly — see `visualization/__init__.py`'s module docstring for the
+> full migration note.
+>
+> Every method documented below (`plot_volcano`, `plot_forest_plot`,
+> `plot_heatmap`, `plot_effect_size_distribution`, `plot_study_overview`,
+> `plot_ma_summary`) lives on `plotting.MetaAnalysisPlotter`.
+> `EnhancedMetaAnalysisPlotter`'s methods are named `forest_plot`,
+> `heatmap_plot`, `manhattan_plot`, `roc_plot`, `prc_plot`,
+> `multiple_roc_plot`, `multiple_prc_plot`, `violin_plot`, `regression_plot`,
+> etc. — not otherwise documented on this page. Import the one you mean
+> explicitly:
+> `from visualization.plotting import MetaAnalysisPlotter` or
+> `from visualization.enhanced_plotting import EnhancedMetaAnalysisPlotter`.
 
 ---
 
@@ -40,11 +61,12 @@ fig = violin_plot(
 |-----------|------|---------|-------------|
 | `filter_object` | dict | — | MetaFilter with `posGeneNames` / `negGeneNames` |
 | `dataset_object` | dict | — | Dataset with `expr`, `keys`, `class`, `pheno` |
-| `label_column` | str | `'label'` | Column in `pheno` defining groups |
+| `label_column` | str | `'label'` | Column in `pheno` defining groups. Falls back to binary `class` labels (0→Control, 1→Disease) when the column is missing or has ≤1 unique value. |
 | `comparison_method` | str | `'wilcox'` | `'wilcox'` (Mann–Whitney) or `'t'` (Welch) |
 | `show_points` | bool | `True` | Jittered data points |
 | `show_box` | bool | `True` | Boxplot overlay (IQR + median) |
 | `show_pvalue` | bool | `True` | P-value bracket annotations |
+| `figsize` | tuple | `(5, 5.5)` | Figure size in inches |
 | `title` | str | auto | Plot title |
 | `colors` / `fills` | list | ggplot2 palette | Per-group edge/fill colors |
 | `ax` | Axes | `None` | Draw on existing Axes |
@@ -90,7 +112,7 @@ class MetaAnalysisPlotter(
 **Example**
 
 ```python
-from visualization.enhanced_plotting import MetaAnalysisPlotter
+from visualization.plotting import MetaAnalysisPlotter
 
 # Create plotter with default settings
 plotter = MetaAnalysisPlotter()
@@ -392,7 +414,7 @@ plt.show()
 ## Complete Visualization Workflow
 
 ```python
-from visualization.enhanced_plotting import MetaAnalysisPlotter
+from visualization.plotting import MetaAnalysisPlotter
 import matplotlib.pyplot as plt
 
 # Initialize plotter
@@ -518,7 +540,7 @@ plt.show()
 
 ```python
 import matplotlib.pyplot as plt
-from metaintegrator_py.src.visualization.plotting import MetaAnalysisPlotter
+from visualization.plotting import MetaAnalysisPlotter
 
 # Configure for publication
 plt.rcParams.update({

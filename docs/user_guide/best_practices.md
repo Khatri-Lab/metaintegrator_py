@@ -168,32 +168,33 @@ search_log = systematic_geo_search('breast cancer')
 ### Validate All Downloads
 
 ```python
-from preprocessing.geo_data_loader import get_geo_data, check_geo_log_scale
+from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 
 def download_with_validation(gse_ids):
     """
-    Download GEO data with comprehensive validation.
+    Download GEO data with comprehensive validation. There's no built-in
+    check_geo_log_scale() — this uses a simple max-value heuristic instead
+    (log2 microarray data is rarely above ~25-30).
     """
-    meta_object = get_geo_data(
-        gse_vector=gse_ids,
-        q_norm=True,
-        cache_dir="./geo_cache"
-    )
-    
-    # Validate each dataset
+    loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir="./geo_cache")
+    raw_datasets = loader.load_multiple(gse_ids, stop_on_error=False)
+
+    meta_object = {"originalData": {}}
     validation_log = []
-    
-    for name, dataset in meta_object['originalData'].items():
+
+    for ds in raw_datasets:
+        is_log_scale = ds.expr.max().max() < 30
         checks = {
-            'dataset': name,
+            'dataset': ds.geo_id,
             'downloaded': True,
-            'n_genes': len(dataset['keys']),
-            'n_samples': dataset['expr'].shape[1],
-            'log_scale': check_geo_log_scale(dataset),
-            'missing_pct': (dataset['expr'].isna().sum().sum() / dataset['expr'].size) * 100,
-            'platform': dataset.get('platform', 'Unknown')
+            'n_genes': len(ds.keys),
+            'n_samples': ds.expr.shape[1],
+            'log_scale': is_log_scale,
+            'missing_pct': (ds.expr.isna().sum().sum() / ds.expr.size) * 100,
+            'platform': ds.metadata.get('platform', 'Unknown'),
         }
-        
+
         # Flag issues
         if checks['n_samples'] < 20:
             checks['warning'] = 'Low sample size'
@@ -201,12 +202,18 @@ def download_with_validation(gse_ids):
             checks['warning'] = 'High missing data'
         if not checks['log_scale']:
             checks['warning'] = 'Not in log scale'
-        
+
         validation_log.append(checks)
-    
+
+        dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+                   "formattedName": ds.geo_id, "class": None}
+        meta_object["originalData"][ds.geo_id] = assign_class_labels(
+            dataset, column_name="title", disease_terms=["disease"]
+        )
+
     # Save validation log
     pd.DataFrame(validation_log).to_csv('download_validation.csv', index=False)
-    
+
     return meta_object
 
 # Use it
@@ -242,7 +249,7 @@ def comprehensive_qc(meta_object):
         # 3. Data quality
         expr = dataset['expr']
         checks['missing_pct'] = (expr.isna().sum().sum() / expr.size) * 100
-        checks['log_scale'] = check_geo_log_scale(dataset)
+        checks['log_scale'] = expr.max().max() < 30  # heuristic; no built-in check
         
         # 4. Sample size
         checks['n_samples'] = expr.shape[1]
@@ -366,15 +373,14 @@ with open('analysis_plan.json', 'w') as f:
 ```python
 from metaintegrator.analysis import MetaAnalyzer
 
-# ✅ RECOMMENDED: Random-effects
+# ✅ RECOMMENDED: run_meta_analysis() — always uses random-effects pooling
+# and also runs leave-one-out automatically (3+ datasets)
 analyzer = MetaAnalyzer()
-results = analyzer.run_meta_analysis_core(
-    original_data=list(meta_object['originalData'].values()),
-    use_old_method=False  # Modern Fisher combination
-)
+results = analyzer.run_meta_analysis(meta_object)
 
-# Only use fixed-effects if justified (rare)
-# Fixed-effects assumes all studies measure same true effect
+# There is no "fixed-effects" toggle on run_meta_analysis() itself — the
+# lower-level MetaAnalysisCore.pool_inverse_variance(method=...) does
+# support 'fixed', but the recommended, R-parity entry point is random-effects.
 ```
 
 ### Check Assumptions
@@ -382,41 +388,41 @@ results = analyzer.run_meta_analysis_core(
 ```python
 def check_meta_analysis_assumptions(results):
     """
-    Verify meta-analysis assumptions.
+    Verify meta-analysis assumptions using the primary pooledResults output.
     """
-    pooled = results['pooled_estimates']
-    
+    pooled = results['metaAnalysis']['pooledResults']
+
     print("META-ANALYSIS ASSUMPTION CHECKS")
     print("=" * 60)
-    
-    # 1. Check heterogeneity
-    if 'I2' in pooled.columns:
-        median_i2 = pooled['I2'].median()
-        print(f"\n1. Heterogeneity (I²):")
-        print(f"   Median I²: {median_i2:.1f}%")
-        if median_i2 < 50:
-            print("   ✅ Low-moderate heterogeneity (random-effects appropriate)")
-        else:
-            print("   ⚠️ High heterogeneity (investigate sources)")
-    
+
+    # 1. Check heterogeneity (I² is derived, not a stored column:
+    #    I² = max(0, 100% * (Q - df) / Q); df = numStudies - 1)
+    het_pval_median = pooled['heterogeneityPval'].median()
+    print(f"\n1. Heterogeneity:")
+    print(f"   Median heterogeneity p-value: {het_pval_median:.3f}")
+    if het_pval_median >= 0.05:
+        print("   ✅ Low-moderate heterogeneity (random-effects appropriate)")
+    else:
+        print("   ⚠️ Significant heterogeneity for many genes (investigate sources)")
+
     # 2. Check sample sizes
-    n_studies = pooled['n_studies'].median()
+    n_studies = pooled['numStudies'].median()
     print(f"\n2. Study participation:")
     print(f"   Median studies per gene: {n_studies:.0f}")
     if n_studies >= 3:
         print("   ✅ Adequate study numbers")
     else:
         print("   ⚠️ Low study numbers (results may be unstable)")
-    
+
     # 3. Check effect size distribution
-    effects = pooled['effect_size']
+    effects = pooled['effectSize']
     print(f"\n3. Effect size distribution:")
     print(f"   Mean: {effects.mean():.3f}")
     print(f"   Median: {effects.median():.3f}")
     print(f"   Range: [{effects.min():.3f}, {effects.max():.3f}]")
-    
+
     # 4. Check p-value distribution
-    p_values = pooled['p_value']
+    p_values = pooled['effectSizePval']
     uniform_expected = len(p_values) * 0.05
     observed_p05 = (p_values < 0.05).sum()
     print(f"\n4. P-value distribution:")
@@ -440,11 +446,11 @@ def interpret_significance(results, fdr_threshold=0.05):
     """
     Interpret results in context of multiple testing.
     """
-    pooled = results['pooled_estimates']
-    
+    pooled = results['metaAnalysis']['pooledResults']
+
     # Count significance levels
-    sig_fdr = (pooled['p_fdr'] < fdr_threshold).sum()
-    sig_nominal = (pooled['p_value'] < 0.05).sum()
+    sig_fdr = (pooled['effectSizeFDR'] < fdr_threshold).sum()
+    sig_nominal = (pooled['effectSizePval'] < 0.05).sum()
     total = len(pooled)
     
     print("SIGNIFICANCE INTERPRETATION")
@@ -461,11 +467,11 @@ def interpret_significance(results, fdr_threshold=0.05):
     print(f"  Note: {sig_nominal - sig_fdr:,} do not survive FDR correction")
     
     # Effect size context
-    sig_genes = pooled[pooled['p_fdr'] < fdr_threshold]
+    sig_genes = pooled[pooled['effectSizeFDR'] < fdr_threshold]
     if len(sig_genes) > 0:
-        large_effect = (np.abs(sig_genes['effect_size']) > 0.8).sum()
-        medium_effect = ((np.abs(sig_genes['effect_size']) > 0.5) & 
-                        (np.abs(sig_genes['effect_size']) <= 0.8)).sum()
+        large_effect = (np.abs(sig_genes['effectSize']) > 0.8).sum()
+        medium_effect = ((np.abs(sig_genes['effectSize']) > 0.5) &
+                        (np.abs(sig_genes['effectSize']) <= 0.8)).sum()
         
         print(f"\nEffect sizes of significant genes:")
         print(f"  Large (|g| > 0.8): {large_effect} ({large_effect/len(sig_genes)*100:.1f}%)")
@@ -481,16 +487,16 @@ def validate_top_genes(meta_object, results, n_genes=20):
     """
     Check consistency of top genes across studies.
     """
-    pooled = results['pooled_estimates']
-    top_genes = pooled.nsmallest(n_genes, 'p_fdr')
-    
+    pooled = results['metaAnalysis']['pooledResults']
+    top_genes = pooled.nsmallest(n_genes, 'effectSizeFDR')
+
     print(f"TOP {n_genes} GENE VALIDATION")
     print("=" * 60)
-    
+
     for gene in top_genes.index:
         print(f"\n{gene}:")
-        print(f"  Pooled ES: {top_genes.loc[gene, 'effect_size']:.3f}")
-        print(f"  FDR: {top_genes.loc[gene, 'p_fdr']:.2e}")
+        print(f"  Pooled ES: {top_genes.loc[gene, 'effectSize']:.3f}")
+        print(f"  FDR: {top_genes.loc[gene, 'effectSizeFDR']:.2e}")
         
         # Check per-study consistency
         directions = []
@@ -576,8 +582,8 @@ def save_complete_workflow(meta_object, results):
         pickle.dump(results, f)
     
     # 3. Save significant genes
-    pooled = results['pooled_estimates']
-    sig_genes = pooled[pooled['p_fdr'] < 0.05]
+    pooled = results['metaAnalysis']['pooledResults']
+    sig_genes = pooled[pooled['effectSizeFDR'] < 0.05]
     sig_genes.to_csv(output_dir / 'significant_genes.csv')
     
     # 4. Save session info
@@ -676,8 +682,8 @@ def create_publication_figure(results):
     fig = plt.figure(figsize=(16, 12))
     gs = fig.add_gridspec(3, 2, hspace=0.3, wspace=0.3)
     
-    pooled = results['pooled_estimates']
-    
+    pooled = results['metaAnalysis']['pooledResults']
+
     # Panel A: Volcano plot
     ax1 = fig.add_subplot(gs[0, :])
     # ... volcano plot code ...
@@ -711,8 +717,9 @@ def create_publication_figure(results):
 **❌ DON'T:**
 ```python
 # Trying multiple thresholds until results look good
+pooled = results['metaAnalysis']['pooledResults']
 for threshold in [0.05, 0.10, 0.15, 0.20]:
-    sig = results[results['p_fdr'] < threshold]
+    sig = pooled[pooled['effectSizeFDR'] < threshold]
     if len(sig) > 100:
         print(f"Using FDR < {threshold}")  # Cherry-picking!
         break
@@ -722,7 +729,8 @@ for threshold in [0.05, 0.10, 0.15, 0.20]:
 ```python
 # Pre-specify threshold
 FDR_THRESHOLD = 0.05  # Documented in analysis plan
-sig_genes = results[results['p_fdr'] < FDR_THRESHOLD]
+pooled = results['metaAnalysis']['pooledResults']
+sig_genes = pooled[pooled['effectSizeFDR'] < FDR_THRESHOLD]
 ```
 
 ### 2. HARKing (Hypothesizing After Results Known)
@@ -730,7 +738,7 @@ sig_genes = results[results['p_fdr'] < FDR_THRESHOLD]
 **❌ DON'T:**
 ```python
 # Looking at results, then claiming you predicted them
-results = run_meta_analysis()
+results = analyzer.run_meta_analysis(meta_object)
 # "We hypothesized gene X would be significant" (but you didn't!)
 ```
 
@@ -745,15 +753,20 @@ hypothesis = "Gene X will be up-regulated based on prior literature"
 
 **❌ DON'T:**
 ```python
-# Using fixed-effects despite high heterogeneity
-results = run_meta_analysis(method='fixed')  # Ignores I²!
+# run_meta_analysis() always uses random-effects pooling; deliberately
+# reaching for the lower-level fixed-effects pooling despite known high
+# heterogeneity, and not checking it, is the mistake here
+from metaintegrator.core_analysis import MetaAnalysisCore
+pooled_fixed = MetaAnalysisCore.pool_inverse_variance(g_matrix, se_matrix, method='fixed')  # Ignores heterogeneity!
 ```
 
 **✅ DO:**
 ```python
-# Check heterogeneity, use random-effects
-results = run_meta_analysis(method='random')
-check_heterogeneity(results)  # Investigate if I² > 75%
+# Use the recommended entry point (random-effects) and check heterogeneity
+results = analyzer.run_meta_analysis(meta_object)
+pooled = results['metaAnalysis']['pooledResults']
+high_het = pooled[pooled['heterogeneityPval'] < 0.05]
+print(f"{len(high_het)} genes with significant heterogeneity — investigate these")
 ```
 
 ### 4. Selective Reporting
@@ -762,15 +775,15 @@ check_heterogeneity(results)  # Investigate if I² > 75%
 ```python
 # Only reporting "interesting" results
 interesting_genes = ['BRCA1', 'TP53', 'EGFR']
-report_only(results[results.index.isin(interesting_genes)])
+report_only(pooled[pooled.index.isin(interesting_genes)])
 ```
 
 **✅ DO:**
 ```python
 # Report all significant genes + complete results in supplement
-significant = results[results['p_fdr'] < 0.05]
+significant = pooled[pooled['effectSizeFDR'] < 0.05]
 report_all(significant)
-save_supplement(results)  # Full results
+save_supplement(pooled)  # Full results
 ```
 
 ## FAQ

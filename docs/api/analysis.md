@@ -13,11 +13,11 @@ score calculation, and ROC/PRC evaluation.
 | `score_calculation` | `ScoreCalculator` | Geometric-mean z-score per sample |
 | `sample_level_gene_data` | `SampleLevelGeneDataProcessor` | Probe → gene-level matrix |
 | `roc_analysis_engine` | `ROCAnalysisEngine` | ROC curves, AUC, multi-dataset ROC |
-| `prc_analysis` | `PRCAnalysis` | Precision-recall curves |
-| `power_calculation` | `PowerCalculation` | Sample-size & power estimation |
+| `prc_analysis` | `PRCAnalyzer` | Precision-recall curves |
+| `power_calculation` | `MetaAnalysisPowerCalculator` | Sample-size & power estimation |
 | `scoring_core` | `FilterConfig`, `FilterResults`, validators | Shared infrastructure |
 | `scoring_export_engine` | `ExportEngine` | Export to CSV / Excel |
-| `scoring_meta_integrator_orchestrator` | `ScoringOrchestrator` | End-to-end pipeline |
+| `scoring_meta_integrator_orchestrator` | `MetaIntegratorOrchestrator` | End-to-end pipeline |
 
 ---
 
@@ -589,19 +589,22 @@ result.to_dict()            # plain dict with R-style keys
 ## Complete Workflow Example
 
 ```python
-from metaintegrator.data_processing import DataProcessor
 from metaintegrator.analysis import MetaAnalyzer
+from metaintegrator.labeling import assign_class_labels
 from metaintegrator.core_analysis import (
     MetaAnalysisCore,
     FisherCombination
 )
 
-# 1. Prepare studies
-studies = {
-    "GSE1234": DataProcessor.prepare_study_object(...),
-    "GSE5678": DataProcessor.prepare_study_object(...),
-    "GSE9012": DataProcessor.prepare_study_object(...)
-}
+# 1. Prepare studies — DataProcessor has no "prepare_study_object" helper;
+# build each study dict from expr/pheno/keys and assign class labels
+# from a phenotype column with assign_class_labels().
+studies = {}
+for gse_id, (expr, pheno, keys) in raw_datasets.items():
+    study = {"expr": expr, "pheno": pheno, "keys": keys, "formattedName": gse_id}
+    studies[gse_id] = assign_class_labels(
+        study, column_name="disease_state", disease_terms=["disease"]
+    )
 
 meta_object = {"originalData": studies}
 
@@ -788,53 +791,81 @@ gene_matrix = SampleLevelGeneDataProcessor.get_sample_level_gene_data(
 
 ## MetaIntegratorFilter
 
-Gene filtering by FDR, effect size, and leave-one-out analysis.
+Gene filtering by FDR, effect size, and leave-one-out analysis. This is the
+**strategy-based** filter (standard / adaptive / combined-criteria), a
+separate, heavier pipeline from `analysis.filter_genes()` /
+`analysis.FilterResult` covered under [MetaAnalyzer](#metaanalyzer) above —
+see the note in the [Module Overview](overview.md#package-metaintegrator).
+
+Unlike `analysis.filter_genes()`, this is not a one-shot static call: it's
+instantiated with a `FilterConfig`, then `.filter()` is called on the
+instance. The threshold field names are `_thresh`, not `_threshold`.
 
 ```python
 from metaintegrator.scoring_meta_integrator_filter import MetaIntegratorFilter
+from metaintegrator.scoring_core import FilterConfig
 
-filter_result = MetaIntegratorFilter.filter_genes(
-    meta_object,
-    fdr_threshold=0.05,
-    effect_size_threshold=0,
-    number_of_studies=1,
+config = FilterConfig(
+    fdr_thresh=0.05,
+    effect_size_thresh=0,
+    number_studies_thresh=1,
     is_leave_one_out=True,
-    heterogeneity_pval_threshold=0,
+    heterogeneity_pval_thresh=0,
 )
+meta_filter = MetaIntegratorFilter(config=config)
+filter_result = meta_filter.filter(meta_object)  # → FilterResults (scoring_core)
 
-# filter_result contains:
-#   posGeneNames: list of up-regulated genes
-#   negGeneNames: list of down-regulated genes
+# Attribute access only — no R-style dict aliasing on this class
+filter_result.pos_gene_names   # list of up-regulated genes
+filter_result.neg_gene_names   # list of down-regulated genes
+filter_result.total_genes      # property: len(pos) + len(neg)
+filter_result.to_dict()        # plain dict, snake_case keys
 ```
 
 ---
 
 ## ROCAnalysisEngine
 
-ROC curve computation and multi-dataset evaluation.
+ROC curve computation and multi-dataset evaluation. Methods are on the
+*instance*, not the class — `ROCAnalysisEngine` must be constructed first.
 
 ```python
 from metaintegrator.roc_analysis_engine import ROCAnalysisEngine
 
+engine = ROCAnalysisEngine()
+
 # Single dataset
-roc_result = ROCAnalysisEngine.compute_roc(
+roc_result = engine.calculate_roc(
     y_true=dataset['class'],
     y_scores=scores,
+    confidence=0.95,
 )
 print(f"AUC = {roc_result['auc']:.3f}")
+# roc_result also has: fpr, tpr, thresholds, auc_ci, auc_pvalue,
+# n_pos, n_neg, roc_curve (DataFrame of FPR/TPR pairs)
+
+# Precision-recall counterpart
+prc_result = engine.calculate_prc(y_true=dataset['class'], y_scores=scores)
+print(f"AUPRC = {prc_result['auprc']:.3f}")
 ```
 
 ---
 
-## ScoringOrchestrator
+## MetaIntegratorOrchestrator
 
 End-to-end pipeline: meta-analysis → filtering → scoring → ROC → export.
+(Module-referenced as `scoring_meta_integrator_orchestrator`; there is no
+class literally named `ScoringOrchestrator`.)
 
 ```python
-from metaintegrator.scoring_meta_integrator_orchestrator import ScoringOrchestrator
+from metaintegrator.scoring_meta_integrator_orchestrator import MetaIntegratorOrchestrator
 
-orchestrator = ScoringOrchestrator()
-results = orchestrator.run_full_pipeline(meta_object)
+orchestrator = MetaIntegratorOrchestrator()
+results = orchestrator.run_analysis(meta_object, analysis_name="analysis")
+
+# results is a plain dict:
+#   filter_results, gene_scores, statistical_summary,
+#   success, errors, export_paths
 ```
 
 ---

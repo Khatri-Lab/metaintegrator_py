@@ -8,15 +8,22 @@
 
 ```python
 from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 from metaintegrator.analysis import MetaAnalyzer
 
 # Download datasets (cached after first run)
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
-meta_object = {"originalData": {
-    ds.geo_id: ds.to_dict() for ds in datasets
-}}
+# Build the meta-object and assign case (1) / control (0) labels from
+# a phenotype column — ProcessedDataset itself has no "class" field
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
+    )
 
 # Run meta-analysis
 analyzer = MetaAnalyzer()
@@ -92,20 +99,22 @@ print(pooled.nsmallest(10, "effectSizeFDR")[["effectSize", "effectSizeFDR"]])
 ## 📖 Example Workflow
 
 ```python
-# 1. Data Acquisition
-meta_object = get_geo_data(gse_ids)
+# 1. Data Acquisition — download & annotate (gene annotation happens
+#    inside the handler, as part of loading)
+loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
+datasets = loader.load_multiple(gse_ids)
 
-# 2. Quality Control
-assess_data_quality(meta_object)
+# 2. Label Samples — case (1) vs. control (0), per dataset
+labeled_dataset = assign_class_labels(dataset, column_name=col, disease_terms=[...])
 
-# 3. Gene Annotation
-annotate_datasets(meta_object)
+# 3. Meta-Analysis
+results = MetaAnalyzer().run_meta_analysis(meta_object)
 
-# 4. Meta-Analysis
-results = run_meta_analysis(meta_object)
+# 4. Filter Genes — build the signature
+results = MetaAnalyzer().filter_genes(results, effect_size_thresh=1, fdr_thresh=0.05)
 
 # 5. Visualization
-create_forest_plot(results)
+EnhancedMetaAnalysisPlotter().forest_plot(gene_name="GENE1", meta_object=results)
 ```
 
 ## 🔗 Quick Links

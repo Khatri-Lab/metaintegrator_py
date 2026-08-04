@@ -27,52 +27,72 @@ See the [Architecture Overview](../architecture.md) for the full data flow.
 
 ## ProcessedDataset (Preprocessing Output)
 
-The `ProcessedDataset` dataclass is the standard output of all preprocessing handlers:
+The `ProcessedDataset` dataclass is the standard output of all preprocessing handlers.
+It has **no** `class`/label field of its own — case/control labels are always assigned
+as a separate step (see [Class Labels](#class-labels-class) below) — and it has no
+`to_dict()` method:
 
 ```python
 from preprocessing.base import ProcessedDataset
 
 @dataclass
 class ProcessedDataset:
-    geo_id: str                         # "GSE11909_GPL96"
-    expr: pd.DataFrame                  # probes × samples (float64)
-    keys: List[str]                     # gene symbol per probe
-    pheno: pd.DataFrame                 # sample metadata (GSM IDs as index)
-    class_vector: Optional[np.ndarray]  # 0=control, 1=disease
-    platform_id: Optional[str]          # "GPL96"
-    annotation_method: Optional[str]    # how genes were mapped
-
-    def to_dict(self) -> Dict:
-        """Convert to R-compatible dict for MetaAnalyzer."""
+    geo_id: str                # "GSE11909_GPL96"
+    expr: pd.DataFrame         # probes × samples (float64)
+    pheno: pd.DataFrame        # sample metadata (GSM IDs as index)
+    keys: List[str]            # gene symbol per probe (comma-separated for multi-gene probes)
+    metadata: Dict[str, Any]   # source, platform, handler, etc.
 ```
 
-**Converting to dict for analysis:**
+**Converting to the analysis dict format:**
+
+There is no built-in conversion method — build the dict by hand and assign labels
+with `assign_class_labels()`:
 
 ```python
+from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
+
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(['GSE11909'])
 
-# to_dict() produces the format expected by MetaAnalyzer
-meta_object = {
-    "originalData": {ds.geo_id: ds.to_dict() for ds in datasets}
-}
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
+    )
 ```
 
 ## filter_object (Gene Filtering Output)
 
-Produced by `MetaIntegratorFilter.filter_genes()`, consumed by `ScoreCalculator`
-and visualization functions:
+`MetaAnalyzer.filter_genes()` (in `analysis.py`) stores a `FilterResult` dataclass
+under `meta_object["filterResults"]`. It supports both attribute access and
+R-style dict access:
 
 ```python
-filter_object = {
-    "posGeneNames":       List[str],    # up-regulated signature genes
-    "negGeneNames":       List[str],    # down-regulated signature genes
-    "FDRThresh":          float,        # FDR threshold used (e.g. 0.05)
-    "effectSizeThresh":   float,        # effect-size threshold (e.g. 0)
-    "numberStudiesThresh": int,         # min contributing studies
-    "isLeaveOneOut":      bool,         # LOOA applied?
-}
+filter_result = meta_object["filterResults"]
+
+filter_result.pos_gene_names      # List[str] — up-regulated signature genes
+filter_result.neg_gene_names      # List[str] — down-regulated signature genes
+filter_result.n_pos               # int
+filter_result.n_neg               # int
+filter_result.effect_size_thresh  # float
+filter_result.fdr_thresh          # float
+
+filter_object = filter_result.to_dict()  # R-style keys, e.g. for ScoreCalculator
+filter_object["posGeneNames"]     # aliased to pos_gene_names
+filter_object["negGeneNames"]     # aliased to neg_gene_names
+filter_object["FDRThresh"]        # aliased to fdr_thresh
+filter_object["effectSizeThresh"] # aliased to effect_size_thresh
 ```
+
+!!! note "Two independent filtering systems"
+    A separate, strategy-based pipeline — `scoring_meta_integrator_filter.MetaIntegratorFilter`
+    (`.filter()`, not `.filter_genes()`) — produces a differently-shaped `FilterResults`
+    object. The two are not interchangeable; see
+    [API Reference](../api/overview.md#package-metaintegrator).
 
 ## Meta-Object Structure
 
@@ -94,20 +114,26 @@ meta_object = {
 ### Complete Example
 
 ```python
-from preprocessing.geo_data_loader import get_geo_data
+from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 
-# Download creates a meta-object
-meta_object = get_geo_data(
-    gse_vector=["GSE5847", "GSE28750"],
-    formatted_names=["Breast_Cancer", "Sepsis"]
-)
+loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
+datasets = loader.load_multiple(["GSE5847", "GSE28750"])
+
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
+    )
 
 # Structure
 print(meta_object.keys())
 # Output: dict_keys(['originalData'])
 
 print(list(meta_object['originalData'].keys()))
-# Output: ['Breast_Cancer', 'Sepsis']
+# Output: ['GSE5847_GPL570', 'GSE28750_GPL570']  (keyed by geo_id, not formattedName)
 ```
 
 ### Accessing Data
@@ -270,112 +296,88 @@ dataset['class'] = class_vector.values
 
 ## Analysis Results
 
-After running meta-analysis, results are stored in `meta_object['metaAnalysis']`:
+After `MetaAnalyzer.run_meta_analysis()`, results are stored in `meta_object['metaAnalysis']`:
 
 ### Meta-Analysis Results Structure
 
 ```python
-meta_results = {
-    # Pooled estimates across studies (PRIMARY OUTPUT)
+meta_analysis = {
+    # Primary output: R-parity, FDR- and Fisher-combined per-gene results
+    'pooledResults': pd.DataFrame,
+
+    # Raw inverse-variance pooling output, *before* the Fisher combination
+    # is merged in — lower-level, snake_case columns, mainly of interest
+    # if you need the pooling statistics on their own
     'pooled_estimates': pd.DataFrame,
-    
-    # Per-study effect sizes
-    'study_effects': dict,
-    
-    # Fisher combined p-values
-    'fisher_results': pd.DataFrame,
-    
-    # Analysis metadata
-    'analysis_info': dict
+
+    # Per-dataset effect sizes / standard errors (genes × datasets)
+    'datasetEffectSizes': pd.DataFrame,
+    'datasetEffectSizeStandardErrors': pd.DataFrame,
+
+    'analysisDescription': str,
 }
 ```
 
-### Pooled Estimates DataFrame
+### pooledResults DataFrame (primary output)
 
-**Type**: `pandas.DataFrame`  
-**Index**: Gene symbols  
-**Columns**: Statistical results
+**Type**: `pandas.DataFrame`
+**Index**: Gene symbols
+**Columns**: Statistical results (R-parity naming, matches the `filterGenes()` input)
 
 ```python
-pooled = meta_results['pooled_estimates']
+pooled = meta_object['metaAnalysis']['pooledResults']
 
-# Columns
 pooled.columns
-# ['n_studies', 'summary', 'se_summary', 'tau2', 'p_value', 
-#  'Q', 'df', 'pval_het', 'p_fdr', 'effect_size']
+# ['effectSize', 'effectSizeStandardError', 'effectSizePval', 'effectSizeFDR',
+#  'tauSquared', 'numStudies', 'cochranesQ', 'heterogeneityPval',
+#  'fisherStatUp', 'fisherPvalUp', 'fisherFDRUp',
+#  'fisherStatDown', 'fisherPvalDown', 'fisherFDRDown']
 
-# Example rows
-pooled.head()
-#        n_studies  summary  se_summary   tau2    p_value     Q  df  pval_het    p_fdr  effect_size
-# BRCA1          2    2.345       0.234  0.012  1.23e-15  0.82   1      0.36  2.56e-11        2.345
-# TP53           2    2.103       0.198  0.008  3.45e-14  0.45   1      0.50  3.59e-10        2.103
-# EGFR           2    1.987       0.187  0.015  5.67e-13  1.23   1      0.27  3.93e-09        1.987
+pooled.nsmallest(10, "effectSizeFDR")[["effectSize", "effectSizeFDR"]]
 ```
 
 ### Column Descriptions
 
 | Column | Description | Type | Range |
 |--------|-------------|------|-------|
-| `n_studies` | Number of studies gene appears in | int | 1 to n_datasets |
-| `summary` | Pooled effect size | float | -∞ to +∞ |
-| `se_summary` | Standard error of pooled effect | float | > 0 |
-| `tau2` | Between-study variance | float | ≥ 0 |
-| `p_value` | Meta-analysis p-value | float | 0 to 1 |
-| `Q` | Cochran's Q statistic (heterogeneity) | float | ≥ 0 |
-| `df` | Degrees of freedom | int | n_studies - 1 |
-| `pval_het` | P-value for heterogeneity test | float | 0 to 1 |
-| `p_fdr` | FDR-corrected p-value | float | 0 to 1 |
-| `effect_size` | Same as `summary` | float | -∞ to +∞ |
+| `effectSize` | Pooled Hedges' g effect size | float | -∞ to +∞ |
+| `effectSizeStandardError` | Standard error of pooled effect | float | > 0 |
+| `effectSizePval` | Meta-analysis p-value | float | 0 to 1 |
+| `effectSizeFDR` | FDR-corrected p-value (the threshold `filterGenes()` uses) | float | 0 to 1 |
+| `tauSquared` | Between-study variance | float | ≥ 0 |
+| `numStudies` | Number of studies gene appears in | int | 1 to n_datasets |
+| `cochranesQ` | Cochran's Q statistic (heterogeneity) | float | ≥ 0 |
+| `heterogeneityPval` | P-value for the heterogeneity test | float | 0 to 1 |
+| `fisherStatUp` / `fisherStatDown` | Fisher combined statistic, directional | float | ≥ 0 |
+| `fisherPvalUp` / `fisherPvalDown` | Fisher combined p-value, directional | float | 0 to 1 |
+| `fisherFDRUp` / `fisherFDRDown` | FDR-corrected Fisher p-value, directional | float | 0 to 1 |
 
-### Per-Study Effects
+### Per-Dataset Effect Sizes
+
+`datasetEffectSizes` and `datasetEffectSizeStandardErrors` are gene × dataset
+matrices (Hedges' g and its standard error per gene, per contributing study) —
+not a dict keyed by study name:
 
 ```python
-study_effects = meta_results['study_effects']
-
-# Structure: dict of DataFrames
-study_effects.keys()
-# dict_keys(['Breast_Cancer', 'Sepsis'])
-
-# Each study's effects
-breast_effects = study_effects['Breast_Cancer']
-#        n1   m1   sd1  n2   m2   sd2   diff  pooled_sd      g   se_g    keys
-# 0      25  7.2  1.5  25  9.1  1.6    1.9       1.55  1.23   0.29  BRCA1
-# 1      25  6.8  1.3  25  8.9  1.4    2.1       1.35  1.56   0.31   TP53
+es_df = meta_object['metaAnalysis']['datasetEffectSizes']
+#          GSE5847_GPL570  GSE28750_GPL570
+# BRCA1              1.23              1.56
+# TP53                NaN              1.02   # NaN = gene absent from that study
 ```
 
 ## Annotation Structures
 
-### Annotation Report
-
-After gene annotation, each dataset gets an annotation report:
-
-```python
-dataset['annotation_report'] = {
-    'source_type': 'Affymetrix Probe ID',
-    'total_identifiers': 54675,
-    'mapped_identifiers': 20453,
-    'mapping_rate': 0.923,
-    'unmapped_identifiers': set(['AFFX-BioB-5_at', ...]),
-    'annotation_method': 'UCSC RefSeq',
-    'timestamp': '2026-04-21T10:30:00'
-}
-```
-
-### Feature Data (`fData`)
-
-Platform-specific annotation (optional):
+There is currently no separate annotation-report or feature-data (`fData`) structure
+attached to a dataset. Annotation results are reflected directly in `keys`:
+`GeneAnnotator.annotate()` maps each probe to a gene symbol (comma-separated for
+multi-gene probes), and unmappable probes are left as `'NA'`. To compute your own
+mapping-rate summary:
 
 ```python
-# May be available for some datasets
-if 'fData' in dataset:
-    fdata = dataset['fData']
-    
-    # Typical columns
-    fdata.columns
-    # ['ID', 'GB_ACC', 'SPOT_ID', 'Species Scientific Name',
-    #  'Annotation Date', 'Sequence Type', 'Sequence Source',
-    #  'Target Description', 'Representative Public ID',
-    #  'Gene Title', 'Gene Symbol', 'ENTREZ_GENE_ID', ...]
+keys = dataset['keys']
+n_total = len(keys)
+n_mapped = sum(1 for k in keys if k != 'NA')
+print(f"Mapped {n_mapped}/{n_total} probes ({n_mapped / n_total:.1%})")
 ```
 
 ## Working with Data Structures
@@ -696,21 +698,21 @@ meta_object
 │   │   ├── keys (list): length n_genes
 │   │   ├── class (ndarray): length n_samples
 │   │   ├── pheno (DataFrame): n_samples × n_features
-│   │   ├── name (str)
 │   │   ├── formattedName (str)
-│   │   ├── platform (str)
-│   │   ├── exp_comment (str)
-│   │   ├── key_comment (str)
-│   │   └── annotation_report (dict)
+│   │   ├── exp_comment (str, optional)
+│   │   └── key_comment (str, optional)
 │   ├── Study_B (dict)
 │   │   └── ... (same structure)
 │   └── Study_C (dict)
 │       └── ... (same structure)
-└── metaAnalysis (dict) - added after analysis
-    ├── pooled_estimates (DataFrame)
-    ├── study_effects (dict)
-    ├── fisher_results (DataFrame)
-    └── analysis_info (dict)
+├── metaAnalysis (dict) - added by run_meta_analysis()
+│   ├── pooledResults (DataFrame)             # primary output
+│   ├── pooled_estimates (DataFrame)          # pre-Fisher pooling only
+│   ├── datasetEffectSizes (DataFrame)
+│   ├── datasetEffectSizeStandardErrors (DataFrame)
+│   └── analysisDescription (str)
+├── leaveOneOutAnalysis (dict or None)        # added by run_meta_analysis()
+└── filterResults (FilterResult)              # added by filter_genes()
 ```
 
 ### Quick Reference
@@ -739,7 +741,7 @@ labels = dataset['class']
 
 **Get results:**
 ```python
-results = meta_object['metaAnalysis']['pooled_estimates']
+pooled = meta_object['metaAnalysis']['pooledResults']
 ```
 
 ### Type Specifications

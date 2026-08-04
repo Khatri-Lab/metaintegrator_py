@@ -293,10 +293,48 @@ subsetted = subsetOriginalData(
 ### `assign_class_labels`
 
 ```python
-from metaintegrator.labeling import assign_class_labels
+def assign_class_labels(
+    dataset_object: Dict,
+    column_name: str,
+    disease_terms: List[str],
+    control_terms: Optional[List[str]] = None,
+    dataset_name: Optional[str] = None,
+) -> Dict
 ```
 
-Utility for assigning binary class labels from phenotype data.
+Assign binary class labels (0 = control, 1 = disease) to a dataset by
+matching a phenotype column against a list of disease terms — the Python
+equivalent of R MetaIntegrator's `dataset$class <- ifelse(grepl("SLE",
+dataset$pheno$disease), 1, 0)` pattern.
+
+| Name | Type | Description |
+|------|------|-------------|
+| dataset_object | Dict | Dataset dict that must contain a `'pheno'` DataFrame |
+| column_name | str | Column in `pheno` to search for matching terms |
+| disease_terms | List[str] | Case-insensitive substrings identifying disease/case samples (→ `1`) |
+| control_terms | List[str], optional | Case-insensitive substrings identifying control samples (→ `0`). When omitted, every non-disease sample is treated as control. |
+| dataset_name | str, optional | Label used in log messages |
+
+**Returns:** The same `dataset_object`, mutated in place with a `'class'`
+key added (`np.ndarray` of `0.0`/`1.0`, `NaN` for samples matched by
+neither term list when `control_terms` is given explicitly).
+
+**Raises:** `ValueError` if `column_name` isn't in `pheno`, or if no
+samples match `disease_terms` (or, when given, `control_terms`).
+
+**Example**
+
+```python
+from metaintegrator.labeling import assign_class_labels
+
+dataset = assign_class_labels(
+    dataset,
+    column_name="disease state:ch1",
+    disease_terms=["SLE", "Lupus"],
+    dataset_name="GSE11909_GPL96",
+)
+print(dataset["class"])  # array([0., 1., 1., 0., ...])
+```
 
 ---
 
@@ -321,8 +359,16 @@ loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE1234"])
 
 # 2. Build meta-object
+# ProcessedDataset has no .to_dict() — build the dict from its fields.
 meta_object = {"originalData": {
-    ds.geo_id: ds.to_dict() for ds in datasets
+    ds.geo_id: {
+        "geo_id": ds.geo_id,
+        "expr": ds.expr,
+        "pheno": ds.pheno,
+        "keys": ds.keys,
+        "metadata": ds.metadata,
+    }
+    for ds in datasets
 }}
 
 # 3. Set class labels from phenotype data

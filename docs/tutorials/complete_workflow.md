@@ -62,8 +62,11 @@ from metaintegrator.validation import DatasetValidator
 from metaintegrator.core_analysis import MetaAnalysisCore
 from metaintegrator.score_calculation import ScoreCalculator
 
-# Visualization
-from visualization.enhanced_plotting import MetaAnalysisPlotter, forest_plot
+# Visualization — the "basic" plotter (volcano, forest, heatmap,
+# effect-size distribution). Don't confuse this with the differently-named,
+# differently-shaped enhanced_plotting.EnhancedMetaAnalysisPlotter used for
+# ROC/PRC/violin/regression plots — see the Visualization API reference.
+from visualization.plotting import MetaAnalysisPlotter
 from visualization.violin_plot import violin_plot
 
 # Standard data science libraries
@@ -80,16 +83,14 @@ print("✅ All modules imported successfully!")
 ```
 
 
-## Step 2: Batch Normalization (Recommended for Multi-Platform Data)
-
-Use COCONUT to remove batch effects:
-```python
-from coconut.coconut_runner import runner
-runner(csv_dir='./data', output_dir='./normalized')
-```
-
-See [Complete COCONUT Workflow](../coconut/workflow.md) for details.
-
+!!! tip "Optional: Batch Normalization for Multi-Platform Data"
+    If you're combining datasets from very different platforms, consider
+    running COCONUT batch normalization first:
+    ```python
+    from coconut.coconut_runner import runner
+    runner(csv_dir='./data', output_dir='./normalized')
+    ```
+    See [Complete COCONUT Workflow](../coconut/workflow.md) for details.
 
 ### Step 2: Download Datasets from GEO
 
@@ -138,10 +139,15 @@ for ds in datasets:
 Convert the loaded datasets into the meta-object dictionary format used by the analysis layer:
 
 ```python
-# Convert ProcessedDataset objects to meta-object format
+# Convert ProcessedDataset objects to meta-object format.
+# ProcessedDataset has no to_dict() — build the dict by hand. 'class' is
+# left as None here; Step 5 assigns it.
 meta_object = {"originalData": {}}
 for ds in datasets:
-    meta_object["originalData"][ds.geo_id] = ds.to_dict()
+    meta_object["originalData"][ds.geo_id] = {
+        "expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+        "formattedName": ds.geo_id, "class": None,
+    }
 
 print(f"✅ Meta-object created with {len(meta_object['originalData'])} datasets")
 for name in meta_object["originalData"]:
@@ -419,7 +425,7 @@ warnings.filterwarnings('ignore')
 from preprocessing.loader_factory import DataLoaderFactory
 from metaintegrator.analysis import MetaAnalyzer
 from metaintegrator.validation import DatasetValidator
-from visualization.enhanced_plotting import MetaAnalysisPlotter
+from visualization.plotting import MetaAnalysisPlotter
 import numpy as np
 from pathlib import Path
 
@@ -428,9 +434,11 @@ print("📥 Downloading datasets...")
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
-# Step 2: Build meta-object
+# Step 2: Build meta-object (no to_dict() on ProcessedDataset — build by hand)
 meta_object = {"originalData": {
-    ds.geo_id: ds.to_dict() for ds in datasets
+    ds.geo_id: {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+                "formattedName": ds.geo_id, "class": None}
+    for ds in datasets
 }}
 
 # Step 3: Assign class labels (use real labels in production!)
@@ -608,7 +616,9 @@ loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(gse_ids)
 
 meta_object = {"originalData": {
-    ds.geo_id: ds.to_dict() for ds in datasets
+    ds.geo_id: {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+                "formattedName": ds.geo_id, "class": None}
+    for ds in datasets
 }}
 
 # Extract real class labels from phenotype data

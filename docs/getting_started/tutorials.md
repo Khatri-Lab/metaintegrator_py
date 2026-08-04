@@ -22,13 +22,13 @@ All tutorials follow this standardized workflow:
 
 | Step | Description | Key Functions | Output |
 |------|-------------|---------------|--------|
-| **1. Data Acquisition** | Download from GEO | `get_geo_data()` | Meta-object with datasets |
-| **2. Data Validation** | Quality checks | `assess_data_quality()` | Validation report |
-| **3. Gene Annotation** | Symbol mapping | `annotate_geo_dataset()` | Standardized gene IDs |
-| **4. Quality Control** | Log-scale, balance | `check_geo_log_scale()` | QC metrics |
-| **5. Gene Filtering** | Select informative genes | Variance/detection filters | Filtered datasets |
-| **6. Meta-Analysis** | Statistical integration | `run_meta_analysis_core()` | Effect sizes, p-values |
-| **7. Visualization** | Publication plots | `MetaAnalysisPlotter` | Figures (PNG/PDF) |
+| **1. Data Acquisition** | Download from GEO | `DataLoaderFactory.create_geo_loader().load_multiple()` | `List[ProcessedDataset]` |
+| **2. Gene Annotation** | Symbol mapping (done inside the handler during loading) | `GeneAnnotator.annotate()` | Standardized gene symbols in `keys` |
+| **3. Class Labeling** | Assign case (1) / control (0) labels | `assign_class_labels()` | Meta-object with `class` vectors |
+| **4. Quality Control** | Log-scale, class balance | Manual inspection (see [Quality Control Tutorial](../tutorials/quality_control.md)) | QC notes |
+| **5. Meta-Analysis** | Statistical integration | `MetaAnalyzer.run_meta_analysis()` | Effect sizes, FDR-corrected p-values |
+| **6. Gene Filtering** | Select the signature | `MetaAnalyzer.filter_genes()` | `filter_object` (`posGeneNames` / `negGeneNames`) |
+| **7. Visualization** | Publication plots | `MetaAnalysisPlotter`, `EnhancedMetaAnalysisPlotter` | Figures (PNG/PDF) |
 
 ## Prerequisites
 
@@ -48,63 +48,43 @@ git clone https://github.com/Khatri-Lab/metaintegrator_py.git
 The package depends on several scientific Python libraries:
 
 ```python
-# Core dependencies (installed automatically)
+# Core dependencies (installed automatically via requirements.txt)
 pandas>=1.5.0
-numpy>=1.23.0
+numpy>=1.21.0
 scipy>=1.9.0
-requests>=2.28.0
-matplotlib>=3.6.0
-seaborn>=0.12.0
+requests>=2.25.0
+matplotlib>=3.10.8
+seaborn>=0.13.2
+GEOparse>=2.0.3
 ```
 
-### Optional Dependencies
+See [Installation](installation.md#dependencies) for the complete list.
 
-```bash
-# For advanced features
-pip install bioservices  # Enhanced annotation
-pip install GEOparse      # Alternative GEO parser
-```
+## Quick Start
 
-## Quick Start Options
-
-### Option A: Complete Workflow (Recommended for Beginners)
-
-Follow our comprehensive tutorial that walks through the entire pipeline:
+Follow our comprehensive tutorial that walks through the entire pipeline. Gene
+annotation happens automatically inside the handler — there is no separate
+"annotate" call for the standard workflow:
 
 ```python
-from preprocessing.geo_data_loader import get_geo_data
-from preprocessing.geo_annotation_engine import annotate_geo_dataset
+from preprocessing.loader_factory import DataLoaderFactory
 
-# 1. Download datasets
-meta_object = get_geo_data(
-    gse_vector=["GSE5847", "GSE28750"],
-    formatted_names=["Breast_Cancer", "Sepsis"],
-    q_norm=True,
-    cache_dir="./geo_cache"
+# 1. Download datasets (annotation happens inside the handler)
+loader = DataLoaderFactory.create_geo_loader(
+    strategy='r_parity',
+    cache_dir='./geo_cache',
 )
+datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
-# 2. Annotate genes
-for name, dataset in meta_object['originalData'].items():
-    meta_object['originalData'][name] = annotate_geo_dataset(dataset)
-
-# 3. Continue with analysis...
+# 2. Continue with class labeling and analysis...
 ```
 
-### Option B: Pre-computed Data (Instant Results)
-
-Perfect for workshops or quick testing:
-
-```python
-from preprocessing.precomputed_results import load_precomputed_data
-
-# Load pre-computed data (instant!)
-meta_object = load_precomputed_data(
-    gse_ids=["GSE5847", "GSE28750"],
-    formatted_names=["Study1", "Study2"]
-)
-
-# Skip to analysis steps...
-```
+!!! note "No pre-computed/instant-results mode"
+    There is currently no bundled pre-computed dataset or "instant results"
+    shortcut in the package — every run downloads (or reads from the local
+    `cache_dir`) and processes real GEO data. The **first** download of a
+    dataset is the only slow step; every subsequent run against the same
+    `cache_dir` is fast (see the caching tip below).
 
 ## Tutorial Structure
 
@@ -245,15 +225,14 @@ Choose the path that matches your experience level:
 **Best for**: First-time users, workshop participants
 
 1. **Read this overview** (10 min)
-2. **Complete Workflow Tutorial** with pre-computed data (30 min)
+2. **Complete Workflow Tutorial** with the small example datasets (30 min)
 3. **Examine outputs** and code explanations (30 min)
 4. **Modify parameters** and re-run (20 min)
 5. **Try with your own GEO IDs** (optional, 30 min)
 
-**Starting point**: Use pre-computed data for instant results:
-```python
-USE_PRECOMPUTED = True  # In tutorial scripts
-```
+**Starting point**: Run the Complete Workflow Tutorial once against
+`GSE5847`/`GSE28750` with `cache_dir` set — every re-run after the first
+uses the local cache and finishes in seconds.
 
 ### Intermediate Path (3-4 hours)
 **Best for**: Python developers, researchers with some experience
@@ -278,56 +257,38 @@ USE_PRECOMPUTED = True  # In tutorial scripts
 
 ## Common Workflows
 
-### Workflow 1: Quick Exploration (5 minutes)
-Perfect for testing or demonstrations:
+### Workflow 1: Standard Analysis (30-60 minutes)
+The typical research workflow — download, label, analyze, visualize:
 
 ```python
-from preprocessing.precomputed_results import load_precomputed_data
-from metaintegrator.core_analysis import run_meta_analysis_core
+from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
+from metaintegrator.analysis import MetaAnalyzer
+from visualization.plotting import MetaAnalysisPlotter
 
-# Load sample data instantly
-meta_object = load_precomputed_data()
+# 1. Download your datasets (cached under cache_dir after the first run)
+loader = DataLoaderFactory.create_geo_loader(strategy='r_parity', cache_dir='./geo_cache')
+datasets = loader.load_multiple(["GSE12345", "GSE67890"])
 
-# Run quick analysis
-results = run_meta_analysis_core(meta_object)
-
-# View top genes
-print(results['pooledResults'].head(10))
-```
-
-### Workflow 2: Real Data Analysis (30-60 minutes)
-Standard research workflow:
-
-```python
-from preprocessing.geo_data_loader import get_geo_data
-from preprocessing.geo_annotation_engine import annotate_geo_dataset, GeneAnnotationEngine
-
-# 1. Download your datasets
-meta_object = get_geo_data(
-    gse_vector=["GSE12345", "GSE67890"],
-    formatted_names=["MyStudy_A", "MyStudy_B"],
-    q_norm=True
-)
-
-# 2. Annotate genes
-engine = GeneAnnotationEngine()
-for name in meta_object['originalData']:
-    meta_object['originalData'][name] = annotate_geo_dataset(
-        meta_object['originalData'][name], 
-        engine
+# 2. Assign case (1) / control (0) labels from a phenotype column
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
     )
 
 # 3. Run meta-analysis
-from metaintegrator.core_analysis import run_meta_analysis_core
-results = run_meta_analysis_core(meta_object)
+analyzer = MetaAnalyzer()
+results = analyzer.run_meta_analysis(meta_object)
 
 # 4. Visualize
-from visualization.plotting import MetaAnalysisPlotter
 plotter = MetaAnalysisPlotter()
-plotter.create_volcano_plot(results['pooledResults'])
+plotter.plot_volcano(results)
 ```
 
-### Workflow 3: Batch Processing (Multiple Comparisons)
+### Workflow 2: Batch Processing (Multiple Comparisons)
 For systematic analysis of multiple dataset groups:
 
 ```python
@@ -337,14 +298,24 @@ dataset_groups = {
     'neurology': ["GSE66666", "GSE77777", "GSE88888"]
 }
 
+loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 results_all = {}
 for group_name, gse_list in dataset_groups.items():
     print(f"\nProcessing {group_name}...")
-    meta_obj = get_geo_data(gse_vector=gse_list)
-    results_all[group_name] = run_meta_analysis_core(meta_obj)
-    
+    datasets = loader.load_multiple(gse_list, stop_on_error=False)
+
+    meta_obj = {"originalData": {}}
+    for ds in datasets:
+        dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+                   "formattedName": ds.geo_id, "class": None}
+        meta_obj["originalData"][ds.geo_id] = assign_class_labels(
+            dataset, column_name="title", disease_terms=["disease"]
+        )
+
+    results_all[group_name] = MetaAnalyzer().run_meta_analysis(meta_obj)
+
     # Save results
-    results_all[group_name]['pooledResults'].to_csv(
+    results_all[group_name]['metaAnalysis']['pooledResults'].to_csv(
         f'results_{group_name}.csv'
     )
 ```
@@ -413,11 +384,8 @@ git clone https://github.com/Khatri-Lab/metaintegrator_py.git
 **Solutions**:
 1. Check internet connection
 2. NCBI servers may be temporarily unavailable - try again in 5-10 minutes
-3. Use pre-computed data for testing:
-   ```python
-   from preprocessing.precomputed_results import load_precomputed_data
-   meta_object = load_precomputed_data()
-   ```
+3. Try the `'fast'` strategy (`DataLoaderFactory.create_geo_loader(strategy='fast')`), which downloads a smaller subset via Series Matrix instead of the full SOFT file
+4. If a dataset downloaded successfully before, it will load from `cache_dir` even if GEO is currently unreachable
 
 #### "No common genes across datasets"
 **Solutions**:
@@ -511,7 +479,7 @@ Ready to start? We recommend:
 **Researchers**: Start with Complete Workflow → Apply to your data → Read User Guide  
 **Developers**: Study Complete Workflow source → Read API Reference → Customize for your needs  
 **R Users**: Read Migration Guide → Complete Workflow Tutorial → Compare with R code  
-**Instructors**: Use pre-computed data → Complete Workflow → Individual topic tutorials
+**Instructors**: Pre-download and cache the example datasets ahead of time → Complete Workflow → Individual topic tutorials
 
 [→ Start with Complete Workflow Tutorial](../tutorials/complete_workflow.md)
 

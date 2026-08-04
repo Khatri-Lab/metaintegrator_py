@@ -220,6 +220,7 @@ forestPlot(results, filtered$posGeneNames[1:10])
 ```python
 # Python style — Factory pattern + object-oriented analysis
 from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 from metaintegrator.analysis import MetaAnalyzer
 from visualization.enhanced_plotting import forest_plot
 
@@ -227,9 +228,13 @@ from visualization.enhanced_plotting import forest_plot
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE1234", "GSE5678"])
 
-meta_object = {"originalData": {
-    ds.geo_id: ds.to_dict() for ds in datasets
-}}
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
+    )
 
 # Run analysis
 analyzer = MetaAnalyzer(max_cores=4)
@@ -249,8 +254,9 @@ sig_genes = (
     + results["filterResults"].neg_gene_names
 )
 
-# Plot
-forest_plot(results, genes=sig_genes[:10])
+# Plot (forest_plot takes one gene at a time)
+for gene in sig_genes[:10]:
+    forest_plot(results, gene_name=gene)
 ```
 
 ### Key Differences

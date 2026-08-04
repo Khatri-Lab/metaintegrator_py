@@ -199,10 +199,10 @@ git checkout -b docs/what-you-are-documenting
 
 ```bash
 # Edit files in your favorite editor
-code src/preprocessing/data_loading.py
+code src/preprocessing/loader_factory.py
 
 # Run tests frequently
-pytest tests/preprocessing/test_data_loading.py -v
+pytest tests/preprocessing/test_base_and_factory.py -v
 
 # Check code style
 black src/
@@ -218,7 +218,7 @@ flake8 src/
 # tests/preprocessing/test_my_feature.py
 import pytest
 import numpy as np
-from metaintegrator_py.src.preprocessing.data_loading import MyNewFeature
+from preprocessing.my_feature import MyNewFeature
 
 
 class TestMyNewFeature:
@@ -276,8 +276,8 @@ def my_new_function(data: pd.DataFrame, threshold: float = 0.05) -> pd.DataFrame
 
 ```bash
 # Stage changes
-git add src/preprocessing/data_loading.py
-git add tests/preprocessing/test_data_loading.py
+git add src/preprocessing/my_feature.py
+git add tests/preprocessing/test_my_feature.py
 
 # Commit with descriptive message
 git commit -m "feat: add new data loading function
@@ -332,7 +332,7 @@ git push origin feat/your-feature-name
 pytest
 
 # Run specific test file
-pytest tests/preprocessing/test_data_loading.py
+pytest tests/metaintegrator/test_validation.py
 
 # Run with verbose output
 pytest -v
@@ -341,7 +341,7 @@ pytest -v
 pytest --cov=src --cov-report=html
 
 # Run specific test
-pytest tests/preprocessing/test_data_loading.py::TestDataValidator::test_check_class_vector
+pytest tests/metaintegrator/test_validation.py::TestDatasetValidator::test_validate_class_vector_invalid_values
 
 # Run tests matching pattern
 pytest -k "test_effect_size"
@@ -356,15 +356,15 @@ pytest -x
 ### Test Organization
 
 ```python
-# tests/preprocessing/test_data_loading.py
+# tests/metaintegrator/test_validation.py
 import pytest
 import numpy as np
 import pandas as pd
-from metaintegrator_py.src.preprocessing.data_loading import DataValidator
+from metaintegrator.validation import DatasetValidator
 
 
-class TestDataValidator:
-    """Test suite for DataValidator class."""
+class TestDatasetValidator:
+    """Test suite for DatasetValidator class."""
     
     @pytest.fixture
     def sample_dataset(self):
@@ -377,7 +377,7 @@ class TestDataValidator:
     
     def test_valid_dataset(self, sample_dataset):
         """Test validation of valid dataset."""
-        assert DataValidator.check_class_vector(sample_dataset)
+        assert DatasetValidator.check_class_vector(sample_dataset)
     
     def test_insufficient_cases(self):
         """Test detection of insufficient cases."""
@@ -386,7 +386,7 @@ class TestDataValidator:
             "class": np.array([0, 0, 1]),  # Only 1 case
             "keys": [f"GENE_{i}" for i in range(100)]
         }
-        assert not DataValidator.check_class_vector(dataset)
+        assert not DatasetValidator.check_class_vector(dataset)
 ```
 
 ### Coverage Requirements
@@ -728,7 +728,7 @@ class MyClass:
 """Tests for my_module."""
 
 import pytest
-from metaintegrator_py.src.my_module import MyClass
+from my_module import MyClass
 
 
 class TestMyClass:

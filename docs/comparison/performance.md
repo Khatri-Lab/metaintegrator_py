@@ -170,17 +170,15 @@ Both implementations store expression matrices in memory:
 **metaIntegrator-py** includes automatic caching:
 
 ```python
+from preprocessing.loader_factory import DataLoaderFactory
+
 # First download - network dependent (may take minutes)
-meta_object = get_geo_data(
-    gse_vector=["GSE5847"],
-    cache_dir="./geo_cache"
-)
+loader = DataLoaderFactory.create_geo_loader(cache_dir="./geo_cache")
+datasets = loader.load_multiple(["GSE5847"])
 
 # Subsequent runs - loads from cache (< 5 seconds)
-meta_object = get_geo_data(
-    gse_vector=["GSE5847"],
-    cache_dir="./geo_cache"
-)
+loader = DataLoaderFactory.create_geo_loader(cache_dir="./geo_cache")
+datasets = loader.load_multiple(["GSE5847"])
 ```
 
 **Benefit**: Repeated analyses are much faster without re-downloading data.

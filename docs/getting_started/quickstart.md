@@ -12,15 +12,22 @@ data from multiple platforms. See the
 
 ```python
 from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 
 # Download datasets from GEO (with automatic caching)
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
-# Convert to meta-object format
-meta_object = {"originalData": {
-    ds.geo_id: ds.to_dict() for ds in datasets
-}}
+# Convert to meta-object format and assign case (1) / control (0)
+# labels from a phenotype column — ProcessedDataset itself has no
+# "class" field, so this is always a separate, manual step
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
+    )
 ```
 
 !!! tip "Automatic Caching"

@@ -70,7 +70,7 @@ evaluation.
 
 ### 🎉 Initial Feature Completion Release
 
-MetaIntegrator-py v0.1.0 represents a complete Python port of the R MetaIntegrator package, bringing modern performance and usability to meta-analysis of gene expression data.
+MetaIntegrator-py v1.0.0 represents a complete Python port of the R MetaIntegrator package, bringing modern performance and usability to meta-analysis of gene expression data.
 
 ### Added
 
@@ -87,12 +87,12 @@ MetaIntegrator-py v0.1.0 represents a complete Python port of the R MetaIntegrat
 - Sample-level gene data handling
 
 #### Analysis Features
-- `run_meta_analysis()`: Core meta-analysis with pooled effect sizes
-- `leave_one_out_analysis()`: Sensitivity analysis by dataset exclusion
+- `MetaAnalyzer.run_meta_analysis()`: Core meta-analysis with pooled effect sizes
+- `MetaAnalyzer.run_leave_one_out_analysis()`: Sensitivity analysis by dataset exclusion (also available via `run_meta_analysis(run_leave_one_out=True)`)
 - `filter_genes()`: Multi-criteria gene filtering (FDR, effect size, heterogeneity)
-- `calculate_score()`: Gene signature scoring
-- `roc_analysis()`: Receiver operating characteristic analysis
-- `power_calculation()`: Statistical power estimation
+- `EnhancedGeneScorer` / `MetaIntegratorOrchestrator`: Gene signature scoring
+- `analyze_roc_curve()`, `pooled_roc_plot()`: Receiver operating characteristic analysis
+- `calc_meta_power()`: Statistical power estimation
 
 #### Visualization
 - Forest plots with effect sizes and confidence intervals

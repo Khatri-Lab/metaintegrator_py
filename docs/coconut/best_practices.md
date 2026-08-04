@@ -466,11 +466,11 @@ from metaintegrator.analysis import MetaAnalyzer
 result = coconut(gses=gse_data, control_0_col='control')
 combined = combine_coco_output(result)
 
-# Step 2: Prepare for meta-analysis
+# Step 2: Prepare for meta-analysis (expr/class/keys are required)
 meta_input = {
-    'genes': combined['genes'],
-    'pheno': combined['pheno'],
-    'class': combined['class_cntl0_dis1']
+    'expr': combined['genes'],
+    'class': combined['class_cntl0_dis1'],
+    'keys': combined['genes'].index.tolist(),
 }
 
 # Step 3: Run meta-analysis

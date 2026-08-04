@@ -14,7 +14,7 @@ For the OO architecture, factory patterns, and data-flow diagrams see the
 | [Preprocessing](preprocessing.md) | Data acquisition & gene annotation | `DataLoaderFactory`, `GeneAnnotator` |
 | [Analysis](analysis.md) | Meta-analysis & gene filtering | `MetaAnalyzer`, `MetaAnalysisFactory`, `ScoreCalculator` |
 | [Visualization](visualization.md) | Publication-ready plots | `MetaAnalysisPlotter`, `violin_plot` |
-| [COCONUT](../coconut/api.md) | Batch normalization | `COCONUT`, `COCONUTRunner` |
+| [COCONUT](../coconut/api.md) | Batch normalization | `coconut()`, `runner()` |
 
 ---
 
@@ -29,13 +29,12 @@ Data acquisition layer using a **Factory → Source → Handler** pattern.
 | `hybrid_handler` | `HybridMicroarrayHandler` | **Production handler** — Series Matrix + GEOparse annotation |
 | `hybrid_source` | `HybridGeoSource` | Fetches expr from Series Matrix, annotation from GEOparse |
 | `gene_annotator` | `GeneAnnotator` | Probe → gene symbol with GenBank accession filter |
-| `gene_validation` | `EnsemblValidator` | Filters non-HGNC symbols via Ensembl gene list |
-| `gene_converter` | `GeneConverter` | Ensembl ↔ Entrez ↔ RefSeq ↔ GenBank translation |
-| `ncbi_fetcher` | `NCBIGEOFetcher` | Low-level GEO download with caching & rate-limiting |
-| `ncbi_network` | `NCBINetworkClient` | FTP/HTTPS transport with automatic fallback |
-| `microarray_handler` | `MicroarrayHandler` | Full SOFT-based handler (GEOparse) |
-| `r_parity_handler` | `RParityHandler` | Handler tuned for exact R output matching |
-| `precomputed_results` | `PrecomputedResultsLoader` | Load pre-saved analysis results |
+| `gene_validation` | `EnsemblGeneValidator` | Filters non-HGNC symbols via bundled Ensembl gene list |
+| `gene_converter` | `GeneConverter` | Any gene ID (Ensembl/RefSeq/GenBank/Entrez) → HUGO symbol |
+| `ncbi_network` | `NCBINetwork` | Low-level FTP/HTTPS transport with retry & disk caching — the injectable seam used by every source |
+| `ncbi_fetcher` | `NCBIFetcher` | Series Matrix downloader behind the `'fast'` strategy (size guard, pickle caching) |
+| `microarray_handler` | `MicroarrayHandler` | Full SOFT-based handler (GEOparse), backs the `'full'`/`'fast'` strategies |
+| `r_parity_handler`, `r_parity_source` | `RParityMicroarrayHandler`, `RParityGeoSource` | **Deprecated aliases** — re-export `HybridMicroarrayHandler`/`HybridGeoSource` under their old names, not separate implementations |
 
 ```python
 from preprocessing.loader_factory import DataLoaderFactory
@@ -52,25 +51,35 @@ Core analysis, scoring, and gene filtering.
 
 | Module | Class / Function | Purpose |
 |--------|-----------------|---------|
-| `analysis` | `MetaAnalyzer` | Top-level orchestrator: effect sizes → pooling → LOOA |
+| `analysis` | `MetaAnalyzer`, `MetaAnalysisFactory`, `FilterResult`, `filter_genes()` | Top-level orchestrator: effect sizes → pooling → LOOA → simple gene filtering |
 | `core_analysis` | `MetaAnalysisCore`, `FisherCombination` | Statistical engine (Hedge's g, inverse-variance, Fisher) |
 | `score_calculation` | `ScoreCalculator` | Geometric-mean z-score per sample |
 | `sample_level_gene_data` | `SampleLevelGeneDataProcessor` | Probe-to-gene matrix for scoring |
-| `scoring_meta_integrator_filter` | `MetaIntegratorFilter` | FDR + effect-size + LOOA gene filtering |
-| `scoring_meta_integrator_orchestrator` | `ScoringOrchestrator` | End-to-end scoring pipeline |
+| `scoring_meta_integrator_filter` | `MetaIntegratorFilter`, `FilterResults` | FDR + effect-size + LOOA gene filtering (the fuller, strategy-based filter — see note below) |
+| `scoring_meta_integrator_orchestrator` | `MetaIntegratorOrchestrator` | End-to-end scoring pipeline |
 | `scoring_filter_manager` | `FilterManager` | Filter parameter management |
 | `scoring_gene_scorer` | `GeneScorer` | Per-gene scoring logic |
-| `scoring_results_summarizer` | `ResultsSummarizer` | Summary statistics for filtered results |
-| `scoring_statistical_analysis` | `StatisticalAnalysis` | Additional statistical tests |
+| `scoring_results_summarizer` | `ResultSummarizer` | Summary statistics for filtered results |
+| `scoring_statistical_analysis` | `StatisticalAnalyzer`, `DistributionAnalyzer` | Additional statistical tests |
 | `scoring_export_engine` | `ExportEngine` | Export results to CSV/Excel |
 | `roc_analysis_engine` | `ROCAnalysisEngine` | ROC curves, AUC, multi-dataset ROC |
-| `prc_analysis` | `PRCAnalysis` | Precision-recall curves |
-| `power_calculation` | `PowerCalculation` | Sample-size & power estimation |
+| `prc_analysis` | `PRCAnalyzer` | Precision-recall curves |
+| `power_calculation` | `MetaAnalysisPowerCalculator` | Sample-size & power estimation |
 | `phenotype_processing` | `PhenotypeProcessor` | Extract class labels from pheno data |
-| `validation` | `DataValidator` | Validate dataset structures |
-| `labeling` | `Labeling` | Sample labeling utilities |
-| `biological_annotation` | `BiologicalAnnotation` | Gene set enrichment & pathway annotation |
-| `clinical_metrics_analyzer` | `ClinicalMetricsAnalyzer` | Sensitivity, specificity, PPV/NPV |
+| `validation` | `DatasetValidator` (+ `MetaAnalysisValidator`, `MetaFilterValidator`, `MetaObjectValidator`) | Validate dataset / meta-analysis / filter structures |
+| `labeling` | `assign_class_labels()` | Build a class vector from a phenotype column (module-level function, not a class) |
+| `biological_annotation` | `BiologicalAnnotator` | Gene set enrichment & pathway annotation |
+| `clinical_metrics_analyzer` | `ClinicalParametersAnalyzer`, `YoudenJAnalyzer` | Sensitivity, specificity, PPV/NPV, optimal cutpoint |
+
+> **Two independent gene-filtering paths exist** — `analysis.filter_genes()` /
+> `analysis.FilterResult` is the lightweight filter that mirrors R's
+> `filterGenes()` field-for-field (see [Object Structures](#filter_object-output-of-gene-filtering)
+> below); `scoring_meta_integrator_filter.MetaIntegratorFilter` /
+> `scoring_core.FilterResults` is a separate, strategy-based filtering
+> pipeline (standard / adaptive / combined-criteria) built on top of the same
+> statistics. They are not interchangeable — check which one a given
+> workflow or tutorial is actually importing before assuming `filterResults`
+> means the same shape in both.
 
 ```python
 from metaintegrator.analysis import MetaAnalyzer
@@ -90,8 +99,17 @@ Publication-quality plots matching R's MetaIntegrator output.
 | Module | Class / Function | Purpose |
 |--------|-----------------|---------|
 | `plotting` | `MetaAnalysisPlotter` | Volcano, forest, heatmap, effect-size distribution |
-| `enhanced_plotting` | `MetaAnalysisPlotter` (extended) | Multi-dataset ROC/PRC, summary panels |
+| `enhanced_plotting` | `EnhancedMetaAnalysisPlotter`, plus module-level `forest_plot()`, `gg_forest_plot()`, `heatmap_plot()`, `manhattan_plot()`, `predictive_value_plot()`, `multiple_roc_plot()`, `multiple_prc_plot()`, `roc_plot()`, `prc_plot()` | Multi-dataset ROC/PRC, summary panels, and all R-parity convenience plot functions |
 | `violin_plot` | `violin_plot()`, `multi_violin_plot()` | R-parity violin plots (ggplot2/ggpubr style) |
+
+`enhanced_plotting`'s plotter class was previously also named
+`MetaAnalysisPlotter` — an unrelated class in a different module with a
+completely disjoint method set from `plotting.MetaAnalysisPlotter`, and a
+real, easy mistake to import the wrong one. It has been renamed to
+`EnhancedMetaAnalysisPlotter`; a deprecated, warning-emitting alias is kept
+for old `from visualization.enhanced_plotting import MetaAnalysisPlotter`
+imports, but new code should import `EnhancedMetaAnalysisPlotter` by name
+directly.
 
 ```python
 from visualization.violin_plot import violin_plot, multi_violin_plot
@@ -106,23 +124,34 @@ fig = multiple_roc_plot(datasets, filter_object)
 ## Package: `coconut`
 
 COCONUT (COmbat CO-Normalization Using conTrols) batch normalization.
+Unlike the other three packages, this one is **function-based, not
+class-based** — there is no `COCONUT` or `COCONUTRunner` class.
 
-| Module | Class / Function | Purpose |
-|--------|-----------------|---------|
-| `coconut` | `COCONUT` | Core batch normalization algorithm |
-| `coconut_runner` | `COCONUTRunner` | CLI runner for COCONUT workflows |
+| Module | Function | Purpose |
+|--------|----------|---------|
+| `coconut` | `coconut()` | Core ComBat batch-normalization algorithm |
+| `coconut_runner` | `runner()`, `main()`, `load_and_run_coconut_example()` | CLI runner and example driver for COCONUT workflows |
+
+See [COCONUT API](../coconut/api.md) for the full function reference.
 
 ---
 
 ## Object Structures
 
-### ProcessedDataset (output of preprocessing)
+### ProcessedDataset (analysis-ready dict format)
+
+This is **not** the literal return type of `preprocessing` — the loaders
+return the `ProcessedDataset` *dataclass* (`geo_id`, `expr`, `pheno`, `keys`,
+`metadata`; see [Preprocessing API](preprocessing.md#processeddataset)),
+which has no `class` field of its own. This dict is the shape callers build
+by hand — adding study-specific class labels — before handing a dataset to
+`MetaAnalyzer`:
 
 ```python
 {
     "expr":   pd.DataFrame,   # probes × samples (float64)
     "keys":   List[str],      # gene symbol per probe (comma-sep for multi-gene)
-    "class":  np.ndarray,     # 0=control, 1=disease
+    "class":  np.ndarray,     # 0=control, 1=disease — assigned separately, not part of ProcessedDataset
     "pheno":  pd.DataFrame,   # sample metadata (GSM IDs as index)
     "geo_id": str,            # e.g. "GSE11909_GPL96"
 }
@@ -133,7 +162,7 @@ COCONUT (COmbat CO-Normalization Using conTrols) batch normalization.
 ```python
 {
     "originalData": {
-        "GSE11909_GPL96": { ... },  # ProcessedDataset dicts
+        "GSE11909_GPL96": { ... },  # dataset dicts, shape above
         "GSE50635_GPL6244": { ... },
     },
     "metaAnalysis": {
@@ -149,7 +178,10 @@ COCONUT (COmbat CO-Normalization Using conTrols) batch normalization.
 
 `MetaAnalyzer.filter_genes()` stores a `FilterResult` **dataclass** under
 `meta_object["filterResults"]`.  It supports both attribute access and
-R-style dict access for backward compatibility.
+R-style dict access for backward compatibility. (This is the `analysis`
+module's lightweight filter — see the note under [Package:
+`metaintegrator`](#package-metaintegrator) above about the separate
+`MetaIntegratorFilter`/`FilterResults` pipeline, which is not this class.)
 
 ```python
 fr = meta_object["filterResults"]

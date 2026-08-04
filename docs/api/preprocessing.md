@@ -22,7 +22,9 @@ for ds in datasets:
 
 ## DataLoaderFactory
 
-Single entry point for creating pre-configured loaders.
+Single entry point for creating pre-configured loaders. This is the single
+canonical place for wiring sources to handlers — all convenience functions
+and thin wrappers delegate here.
 
 ```python
 class DataLoaderFactory:
@@ -30,6 +32,9 @@ class DataLoaderFactory:
     def create_geo_loader(
         strategy: str = 'full',
         cache_dir: str | Path = '~/.geo_cache',
+        log_transform: bool = False,
+        normalize: bool = False,
+        **kwargs,
     ) -> DataLoader
 ```
 
@@ -37,14 +42,27 @@ class DataLoaderFactory:
 |-----------|------|---------|-------------|
 | `strategy` | str | `'full'` | Loading strategy (see table below) |
 | `cache_dir` | str / Path | `~/.geo_cache` | Cache directory for raw downloads |
+| `log_transform` | bool | `False` | Apply log2 transformation. **`full` / `fast` only** — `hybrid`/`r_parity` always auto-detects instead and ignores this flag. |
+| `normalize` | bool | `False` | Apply quantile normalization. **`full` / `fast` only.** |
+| `**kwargs` | | | Passed through to the underlying source constructor (`full` / `fast` only) |
 
 **Strategies**
 
 | Strategy | Source | Handler | Best for |
 |----------|--------|---------|----------|
 | `hybrid` / `r_parity` | `HybridGeoSource` | `HybridMicroarrayHandler` | **Production** — matches R output |
-| `full` | `GEOparseSource` | `MicroarrayHandler` | Full SOFT download (all metadata) |
-| `fast` | `NCBIGeoSource` | `MicroarrayHandler` | Quick exploration |
+| `full` | `GEOparseSource` | `MicroarrayHandler` | Full SOFT download (all samples) |
+| `fast` | `NCBIGeoSource` | `MicroarrayHandler` | Quick exploration (Series Matrix only, may miss samples) |
+
+``'r_parity'`` is accepted as an alias for ``'hybrid'``.
+
+**Other constructors on `DataLoaderFactory`**
+
+| Method | Status |
+|--------|--------|
+| `create_microarray_loader(source_type='geo_full', cache_dir=..., **kwargs)` | General wrapper around `create_geo_loader`. `source_type` aliases: `geo_hybrid`/`geo_r_parity` → `hybrid`, `geo_full`/`geo` → `full`, `geo_fast` → `fast`. |
+| `create_rnaseq_loader(...)` | Placeholder — raises `NotImplementedError` |
+| `create_single_cell_loader(...)` | Placeholder — raises `NotImplementedError` |
 
 ---
 
@@ -54,14 +72,21 @@ Orchestration layer returned by the factory. Combines a `DataSource` with a `Dat
 
 ```python
 class DataLoader:
-    def load(self, geo_id: str) -> ProcessedDataset
-    def load_multiple(self, geo_ids: List[str]) -> List[ProcessedDataset]
+    def load(self, dataset_id: str, **kwargs) -> List[ProcessedDataset]
+    def load_multiple(
+        self,
+        dataset_ids: List[str],
+        stop_on_error: bool = False,
+        **kwargs,
+    ) -> List[ProcessedDataset]
 ```
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `load(geo_id)` | `ProcessedDataset` | Load and process a single GEO series |
-| `load_multiple(geo_ids)` | `list[ProcessedDataset]` | Load multiple series (handles multi-platform) |
+| `load(dataset_id, **kwargs)` | `list[ProcessedDataset]` | Load and process a single GEO series — one entry per platform found in the series |
+| `load_multiple(dataset_ids, stop_on_error=False, **kwargs)` | `list[ProcessedDataset]` | Load multiple series. Failures are logged and skipped unless `stop_on_error=True` |
+
+Both methods return a **list**, even for a single-platform series — `load()` does not collapse to a bare `ProcessedDataset`.
 
 ---
 
@@ -73,40 +98,67 @@ analysis layer.
 ```python
 @dataclass
 class ProcessedDataset:
-    geo_id: str                         # e.g. "GSE11909_GPL96"
-    expr: pd.DataFrame                  # probes × samples (float64)
-    keys: List[str]                     # gene symbol per probe
-    pheno: pd.DataFrame                 # sample metadata
-    class_vector: Optional[np.ndarray]  # 0=control, 1=disease
-    platform_id: Optional[str]          # e.g. "GPL96"
-    annotation_method: Optional[str]    # how genes were mapped
+    geo_id: str              # e.g. "GSE11909_GPL96"
+    expr: pd.DataFrame       # probes × samples (float64)
+    pheno: pd.DataFrame      # sample metadata, index aligned to expr.columns
+    keys: List[str]          # gene symbol per probe, aligned to expr.index
+    metadata: Dict[str, Any] # source, platform, handler, cache_dir, ...
 ```
 
-Convert to the dict format used by `MetaAnalyzer`:
+`__post_init__` validates the object on construction and raises immediately
+if either invariant is violated:
 
-```python
-ds_dict = dataset.to_dict()  # → {"expr": ..., "keys": ..., "class": ..., ...}
-```
+| Check | Raises |
+|-------|--------|
+| `expr.columns` equals `pheno.index` | `ValueError` |
+| `keys` is a `list` and `len(keys) == len(expr)` | `TypeError` / `ValueError` |
+
+`keys` follows R MetaIntegrator's convention: multi-gene probes are
+comma-separated (e.g. `'CD6,IL2RG'`), unmappable probes are `'NA'`.
+
+> **`ProcessedDataset` has no `.to_dict()` method.** To get the dict format
+> `MetaAnalyzer` expects, build it from the fields directly (see
+> [Complete Workflow Example](#complete-workflow-example)) or call the
+> deprecated `load_geo_datasets()` convenience function, which already
+> returns `list[dict]` in that shape.
+>
+> Class labels (case/control) are **not** part of `ProcessedDataset` —
+> they're study-specific and must be assigned separately after loading,
+> based on each dataset's `pheno` table.
 
 ---
 
 ## HybridMicroarrayHandler
 
-The **production handler** for R-parity. Orchestrates:
+The **production handler** for R-parity. `parse()` orchestrates:
 
-1. Expression extraction from Series Matrix
-2. Phenotype parsing
-3. Gene annotation via `GeneAnnotator` + `EnsemblValidator`
-4. Automatic log2 transformation
-5. Column name cleaning
+1. Build the phenotype DataFrame from GEOparse per-sample metadata
+2. Annotate probes → gene symbols via `GeneAnnotator`, validated against
+   `EnsemblGeneValidator` (loaded lazily on first use, cached thereafter)
+3. Auto-detect and apply log2 transformation (median expression > 20 ⇒ raw
+   intensity)
+4. Diagnostic check against known probe counts for common platforms
+   (`GPL96`, `GPL97`, `GPL6244`, `GPL570`) — a mismatch logs a warning, not
+   an error
+5. If annotation from the family SOFT file yields zero genes, fall back to
+   a standalone GPL download and re-annotate
 
 ```python
 class HybridMicroarrayHandler(DataHandler):
+    def __init__(
+        self,
+        annotator: GeneAnnotator | None = None,
+        validator: EnsemblGeneValidator | None = None,
+    )
     def parse(self, raw: RawDataset) -> ProcessedDataset
+    def normalize(self, dataset: ProcessedDataset) -> ProcessedDataset
 ```
 
 Internally calls `GeneAnnotator.annotate()` with `validator=validator`
 (Ensembl validation ON) for R-parity.
+
+`normalize()` is a no-op — Series Matrix data from NCBI is already
+normalized; the log2 auto-detection in `parse()` handles the one exception.
 
 ---
 
@@ -132,11 +184,14 @@ class GeneAnnotator:
 
 **Returns:** List of gene symbols (one per probe). `'NA'` for unmappable probes.
 
-**Annotation strategies** (tried in priority order):
+**Annotation strategies** (columns tried in priority order — first match wins):
 
-1. **Direct symbol columns** — `Gene Symbol`, `Symbol`, `HUGO_Gene_Nomenclature`
-2. **Assignment columns** — `gene_assignment` (parsed from `accession // symbol // desc` format)
-3. **ORF columns** — for microbial platforms
+| Priority | Column name(s) | Format |
+|----------|-----------------|--------|
+| 1 | `Gene Symbol`, `GENE_SYMBOL`, `Gene_Symbol`, `gene_symbol`, `genesymbol`, `Symbol`, `SYMBOL`, `symbol`, `HUGO_Gene_Nomenclature` | Direct — value already is the gene symbol |
+| 2 | `gene_assignment` | Assignment — `accession // symbol // description`; symbol is extracted from field 2 of the first `///`-delimited entry only |
+| 3 | `Gene`, `GENE`, `gene` | Direct |
+| 4 | `ORF` | Direct — microbial platforms |
 
 **R-parity filters** (applied after symbol extraction):
 
@@ -164,12 +219,39 @@ Validates gene symbols against a curated Ensembl reference set (~20,000 HGNC sym
 
 ```python
 class EnsemblGeneValidator:
-    def __init__(self, gene_list_path: Optional[str] = None)
-    def is_valid(self, symbol: str) -> bool
-    def valid_genes(self) -> Set[str]
+    def __init__(self, data_dir: Optional[Path] = None)
+    def is_valid(self, gene_symbol: str) -> bool
+    def validate_list(self, gene_symbols: list) -> Tuple[list, list]
+    def get_stats(self) -> Dict[str, int]
 ```
 
-Data file: `preprocessing/data/ensembl_gene_symbols.txt`
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data_dir` | Path, optional | Directory containing reference data. Defaults to the package's bundled `preprocessing/data/`. |
+
+`valid_genes` (`Set[str]`) is a public attribute populated at construction
+time — it is **not** a method.
+
+Data file, tried in order (first found wins): `ensembl_genes.csv.gz` →
+`ensembl_genes.csv` → `ensembl_gene_symbols.txt`. Raises `FileNotFoundError`
+if none of the three exist.
+
+```python
+from preprocessing.gene_validation import EnsemblGeneValidator
+
+validator = EnsemblGeneValidator()
+validator.is_valid('TP53')                          # True
+validator.is_valid('ENST00000396160')                # False (transcript ID)
+valid, invalid = validator.validate_list(['TP53', 'FAKE_GENE'])
+```
+
+**Convenience functions** (operate on the dict-based `originalData` format, not `ProcessedDataset`):
+
+| Function | Purpose |
+|----------|---------|
+| `apply_ensembl_validation(dataset_dict, validator)` | Validate one dataset's `keys` in place — R-parity: only the first gene of each comma-separated key is checked; if it fails, the entire key is set to `'NA'` |
+| `validate_all_datasets(data_dict, validator=None)` | Apply validation across every dataset in `meta_object['originalData']` |
+| `create_validator()` | Shortcut for `EnsemblGeneValidator()` |
 
 ---
 
@@ -179,11 +261,18 @@ Translates between gene ID systems.
 
 ```python
 class GeneConverter:
-    def ensembl_to_symbol(self, ensembl_ids: List[str]) -> Dict[str, str]
-    def refseq_to_symbol(self, refseq_ids: List[str]) -> Dict[str, str]
-    def genbank_to_symbol(self, genbank_ids: List[str]) -> Dict[str, str]
-    def entrez_to_symbol(self, entrez_ids: List[str]) -> Dict[str, str]
+    def __init__(self, data_dir: Optional[Path] = None)
+    def to_gene_symbol(self, identifier: str) -> Optional[str]
+    def is_valid_symbol(self, symbol: str) -> bool
+    def convert_list(self, identifiers: list) -> list
+    def get_stats(self) -> Dict[str, int]
 ```
+
+`to_gene_symbol()` is the single entry point; it tries, in order: already a
+valid HGNC symbol → `ENSG*` via the Ensembl table → `NM_`/`NR_`/`XM_`/`XR_`
+(version suffix stripped) via the RefSeq table → GenBank accession table →
+numeric or string Entrez ID via the Entrez table. Returns `None` if nothing
+matches.
 
 Reference data in `preprocessing/data/`:
 
@@ -194,23 +283,79 @@ Reference data in `preprocessing/data/`:
 | `genbank_genes.csv.gz` | Accession → symbol |
 | `entrez_genes.csv.gz` | Entrez ID → symbol |
 
----
-
-## NCBIGEOFetcher
-
-Low-level GEO download with caching, rate-limiting, and multi-protocol fallback.
-
 ```python
-class NCBIGEOFetcher:
-    def __init__(self, cache_dir: Optional[str] = None)
-    def fetch_geo_series_matrix(self, gse_id: str) -> Dict[str, Dict]
+from preprocessing.gene_converter import GeneConverter
+
+converter = GeneConverter()
+converter.to_gene_symbol('ENSG00000141510')            # 'TP53'
+converter.to_gene_symbol('NM_000546')                   # 'TP53'
+converter.is_valid_symbol('TP53')                        # True
+converter.convert_list(['ENSG00000141510', 'FAKE'])       # ['TP53', 'NA']
 ```
 
-**Download fallback order:** FTP → HTTPS → SOFT file
+---
 
-**Rate limiting:** Automatic 3 requests/sec to comply with NCBI policies.
+## NCBINetwork
 
-**Caching:** Downloaded files cached to `cache_dir` for instant re-use.
+Low-level GEO network I/O with retry, timeout, and disk caching. This is
+the single seam injected into `HybridGeoSource`, `GEOparseSource`, and
+`NCBIFetcher` — mock it for offline testing.
+
+```python
+class NCBINetwork:
+    def __init__(
+        self,
+        cache_dir: str | Path,
+        ftp_host: str = 'ftp.ncbi.nlm.nih.gov',
+        ftp_timeout: int = 30,
+        http_timeout: int = 120,
+        max_retries: int = 3,
+        retry_backoff: float = 2.0,
+    )
+    def list_ftp_directory(self, ftp_path: str, suffix: Optional[str] = None) -> List[str]
+    def download_file(self, ftp_path: str, filename: str) -> Path
+    def download_bytes(self, ftp_path: str, filename: str) -> bytes
+
+    @staticmethod
+    def geo_series_ftp_path(gse_id: str, subpath: str = 'matrix') -> str
+```
+
+**Download strategy:** `download_file()` is HTTPS-only, with the local
+cache checked first (no network call on a hit). `download_bytes()` tries
+HTTPS first and falls back to FTP on failure, validating gzip integrity on
+either path.
+
+**Retry policy:** up to `max_retries` attempts (default 3) with exponential
+backoff (`retry_backoff ** attempt` seconds between attempts).
+
+```python
+from preprocessing.ncbi_network import NCBINetwork
+
+net = NCBINetwork(cache_dir='~/.geo_cache')
+ftp_path = NCBINetwork.geo_series_ftp_path('GSE11909', 'matrix')
+files = net.list_ftp_directory(ftp_path, suffix='_series_matrix.txt.gz')
+local_path = net.download_file(ftp_path, files[0])
+```
+
+---
+
+## NCBIFetcher
+
+Higher-level Series Matrix downloader behind the `'fast'` strategy
+(`NCBIGeoSource`). Lists matrix files (with sizes, via raw `ftplib`) so it
+can skip anything over 100 MB, downloads through `NCBINetwork`, parses into
+per-platform DataFrames, and caches the result to disk with `pickle`.
+
+```python
+class NCBIFetcher:
+    def __init__(self, cache_dir: str | Path = '~/.geo_cache')
+    def fetch_series_matrix(self, gse_id: str) -> Dict[str, pd.DataFrame]
+    def fetch_minimal_metadata(self, gse_id: str) -> dict
+```
+
+**Returns:** `fetch_series_matrix` returns `{platform_id: DataFrame}`.
+`fetch_minimal_metadata` returns `{'title', 'summary', 'platforms'}` parsed
+from the series' MINiML XML file.
 
 ---
 
@@ -224,12 +369,19 @@ from metaintegrator.analysis import MetaAnalyzer
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(['GSE11909', 'GSE50635', 'GSE39088'])
 
-# 2. Convert to meta-object format
+# 2. Convert to meta-object format.
+# ProcessedDataset has no .to_dict() — build the dict from its fields.
 meta_object = {"originalData": {}}
 for ds in datasets:
-    meta_object["originalData"][ds.geo_id] = ds.to_dict()
+    meta_object["originalData"][ds.geo_id] = {
+        "geo_id": ds.geo_id,
+        "expr": ds.expr,
+        "pheno": ds.pheno,
+        "keys": ds.keys,
+        "metadata": ds.metadata,
+    }
 
-# 3. Set class labels (study-specific)
+# 3. Set class labels (study-specific, not part of ProcessedDataset)
 for name, ds in meta_object["originalData"].items():
     # ... set ds["class"] based on phenotype ...
     pass

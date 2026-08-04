@@ -33,7 +33,7 @@ In 2025, development began on MetaIntegrator-py to bring these trusted methods t
 | **2025-12** | Python port development initiated                       |
 | **2026-02** | Alpha release with core meta-analysis functionality     |
 | **2026-03** | Beta release for internal testing                       |
-| **2026-04** | Public v0.1.0 release with full R parity                |
+| **2026-04** | Public v1.0.0 release with full R parity                |
 
 ---
 

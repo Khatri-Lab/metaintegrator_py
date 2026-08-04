@@ -93,7 +93,7 @@ If you use the gene signature scoring functionality:
 
 ### Methods Section
 
-> "Meta-analysis was performed using MetaIntegrator-py v0.1.0 (Khatri Lab, Stanford University, 2026) which implements the methodology described by Haynes et al. (2017). Random-effects models were used to pool effect sizes across studies, and leave-one-out analysis assessed result robustness."
+> "Meta-analysis was performed using MetaIntegrator-py v1.0.0 (Khatri Lab, Stanford University, 2026) which implements the methodology described by Haynes et al. (2017). Random-effects models were used to pool effect sizes across studies, and leave-one-out analysis assessed result robustness."
 
 ### Results Section
 
@@ -101,7 +101,7 @@ If you use the gene signature scoring functionality:
 
 ### Software Availability Statement
 
-> "All analyses were conducted using MetaIntegrator-py v0.1.0, available at https://github.com/Khatri-Lab/metaintegrator_py under Apache 2.0 license. Code to reproduce our analysis is available at [your repository]."
+> "All analyses were conducted using MetaIntegrator-py v1.0.0, available at https://github.com/Khatri-Lab/metaintegrator_py under Apache 2.0 license. Code to reproduce our analysis is available at [your repository]."
 
 ---
 

@@ -289,14 +289,15 @@ Combine COCONUT results into a single unified dataset.
 
 ```python
 def combine_coco_output(
-    coconut_result: Dict
-) -> Dict[str, Union[pd.DataFrame, np.ndarray]]
+    coconut_out: CoconutOutput
+) -> CombinedCoconutOutput
 ```
 
 **Parameters:**
 
-- **coconut_result** *(dict, required)*  
-  Output from `coconut()` function
+- **coconut_out** *(dict, required)*
+  Output from `coconut()` function (call positionally — `combine_coco_output(result)` — the
+  parameter name differs slightly from `coconut()`'s own `gses` naming)
 
 **Returns:**
 

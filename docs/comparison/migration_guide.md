@@ -61,16 +61,21 @@ head(results$metaAnalysis$pooledResults)
 
 ```python
 from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 from metaintegrator.analysis import MetaAnalyzer
 
 # Get data (with automatic caching!)
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE1234", "GSE5678"])
 
-# Build meta-object from ProcessedDataset objects
-meta_object = {"originalData": {
-    ds.geo_id: ds.to_dict() for ds in datasets
-}}
+# Build meta-object from ProcessedDataset objects and assign class labels
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
+    )
 
 # Run analysis
 analyzer = MetaAnalyzer(max_cores=4)
@@ -147,7 +152,7 @@ df.loc[row_name, column_name]
 | R Function | Python Equivalent | Import From | Notes |
 |------------|-------------------|-------------|-------|
 | **Data Loading** | | | |
-| `getGEOData()` | `DataLoaderFactory.create_geo_loader()` → `loader.load_multiple()` | `preprocessing.loader_factory` | Returns `List[ProcessedDataset]`; call `.to_dict()` for meta-object |
+| `getGEOData()` | `DataLoaderFactory.create_geo_loader()` → `loader.load_multiple()` | `preprocessing.loader_factory` | Returns `List[ProcessedDataset]`; build `meta_object["originalData"]` from `.expr`/`.pheno`/`.keys`, then call `assign_class_labels()` |
 | `checkDataObject()` | `DatasetValidator.validate_meta_object()` | `metaintegrator.validation` | Returns `Tuple[bool, List[str]]`. Also: `check_data_object()` convenience function |
 | `subsetOriginalData()` | `subset_original_data()` / `subsetOriginalData()` | `metaintegrator.sample_ops` | Accepts names, indices, or boolean mask |
 | **Meta-Analysis** | | | |
@@ -269,6 +274,7 @@ forestPlot(results, filtered$posGeneNames[1:10])
 
 ```python
 from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 from metaintegrator.validation import DatasetValidator
 from metaintegrator.analysis import MetaAnalyzer
 from visualization.enhanced_plotting import forest_plot
@@ -277,9 +283,13 @@ from visualization.enhanced_plotting import forest_plot
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE1234", "GSE5678", "GSE9012"])
 
-meta_object = {"originalData": {
-    ds.geo_id: ds.to_dict() for ds in datasets
-}}
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
+    )
 
 # 2. Check data
 is_valid, errors = DatasetValidator.validate_meta_object(
@@ -307,8 +317,9 @@ results = analyzer.filter_genes(
 # Get up-regulated genes (FilterResult dataclass)
 up_genes = results["filterResults"].pos_gene_names
 
-# 5. Plot
-forest_plot(results, genes=up_genes[:10])
+# 5. Plot (forest_plot takes one gene at a time)
+for gene in up_genes[:10]:
+    forest_plot(results, gene_name=gene)
 ```
 
 ### Workflow 2: Custom Data Analysis

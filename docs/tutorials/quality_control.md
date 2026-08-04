@@ -29,19 +29,10 @@ Meta-analysis combines data from multiple studies. **Poor quality data from even
 ### Step 1: Import Quality Control Tools
 
 ```python
-from preprocessing.data_loading_extended import (
-    assess_data_quality,      # Comprehensive QC report
-    DataValidator,            # Validation utilities
-    ExtendedDataProcessor     # Advanced data processing
-)
-
-from preprocessing.geo_data_loader import (
-    check_geo_log_scale,      # Verify log transformation
-    get_geo_data
-)
-
+from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 from metaintegrator.core_analysis import MetaAnalysisCore
-from metaintegrator.validation import check_data_object
+from metaintegrator.validation import check_data_object, DatasetValidator
 
 import numpy as np
 import pandas as pd
@@ -51,16 +42,49 @@ import seaborn as sns
 print("✅ QC tools imported successfully")
 ```
 
+!!! note "No built-in one-call QC report"
+    There's no `assess_data_quality()` function shipped with the package —
+    the checks below (missing data, log-scale heuristic, gene overlap,
+    class balance) are exactly what such a function would need to do. This
+    tutorial defines `assess_data_quality()` as a small local helper so the
+    rest of the walkthrough reads naturally; `check_data_object()` and
+    `DatasetValidator` (imported above) are the real, built-in structural
+    validators.
+
+```python
+def assess_data_quality(meta_object, generate_report=True):
+    """Local QC helper — combines the checks from this tutorial into one report."""
+    report = {}
+    for name, dataset in meta_object['originalData'].items():
+        expr = dataset['expr']
+        missing_pct = (expr.isna().sum().sum() / expr.size) * 100
+        is_log_scale = expr.max().max() < 30
+        report[name] = {
+            'n_samples': expr.shape[1],
+            'n_genes': expr.shape[0],
+            'missing_pct': missing_pct,
+            'log_scale': is_log_scale,
+            'range': (float(expr.min().min()), float(expr.max().max())),
+        }
+        if generate_report:
+            print(f"\nDataset: {name}")
+            print(f"   Samples: {report[name]['n_samples']}, Genes: {report[name]['n_genes']:,}")
+            print(f"   Missing values: {missing_pct:.2f}%")
+            print(f"   Log scale: {'✅ Yes' if is_log_scale else '❌ No'}")
+    return report
+```
+
 ### Step 2: Load Sample Data
 
 ```python
 # Load previously downloaded and annotated datasets
-meta_object = get_geo_data(
-    gse_vector=["GSE5847", "GSE28750"],
-    formatted_names=["Breast_Cancer", "Sepsis"],
-    q_norm=True,
-    cache_dir="./geo_cache"
-)
+loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir="./geo_cache")
+datasets = loader.load_multiple(["GSE5847", "GSE28750"])
+meta_object = {"originalData": {
+    ds.geo_id: {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+                "formattedName": ds.geo_id, "class": None}
+    for ds in datasets
+}}
 
 # Quick summary
 print(f"📊 Loaded {len(meta_object['originalData'])} datasets")
@@ -97,60 +121,15 @@ print("✅ Quality assessment complete")
 🔍 Generating comprehensive quality report...
 ======================================================================
 
-DATA QUALITY ASSESSMENT REPORT
-======================================================================
-
-Overall Status: PASS
-
-Datasets Analyzed: 2
-  • Breast_Cancer
-  • Sepsis
-
-----------------------------------------------------------------------
-CRITICAL CHECKS
-----------------------------------------------------------------------
-
-✅ Data Structure
-   All datasets have required fields (expr, class, keys)
-
-✅ Expression Data
-   All datasets contain valid numeric expression matrices
-   
-✅ Gene Identifiers
-   All datasets have matching gene keys and expression rows
-
-✅ Sample Metadata
-   All datasets have phenotype data
-
-----------------------------------------------------------------------
-DATA QUALITY METRICS
-----------------------------------------------------------------------
-
-Dataset: Breast_Cancer
-   Samples: 50
-   Genes: 54,675
-   Missing values: 0.03% (acceptable)
-   Value range: [2.34, 14.56]
-   Mean expression: 7.82
+Dataset: GSE5847_GPL96
+   Samples: 50, Genes: 22,283
+   Missing values: 0.03%
    Log scale: ✅ Yes
 
-Dataset: Sepsis
-   Samples: 30
-   Genes: 54,675
-   Missing values: 0.01% (acceptable)
-   Value range: [2.45, 14.23]
-   Mean expression: 7.91
+Dataset: GSE28750_GPL570
+   Samples: 30, Genes: 54,675
+   Missing values: 0.01%
    Log scale: ✅ Yes
-
-----------------------------------------------------------------------
-CROSS-DATASET COMPATIBILITY
-----------------------------------------------------------------------
-
-Gene Overlap: 52,341 common genes (95.7%)
-Platform Consistency: Compatible platforms detected
-
-✅ Datasets are suitable for meta-analysis
-
 ======================================================================
 ✅ Quality assessment complete
 ```
@@ -166,7 +145,7 @@ print("-" * 70)
 all_log_scale = True
 
 for dataset_name, dataset in meta_object['originalData'].items():
-    is_log_scale = check_geo_log_scale(dataset)
+    is_log_scale = dataset['expr'].max().max() < 30
     
     status = "✅" if is_log_scale else "❌"
     scale_type = "log scale" if is_log_scale else "linear scale"
@@ -197,8 +176,12 @@ else:
 ✅ All datasets are in log scale - ready for meta-analysis
 ```
 
-**How log-scale detection works:**  
-Uses QQ-plot correlation to compare normality of raw vs. log-transformed data. Log-scale data should already be approximately normal.
+**How the log-scale heuristic works:**
+There's no built-in log-scale detector, so this tutorial uses a simple range
+check: log₂ microarray intensities are rarely above ~20-25, while
+linear-scale data commonly reaches into the thousands. `max().max() < 30` is
+a reasonable cutoff in practice, but always sanity-check unfamiliar
+platforms by eye.
 
 ### Step 5: Check for Missing Data
 
@@ -627,7 +610,7 @@ for name, dataset in meta_object['originalData'].items():
         'n_genes': dataset['expr'].shape[0],
         'n_samples': dataset['expr'].shape[1],
         'missing_pct': (dataset['expr'].isna().sum().sum() / dataset['expr'].size) * 100,
-        'log_scale': check_geo_log_scale(dataset)
+        'log_scale': dataset['expr'].max().max() < 30
     }
 
 # Save report
@@ -654,7 +637,7 @@ def qc_pass_fail(dataset, name):
     checks.append(('Sample size', n_samples >= 10, f'{n_samples} samples'))
     
     # Check 3: Log scale
-    is_log = check_geo_log_scale(dataset)
+    is_log = dataset['expr'].max().max() < 30
     checks.append(('Log scale', is_log, 'Yes' if is_log else 'No'))
     
     # Check 4: Class balance (if defined)
@@ -815,8 +798,8 @@ After comprehensive QC:
 
 ### Key Takeaways
 
-✅ Run comprehensive QC with `assess_data_quality()`  
-✅ Verify log-scale transformation with `check_geo_log_scale()`  
+✅ Run comprehensive QC with a helper like the `assess_data_quality()` defined in Step 1
+✅ Verify log-scale transformation with a simple range heuristic (no built-in check exists)
 ✅ Ensure >80% gene overlap for reliable meta-analysis  
 ✅ Check class balance (avoid severe imbalance)  
 ✅ Monitor missing data (<5% acceptable)  

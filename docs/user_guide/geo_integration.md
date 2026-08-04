@@ -54,50 +54,29 @@ python -c "from preprocessing.loader_factory import DataLoaderFactory; print('�
 GEO integration requires:
 
 ```bash
-# Core dependencies (installed automatically)
+# Core dependencies (installed automatically via requirements.txt)
 pip install pandas>=1.5.0
-pip install numpy>=1.23.0
-pip install requests>=2.28.0
+pip install numpy>=1.21.0
+pip install requests>=2.25.0
 pip install scipy>=1.9.0
-```
-
-### Optional Dependencies
-
-```bash
-# For advanced features
-pip install bioservices  # Enhanced annotation
-pip install GEOparse      # Alternative GEO parser
+pip install GEOparse>=2.0.3
 ```
 
 ## Configuration
 
-### Environment Variables
-
-Configure GEO data loader behavior:
-
-```bash
-# Set cache directory (default: ~/.geo_cache)
-export GEO_CACHE_DIR="/path/to/cache"
-
-# Set download timeout (default: 300 seconds)
-export GEO_DOWNLOAD_TIMEOUT=600
-
-# Enable debug logging
-export GEO_DEBUG=1
-```
+There are no environment variables for configuring the GEO loader — all
+configuration is passed explicitly to `DataLoaderFactory.create_geo_loader()`.
 
 ### Python Configuration
 
 ```python
-from preprocessing.geo_data_loader import GEODataLoader
+from preprocessing.loader_factory import DataLoaderFactory
 
 # Configure loader with custom settings
-loader = GEODataLoader(
-    cache_dir="./my_geo_cache",  # Custom cache location
+loader = DataLoaderFactory.create_geo_loader(
+    strategy="r_parity",           # 'hybrid'/'r_parity' (recommended), 'full', or 'fast'
+    cache_dir="./my_geo_cache",    # Custom cache location
 )
-
-# Access configuration
-print(f"Cache directory: {loader.cache_dir}")
 ```
 
 ### Cache Management
@@ -130,19 +109,15 @@ def clear_geo_cache(cache_dir):
 #### Single Dataset
 
 ```python
-from preprocessing.geo_data_loader import get_geo_data
+from preprocessing.loader_factory import DataLoaderFactory
 
 # Download one dataset
-meta_object = get_geo_data(
-    gse_vector="GSE5847",           # GSE accession
-    formatted_names=["My_Study"],   # Custom name
-    q_norm=True,                    # Apply quantile normalization
-    cache_dir="./geo_cache"         # Cache location
-)
+loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir="./geo_cache")
+datasets = loader.load_multiple(["GSE5847"])
 
-# Access dataset
-dataset = meta_object['originalData']['GSE5847']
-print(f"Downloaded: {dataset['expr'].shape[0]} genes × {dataset['expr'].shape[1]} samples")
+# Access dataset (load_multiple always returns a list)
+ds = datasets[0]
+print(f"Downloaded: {ds.expr.shape[0]} genes × {ds.expr.shape[1]} samples")
 ```
 
 #### Multiple Datasets
@@ -150,153 +125,116 @@ print(f"Downloaded: {dataset['expr'].shape[0]} genes × {dataset['expr'].shape[1
 ```python
 # Download multiple datasets for meta-analysis
 gse_ids = ["GSE5847", "GSE28750", "GSE40012"]
-study_names = ["Breast_Cancer", "Sepsis", "TB_Infection"]
 
-meta_object = get_geo_data(
-    gse_vector=gse_ids,
-    formatted_names=study_names,
-    q_norm=True,
-    cache_dir="./geo_cache"
-)
+loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir="./geo_cache")
+datasets = loader.load_multiple(gse_ids, stop_on_error=False)
 
-print(f"Downloaded {len(meta_object['originalData'])} datasets:")
-for name in meta_object['originalData'].keys():
-    print(f"  • {name}")
+print(f"Downloaded {len(datasets)} datasets:")
+for ds in datasets:
+    print(f"  • {ds.geo_id}")
 ```
 
 ### Data Processing Pipeline
 
+Gene annotation (probe → gene symbol) happens automatically inside the handler
+during `load_multiple()` — there's no separate annotation step to call for the
+standard workflow. Class labels are the one step you always do by hand:
+
 ```python
-from preprocessing.geo_data_loader import get_geo_data, check_geo_log_scale
-from preprocessing.geo_annotation_engine import annotate_geo_dataset, GeneAnnotationEngine
+from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 
-# 1. Download data
+# 1. Download data (annotation happens inside the handler)
 print("📥 Downloading GEO data...")
-meta_object = get_geo_data(
-    gse_vector=["GSE5847", "GSE28750"],
-    q_norm=True,
-    cache_dir="./geo_cache"
-)
+loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir="./geo_cache")
+datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
-# 2. Verify log scale
-print("\n🔬 Verifying log-scale transformation...")
-for name, dataset in meta_object['originalData'].items():
-    is_log = check_geo_log_scale(dataset)
-    print(f"  {name}: {'✅ log scale' if is_log else '❌ linear scale'}")
-
-# 3. Annotate genes
-print("\n🧬 Annotating genes...")
-engine = GeneAnnotationEngine()
-for name, dataset in meta_object['originalData'].items():
-    meta_object['originalData'][name] = annotate_geo_dataset(dataset, engine)
-    report = dataset.get('annotation_report', {})
-    if report:
-        print(f"  {name}: {report['mapped_identifiers']:,} genes mapped ({report['mapping_rate']:.1%})")
+# 2. Build the meta-object and assign class labels
+print("\n🏷️  Assigning class labels...")
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
+    )
+    n_mapped = sum(1 for k in ds.keys if k != "NA")
+    print(f"  {ds.geo_id}: {n_mapped:,}/{len(ds.keys):,} probes mapped to a gene symbol")
 
 print("\n✅ Data ready for meta-analysis")
 ```
 
 ### Platform-Specific Handling
 
+Platform lives on `ProcessedDataset.metadata`, before it's converted into the
+analysis dict (which doesn't carry platform info):
+
 ```python
 # Check platforms
-platforms = {}
-for name, dataset in meta_object['originalData'].items():
-    platform = dataset.get('platform', 'Unknown')
-    platforms[name] = platform
+platforms = {ds.geo_id: ds.metadata.get('platform', 'Unknown') for ds in datasets}
+for name, platform in platforms.items():
     print(f"{name}: {platform}")
 
 # Filter by platform
-affymetrix_datasets = {
-    name: dataset 
-    for name, dataset in meta_object['originalData'].items()
-    if 'GPL570' in dataset.get('platform', '')
-}
+affymetrix_datasets = [ds for ds in datasets if 'GPL570' in ds.metadata.get('platform', '')]
 
 print(f"\nAffymetrix GPL570 datasets: {len(affymetrix_datasets)}")
 ```
 
 ### Working with Series Matrix Files
 
-GEO datasets come as "Series Matrix" files containing:
+GEO datasets come as "Series Matrix" files. After loading, each `ProcessedDataset`
+exposes the parsed result:
 
 ```python
 # Examine what gets downloaded
-dataset = meta_object['originalData']['GSE5847']
+ds = datasets[0]
 
-# Available data
-print("Data fields:")
-for key in dataset.keys():
-    if key == 'expr':
-        print(f"  • expr: {dataset['expr'].shape} DataFrame")
-    elif key == 'pheno':
-        print(f"  • pheno: {dataset['pheno'].shape} DataFrame")
-    elif key == 'keys':
-        print(f"  • keys: {len(dataset['keys'])} identifiers")
-    else:
-        print(f"  • {key}: {type(dataset[key]).__name__}")
+print(f"geo_id: {ds.geo_id}")
+print(f"  • expr: {ds.expr.shape} DataFrame")
+print(f"  • pheno: {ds.pheno.shape} DataFrame")
+print(f"  • keys: {len(ds.keys)} identifiers")
+print(f"  • metadata: {ds.metadata}")
 
 # Phenotype information
-if 'pheno' in dataset:
-    print(f"\nPhenotype columns:")
-    print(dataset['pheno'].columns.tolist()[:10])  # First 10 columns
+print(f"\nPhenotype columns:")
+print(ds.pheno.columns.tolist()[:10])  # First 10 columns
 ```
 
 ## Advanced Topics
 
-### Custom Download Location
-
-```python
-# Download to specific directory
-import os
-
-download_dir = "./geo_downloads"
-os.makedirs(download_dir, exist_ok=True)
-
-meta_object = get_geo_data(
-    gse_vector="GSE5847",
-    cache_dir=download_dir,
-    dest_dir=download_dir  # Save raw files here
-)
-```
-
 ### Handling Multi-Platform Datasets
 
-Some GSE IDs contain data from multiple platforms:
+Some GSE IDs contain data from multiple platforms. `load_multiple()` returns
+one `ProcessedDataset` per platform, with `geo_id` disambiguated accordingly:
 
 ```python
 # Example: GSE that uses multiple platforms
-meta_object = get_geo_data(gse_vector="GSE12345")
+datasets = loader.load_multiple(["GSE12345"])
 
-# Check number of datasets returned
-n_datasets = len(meta_object['originalData'])
-print(f"Number of platforms: {n_datasets}")
-
-# Each platform gets its own entry
-for name in meta_object['originalData'].keys():
-    print(f"  • {name}")
+print(f"Number of platforms: {len(datasets)}")
+for ds in datasets:
+    print(f"  • {ds.geo_id}")
     # Output might be:
     #   • GSE12345_GPL570  (Affymetrix)
     #   • GSE12345_GPL96   (Affymetrix)
 
-# Access specific platform
-gpl570_data = meta_object['originalData']['GSE12345_GPL570']
+# Access a specific platform
+gpl570_data = next(ds for ds in datasets if ds.geo_id == "GSE12345_GPL570")
 ```
 
 ### Custom Normalization
 
+The `'hybrid'`/`'r_parity'` strategy (recommended) handles scaling internally
+and doesn't expose a normalization toggle. If you need a different
+normalization, apply it yourself after loading:
+
 ```python
 from sklearn.preprocessing import quantile_transform
+import pandas as pd
 
-# Download without built-in normalization
-meta_object = get_geo_data(
-    gse_vector="GSE5847",
-    q_norm=False  # Skip quantile normalization
-)
-
-# Apply custom normalization
-dataset = meta_object['originalData']['GSE5847']
-expr = dataset['expr'].values
+ds = datasets[0]
+expr = ds.expr.values
 
 # Custom quantile normalization
 normalized = quantile_transform(
@@ -305,60 +243,39 @@ normalized = quantile_transform(
     n_quantiles=1000
 ).T
 
-# Update dataset
-import pandas as pd
-dataset['expr'] = pd.DataFrame(
-    normalized,
-    index=dataset['expr'].index,
-    columns=dataset['expr'].columns
-)
-dataset['exp_comment'] = 'Custom quantile normalization applied'
+# Build the analysis dict with the normalized matrix
+dataset = {
+    "expr": pd.DataFrame(normalized, index=ds.expr.index, columns=ds.expr.columns),
+    "pheno": ds.pheno, "keys": ds.keys, "formattedName": ds.geo_id,
+    "class": None, "exp_comment": "Custom quantile normalization applied",
+}
 ```
 
 ### Batch Download with Error Handling
 
-```python
-import warnings
+`load_multiple(..., stop_on_error=False)` already skips datasets that fail to
+download rather than aborting the whole batch — wrap it if you also want a
+structured success/failure report:
 
+```python
 def download_geo_batch(gse_list, cache_dir="./geo_cache"):
-    """Download multiple GSE IDs with error handling."""
-    
-    successful = {}
-    failed = []
-    
-    for gse_id in gse_list:
-        try:
-            print(f"Downloading {gse_id}...")
-            
-            # Attempt download
-            result = get_geo_data(
-                gse_vector=gse_id,
-                cache_dir=cache_dir
-            )
-            
-            # Store if successful
-            successful[gse_id] = result
-            print(f"  ✅ Success")
-            
-        except Exception as e:
-            print(f"  ❌ Failed: {str(e)}")
-            failed.append((gse_id, str(e)))
-    
-    # Summary
+    """Download multiple GSE IDs, reporting which ones failed."""
+    loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir=cache_dir)
+    datasets = loader.load_multiple(gse_list, stop_on_error=False)
+
+    succeeded_ids = {ds.geo_id.split('_')[0] for ds in datasets}
+    failed = [gse for gse in gse_list if gse not in succeeded_ids]
+
     print(f"\n📊 Results:")
-    print(f"  Successful: {len(successful)}/{len(gse_list)}")
-    print(f"  Failed: {len(failed)}/{len(gse_list)}")
-    
+    print(f"  Successful: {len(datasets)} dataset(s) from {len(succeeded_ids)}/{len(gse_list)} GSE IDs")
     if failed:
-        print(f"\nFailed downloads:")
-        for gse_id, error in failed:
-            print(f"  • {gse_id}: {error}")
-    
-    return successful, failed
+        print(f"  Failed GSE IDs: {failed}")
+
+    return datasets, failed
 
 # Use it
 gse_list = ["GSE5847", "GSE28750", "GSE99999", "GSE40012"]
-successful, failed = download_geo_batch(gse_list)
+datasets, failed = download_geo_batch(gse_list)
 ```
 
 ### Programmatic Search for Datasets
@@ -469,10 +386,13 @@ import pickle
 with open('meta_object.pkl', 'wb') as f:
     pickle.dump(meta_object, f)
 
-# Later use (offline)
+# Later use (offline) — no re-download needed at all
 with open('meta_object.pkl', 'rb') as f:
     meta_object = pickle.load(f)
 ```
+
+Even without pickling, re-running `load_multiple()` against the same `cache_dir`
+is itself offline-capable — cached files are read from disk, not re-downloaded.
 
 ### Q: What GEO accession types are supported?
 
@@ -506,8 +426,9 @@ if gse_cache.exists():
     shutil.rmtree(gse_cache)
     print(f"Cleared cache for GSE5847")
 
-# Next download will fetch latest version
-meta_object = get_geo_data("GSE5847", cache_dir=cache_dir)
+# Next load_multiple() call against this cache_dir will re-download
+loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir=cache_dir)
+datasets = loader.load_multiple(["GSE5847"])
 ```
 
 ## Troubleshooting
@@ -526,9 +447,10 @@ meta_object = get_geo_data("GSE5847", cache_dir=cache_dir)
 import time
 
 max_retries = 3
+loader = DataLoaderFactory.create_geo_loader(strategy="r_parity")
 for attempt in range(max_retries):
     try:
-        meta_object = get_geo_data("GSE5847")
+        datasets = loader.load_multiple(["GSE5847"])
         break
     except Exception as e:
         if attempt < max_retries - 1:
@@ -569,27 +491,29 @@ verify_gse_exists("GSE99999")  # Should return False
 
 ### Issue: "Expression data not in log scale"
 
-**Cause:** Data needs log transformation for meta-analysis
+**Cause:** Data needs log transformation for meta-analysis. There's no built-in
+`check_geo_log_scale()` helper — a simple range heuristic works well in practice
+(log₂ microarray data is typically in the 0–20 range; linear-scale data often
+reaches into the thousands):
 
 **Solution:**
 ```python
-from preprocessing.geo_data_loader import check_geo_log_scale
 import numpy as np
 
-dataset = meta_object['originalData']['GSE5847']
+ds = datasets[0]
+expr = ds.expr
 
-if not check_geo_log_scale(dataset):
+is_log_scale = expr.max().max() < 30  # heuristic: log2 data rarely exceeds ~20-25
+
+if not is_log_scale:
     print("⚠️ Converting to log scale...")
-    
+
     # Add small constant to avoid log(0)
-    expr = dataset['expr']
     min_val = expr.min().min()
-    
     if min_val < 0:
         expr = expr - min_val + 1
-    
-    dataset['expr'] = np.log2(expr + 1)
-    dataset['exp_comment'] = 'Converted to log2 scale'
+
+    log_expr = np.log2(expr + 1)
     print("✅ Transformation complete")
 ```
 
@@ -606,21 +530,22 @@ if not check_geo_log_scale(dataset):
 ```python
 # Process datasets sequentially
 gse_list = ["GSE5847", "GSE28750", "GSE40012"]
+loader = DataLoaderFactory.create_geo_loader(strategy="r_parity")
 
 for gse_id in gse_list:
     # Download one at a time
-    meta_obj = get_geo_data(gse_id)
-    
+    ds = loader.load_multiple([gse_id])[0]
+
     # Process immediately
     # ... analysis code ...
-    
+
     # Save results
     import pickle
     with open(f'{gse_id}_processed.pkl', 'wb') as f:
-        pickle.dump(meta_obj, f)
-    
+        pickle.dump(ds, f)
+
     # Clear from memory
-    del meta_obj
+    del ds
 ```
 
 ## Appendix

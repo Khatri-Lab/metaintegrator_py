@@ -173,8 +173,8 @@ import pandas as pd
 from scipy import stats
 
 # Local application
-from metaintegrator_py.src.preprocessing import DataValidator
-from metaintegrator_py.src.metaintegrator.analysis import MetaAnalyzer
+from metaintegrator.validation import DatasetValidator
+from metaintegrator.analysis import MetaAnalyzer
 ```
 
 **Import ordering:**
@@ -192,7 +192,7 @@ isort src/ tests/
 | Type | Convention | Example |
 |------|------------|---------|
 | **Modules** | `lowercase_with_underscores` | `data_loading.py` |
-| **Classes** | `CapitalizedWords` | `DataValidator` |
+| **Classes** | `CapitalizedWords` | `DatasetValidator` |
 | **Functions** | `lowercase_with_underscores` | `calculate_effect_size()` |
 | **Variables** | `lowercase_with_underscores` | `effect_size` |
 | **Constants** | `UPPER_CASE_WITH_UNDERSCORES` | `MAX_ITERATIONS` |
@@ -292,7 +292,7 @@ def validate_meta_object(
         ...     print("Errors:", errors)
     
     See Also:
-        - DataValidator.validate_study_structure
+        - DatasetValidator.validate_study_structure
         - checkDataObject (R equivalent)
     """
     pass
@@ -313,15 +313,15 @@ def validate_meta_object(
 #### Test Structure
 
 ```python
-# tests/preprocessing/test_data_loading.py
+# tests/metaintegrator/test_validation.py
 import pytest
 import numpy as np
 import pandas as pd
-from metaintegrator_py.src.preprocessing.data_loading import DataValidator
+from metaintegrator.validation import DatasetValidator
 
 
-class TestDataValidator:
-    """Test suite for DataValidator class."""
+class TestDatasetValidator:
+    """Test suite for DatasetValidator class."""
     
     @pytest.fixture
     def valid_dataset(self):
@@ -334,7 +334,7 @@ class TestDataValidator:
     
     def test_valid_dataset_passes(self, valid_dataset):
         """Test that valid dataset passes validation."""
-        is_valid = DataValidator.check_class_vector(valid_dataset)
+        is_valid = DatasetValidator.check_class_vector(valid_dataset)
         assert is_valid is True
     
     def test_insufficient_cases_fails(self):
@@ -344,7 +344,7 @@ class TestDataValidator:
             "class": np.array([0, 0, 1]),  # Only 1 case
             "keys": [f"GENE_{i}" for i in range(100)]
         }
-        is_valid = DataValidator.check_class_vector(dataset)
+        is_valid = DatasetValidator.check_class_vector(dataset)
         assert is_valid is False
     
     def test_missing_class_vector_fails(self):
@@ -354,7 +354,7 @@ class TestDataValidator:
             "keys": [f"GENE_{i}" for i in range(100)]
             # Missing "class"
         }
-        is_valid = DataValidator.check_class_vector(dataset)
+        is_valid = DatasetValidator.check_class_vector(dataset)
         assert is_valid is False
     
     @pytest.mark.parametrize("n_cases,n_controls,expected", [
@@ -371,7 +371,7 @@ class TestDataValidator:
             "class": np.array([1] * n_cases + [0] * n_controls),
             "keys": [f"GENE_{i}" for i in range(100)]
         }
-        assert DataValidator.check_class_vector(dataset) == expected
+        assert DatasetValidator.check_class_vector(dataset) == expected
 ```
 
 #### Test Naming
@@ -393,7 +393,7 @@ class TestDataValidator:
 pytest
 
 # Run specific test file
-pytest tests/preprocessing/test_data_loading.py
+pytest tests/metaintegrator/test_validation.py
 
 # Run with coverage
 pytest --cov=src --cov-report=html

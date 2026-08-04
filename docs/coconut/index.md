@@ -326,17 +326,31 @@ COCONUT works seamlessly with other metaintegrator_py modules:
 ```python
 from metaintegrator.analysis import MetaAnalyzer
 
-# After COCONUT normalization
+# After COCONUT normalization, wrap the combined output as a
+# study dict (expr/class/keys are required by run_meta_analysis_core)
+meta_input = {
+    'expr': combined['genes'],
+    'class': combined['class_cntl0_dis1'],
+    'keys': combined['genes'].index.tolist(),
+}
 analyzer = MetaAnalyzer()
-meta_results = analyzer.run_meta_analysis_core([combined])
+meta_results = analyzer.run_meta_analysis_core([meta_input])
 ```
 
 ### Visualization
-```python
-from metaintegrator.visualization import plot_pca
+PCA plotting isn't part of the package's public API — build one directly with
+scikit-learn on the COCONUT-normalized matrix:
 
-# Visualize COCONUT results
-plot_pca(combined['genes'], combined['class_cntl0_dis1'])
+```python
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+pca = PCA(n_components=2)
+coords = pca.fit_transform(combined['genes'].T)  # samples x components
+
+plt.scatter(coords[:, 0], coords[:, 1], c=combined['class_cntl0_dis1'])
+plt.xlabel("PC1")
+plt.ylabel("PC2")
 ```
 
 ---

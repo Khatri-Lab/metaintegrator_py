@@ -28,9 +28,8 @@ Good visualizations:
 ```python
 from visualization.plotting import MetaAnalysisPlotter
 from visualization.enhanced_plotting import (
-    create_forest_plot,
-    create_volcano_plot,
-    create_heatmap_plot
+    forest_plot,
+    heatmap_plot,
 )
 
 import matplotlib.pyplot as plt
@@ -63,11 +62,11 @@ with open('meta_analysis_results/meta_object_with_results.pkl', 'rb') as f:
 
 # Extract results
 meta_results = meta_object['metaAnalysis']
-pooled = meta_results['pooled_estimates']
+pooled = meta_results['pooledResults']
 
 print(f"📊 Loaded results:")
 print(f"   Total genes: {len(pooled):,}")
-print(f"   Significant (FDR < 0.05): {(pooled['p_fdr'] < 0.05).sum():,}")
+print(f"   Significant (FDR < 0.05): {(pooled['effectSizeFDR'] < 0.05).sum():,}")
 ```
 
 **Expected output:**
@@ -89,9 +88,9 @@ output_dir = Path("./figures")
 output_dir.mkdir(exist_ok=True)
 
 # Extract data
-effect_col = 'effect_size' if 'effect_size' in pooled.columns else 'pooled_es'
+effect_col = 'effectSize'
 effect_sizes = pooled[effect_col]
-p_values = pooled['p_value']
+p_values = pooled['effectSizePval']
 
 # Calculate -log10(p-value)
 neg_log_p = -np.log10(p_values.replace(0, 1e-300))
@@ -101,7 +100,7 @@ fig, ax = plt.subplots(figsize=(10, 8))
 
 # Scatter plot - colored by significance
 # Significant genes (FDR < 0.05) in red
-is_significant = pooled['p_fdr'] < 0.05
+is_significant = pooled['effectSizeFDR'] < 0.05
 
 ax.scatter(
     effect_sizes[~is_significant], 
@@ -127,10 +126,10 @@ ax.axhline(y=-np.log10(0.05), color='blue', linestyle='--',
 ax.axvline(x=0, color='black', linestyle='-', linewidth=1, alpha=0.3)
 
 # Annotate top genes
-top_genes = pooled.nsmallest(10, 'p_fdr')
+top_genes = pooled.nsmallest(10, 'effectSizeFDR')
 for gene_name, row in top_genes.iterrows():
     es = row[effect_col]
-    pval = row['p_value']
+    pval = row['effectSizePval']
     
     # Only annotate if not too crowded
     if abs(es) > 0.5 or -np.log10(pval) > 10:
@@ -228,7 +227,7 @@ print("\n📊 Creating top genes heatmap...")
 
 # Get top 30 genes by FDR
 n_top = 30
-top_genes = pooled.nsmallest(n_top, 'p_fdr')
+top_genes = pooled.nsmallest(n_top, 'effectSizeFDR')
 
 # Collect expression data for these genes
 heatmap_data_list = []
@@ -390,9 +389,9 @@ ax2.grid(True, alpha=0.3, axis='y')
 # Panel C: Significance counts
 ax3 = fig.add_subplot(gs[1, 1])
 sig_counts = {
-    'FDR < 0.01': (pooled['p_fdr'] < 0.01).sum(),
-    'FDR < 0.05': (pooled['p_fdr'] < 0.05).sum(),
-    'p < 0.05': (pooled['p_value'] < 0.05).sum(),
+    'FDR < 0.01': (pooled['effectSizeFDR'] < 0.01).sum(),
+    'FDR < 0.05': (pooled['effectSizeFDR'] < 0.05).sum(),
+    'p < 0.05': (pooled['effectSizePval'] < 0.05).sum(),
     'Total': len(pooled)
 }
 colors = ['darkred', 'red', 'orange', 'lightgray']
@@ -403,7 +402,7 @@ ax3.grid(True, alpha=0.3, axis='x')
 
 # Panel D: Up vs Down regulation
 ax4 = fig.add_subplot(gs[2, :])
-sig_genes = pooled[pooled['p_fdr'] < 0.05]
+sig_genes = pooled[pooled['effectSizeFDR'] < 0.05]
 up_genes = sig_genes[sig_genes[effect_col] > 0].nlargest(15, effect_col)
 down_genes = sig_genes[sig_genes[effect_col] < 0].nsmallest(15, effect_col)
 
@@ -488,7 +487,7 @@ ax.set_xlabel(f'Effect Size (n = {len(effect_sizes):,} genes)')
 
 # Better: Include multiple stats
 n_total = len(pooled)
-n_sig = (pooled['p_fdr'] < 0.05).sum()
+n_sig = (pooled['effectSizeFDR'] < 0.05).sum()
 ax.set_title(f'Meta-Analysis Results (n = {n_total:,} genes, {n_sig} significant)')
 ```
 
@@ -547,7 +546,7 @@ try:
     
     texts = []
     for gene_name, row in top_genes.iterrows():
-        text = ax.text(row[effect_col], -np.log10(row['p_value']), gene_name)
+        text = ax.text(row[effect_col], -np.log10(row['effectSizePval']), gene_name)
         texts.append(text)
     
     adjust_text(texts, arrowprops=dict(arrowstyle='-', color='gray'))

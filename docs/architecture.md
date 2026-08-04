@@ -34,8 +34,8 @@ graph TB
     end
 
     subgraph "Visualization Layer"
-        Plotting["MetaAnalysisPlotter"]
-        Enhanced["enhanced_plotting.py<br/><i>forest, heatmap, ROC</i>"]
+        Plotting["plotting.MetaAnalysisPlotter<br/><i>volcano, forest, heatmap</i>"]
+        Enhanced["EnhancedMetaAnalysisPlotter<br/><i>forest, heatmap, ROC/PRC</i>"]
         Violin["violin_plot.py<br/><i>R-parity ggplot2 style</i>"]
     end
 
@@ -67,11 +67,11 @@ graph TB
 | | `hybrid_handler.py` | `HybridMicroarrayHandler` — orchestrates annotation, log2, pheno |
 | | `microarray_handler.py` | `MicroarrayHandler` — full SOFT-based processing |
 | | `gene_annotator.py` | `GeneAnnotator` — probe-to-gene mapping with GenBank/Ensembl filters |
-| | `gene_validation.py` | `GeneValidator` / `EnsemblValidator` — HGNC symbol validation |
+| | `gene_validation.py` | `EnsemblGeneValidator` — HGNC symbol validation |
 | | `gene_converter.py` | `GeneConverter` — Ensembl ↔ Entrez ↔ RefSeq ↔ GenBank translation |
-| | `ncbi_fetcher.py` | `NCBIGEOFetcher` — low-level GEO download with caching |
-| | `ncbi_network.py` | Network transport layer (FTP/HTTPS fallback) |
-| | `r_parity_handler.py` | R-parity handler for exact R output matching |
+| | `ncbi_fetcher.py` | `NCBIFetcher` — Series Matrix downloader behind the `'fast'` strategy, with size guard and pickle caching |
+| | `ncbi_network.py` | `NCBINetwork` — low-level FTP/HTTPS transport with retry & disk caching, the injectable seam used by every source |
+| | `r_parity_handler.py`, `r_parity_source.py` | **Deprecated aliases** — re-export `HybridMicroarrayHandler`/`HybridGeoSource` under their old names; not separate implementations |
 | **metaintegrator** | `analysis.py` | `MetaAnalyzer` — top-level orchestrator for meta-analysis |
 | | `core_analysis.py` | `MetaAnalysisCore`, `FisherCombination` — statistical engine |
 | | `score_calculation.py` | `ScoreCalculator` — geometric-mean z-score computation |
@@ -83,8 +83,8 @@ graph TB
 | | `power_calculation.py` | Statistical power estimation |
 | | `phenotype_processing.py` | Phenotype/class label extraction |
 | | `validation.py` | Dataset structure validation |
-| **visualization** | `plotting.py` | `MetaAnalysisPlotter` — volcano, forest, heatmap |
-| | `enhanced_plotting.py` | Extended plotter with ROC/PRC multi-dataset plots |
+| **visualization** | `plotting.py` | `MetaAnalysisPlotter` — volcano, forest, heatmap, effect-size distribution |
+| | `enhanced_plotting.py` | `EnhancedMetaAnalysisPlotter` — forest/heatmap/Manhattan/ROC/PRC/violin/regression, plus module-level convenience functions. Previously also named `MetaAnalysisPlotter`; renamed to stop colliding with `plotting.MetaAnalysisPlotter` (an unrelated class). A deprecated, warning-emitting alias remains for old imports — see [Visualization API](api/visualization.md). |
 | | `violin_plot.py` | R-parity violin plots (ggplot2 style) |
 | **coconut** | `coconut.py` | COCONUT batch normalization |
 | | `coconut_runner.py` | CLI runner for COCONUT workflows |
@@ -104,7 +104,7 @@ classDiagram
 
     class DataSource {
         <<abstract>>
-        +fetch(geo_id) RawDataset
+        +fetch(dataset_id) List~RawDataset~
     }
 
     class DataHandler {
@@ -115,12 +115,12 @@ classDiagram
     class DataLoader {
         -source: DataSource
         -handler: DataHandler
-        +load(geo_id) ProcessedDataset
-        +load_multiple(geo_ids) list
+        +load(dataset_id) List~ProcessedDataset~
+        +load_multiple(dataset_ids, stop_on_error) List~ProcessedDataset~
     }
 
     class HybridGeoSource {
-        +fetch(geo_id) RawDataset
+        +fetch(dataset_id) List~RawDataset~
     }
 
     class HybridMicroarrayHandler {
@@ -243,7 +243,8 @@ jupyter notebook jupyter_metaintegrator_sle_tutorial.ipynb
 
 1. **Load data**: `DataLoaderFactory.create_geo_loader('r_parity')` → `HybridMicroarrayHandler.parse()` → `GeneAnnotator.annotate()`
 2. **Meta-analysis**: `MetaAnalyzer.run_meta_analysis()` → `MetaAnalysisCore.calculate_effect_sizes()` → `pool_inverse_variance()`
-3. **Filter genes**: `scoring_meta_integrator_filter.filter_genes()` → returns `filter_object` with `posGeneNames` / `negGeneNames`
+3. **Filter genes**: `MetaAnalyzer.filter_genes()` (in `analysis.py`) → returns `filter_object` with `posGeneNames` / `negGeneNames`.
+   A separate, strategy-based pipeline — `scoring_meta_integrator_filter.MetaIntegratorFilter` — also exists (standard / adaptive / combined-criteria); the two are not interchangeable, see [API Reference](api/overview.md#package-metaintegrator).
 4. **Score & evaluate**: `ScoreCalculator.calculate_score()` → `SampleLevelGeneDataProcessor` → ROC/AUC
 
 ### Key data structures
