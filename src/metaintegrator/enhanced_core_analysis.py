@@ -54,9 +54,7 @@ class EnhancedMetaAnalysis:
 
         # Calculate p-values
         try:
-            pvals = MetaAnalysisCore.get_ttest_pvalues(
-                study["expr"], np.array(study["class"])
-            )
+            pvals = MetaAnalysisCore.get_ttest_pvalues(study["expr"], np.array(study["class"]))
         except Exception as e:
             raise ValueError(f"Failed to calculate t-test p-values: {e}") from e
 
@@ -155,15 +153,11 @@ class EnhancedMetaAnalysis:
                 # Identify significance columns (non-keys columns)
                 sig_columns = [col for col in df.columns if col != "keys"]
                 if len(sig_columns) == 0:
-                    raise ValueError(
-                        f"Study {study_idx}: No significance columns found"
-                    )
+                    raise ValueError(f"Study {study_idx}: No significance columns found")
 
                 # Remove invalid entries - only filter out rows with invalid keys
                 # or where ALL significance columns are NaN
-                key_valid_mask = (
-                    df["keys"].notna() & (df["keys"] != "NA") & (df["keys"] != "")
-                )
+                key_valid_mask = df["keys"].notna() & (df["keys"] != "NA") & (df["keys"] != "")
 
                 # Check if at least one significance column has valid data
                 sig_data_valid = df[sig_columns].notna().any(axis=1)
@@ -174,20 +168,14 @@ class EnhancedMetaAnalysis:
                 valid_rows = len(df_clean)
 
                 if valid_rows == 0:
-                    raise ValueError(
-                        f"Study {study_idx}: No valid rows after filtering"
-                    )
+                    raise ValueError(f"Study {study_idx}: No valid rows after filtering")
 
                 # Expand multi-gene mappings
-                df_expanded = MetaAnalysisCore.expand_dataframe(
-                    df_clean, key_name="keys"
-                )
+                df_expanded = MetaAnalysisCore.expand_dataframe(df_clean, key_name="keys")
                 expanded_rows = len(df_expanded)
 
                 # Summarize within study (take minimum p-value for each gene)
-                df_summarized = FisherCombination.summarize_significance_within_study(
-                    df_expanded
-                )
+                df_summarized = FisherCombination.summarize_significance_within_study(df_expanded)
                 final_genes = len(df_summarized)
 
                 processed_studies.append(df_summarized)
@@ -221,24 +209,14 @@ class EnhancedMetaAnalysis:
         # significance types (P.up, Q_up, F_up, etc.)
         # This makes the code more robust and handles legacy naming conventions
         up_columns = [
-            col
-            for col in merged_df.columns
-            if col.endswith(".up") or col.endswith("_up")
+            col for col in merged_df.columns if col.endswith(".up") or col.endswith("_up")
         ]
         down_columns = [
-            col
-            for col in merged_df.columns
-            if col.endswith(".down") or col.endswith("_down")
+            col for col in merged_df.columns if col.endswith(".down") or col.endswith("_down")
         ]
 
-        sigs_up = (
-            merged_df[up_columns] if up_columns else pd.DataFrame(index=merged_df.index)
-        )
-        sigs_down = (
-            merged_df[down_columns]
-            if down_columns
-            else pd.DataFrame(index=merged_df.index)
-        )
+        sigs_up = merged_df[up_columns] if up_columns else pd.DataFrame(index=merged_df.index)
+        sigs_down = merged_df[down_columns] if down_columns else pd.DataFrame(index=merged_df.index)
 
         # Create metadata DataFrame
         metadata_df = pd.DataFrame(study_metadata)
@@ -246,9 +224,7 @@ class EnhancedMetaAnalysis:
         return {"sigs_up": sigs_up, "sigs_down": sigs_down, "study_info": metadata_df}
 
     @staticmethod
-    def enhanced_ttest_pvalues(
-        study: Dict, include_qvalues: bool = True
-    ) -> pd.DataFrame:
+    def enhanced_ttest_pvalues(study: Dict, include_qvalues: bool = True) -> pd.DataFrame:
         """
         Enhanced t-test p-value calculation with integrated Q-value computation.
 
@@ -269,9 +245,7 @@ class EnhancedMetaAnalysis:
         MetaAnalysisCore.check_metagem_study(study)
 
         # Get basic p-values
-        pvals = MetaAnalysisCore.get_ttest_pvalues(
-            study["expr"], np.array(study["class"])
-        )
+        pvals = MetaAnalysisCore.get_ttest_pvalues(study["expr"], np.array(study["class"]))
 
         # Add keys
         result = pvals.copy()
@@ -357,9 +331,7 @@ class EnhancedFisherCombination(FisherCombination):
             list_of_significance_matrices = qvalue_matrices
 
         # Use the enhanced combine_significances function
-        combined_sigs = EnhancedMetaAnalysis.combine_significances(
-            list_of_significance_matrices
-        )
+        combined_sigs = EnhancedMetaAnalysis.combine_significances(list_of_significance_matrices)
 
         # Apply Fisher's method
         sigs_up = combined_sigs["sigs_up"]

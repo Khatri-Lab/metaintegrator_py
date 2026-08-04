@@ -239,9 +239,7 @@ class SummaryROCExporter:
 
             # Sheet 3: Clinical parameters
             if clinical_params is not None:
-                clinical_params.to_excel(
-                    writer, sheet_name="Clinical Parameters", index=True
-                )
+                clinical_params.to_excel(writer, sheet_name="Clinical Parameters", index=True)
 
             # Sheet 4: Metadata
             metadata = pd.DataFrame(

@@ -90,9 +90,7 @@ class GeneConverter:
         df_ens = self._load_csv_gz("ensembl_genes.csv.gz")
         if df_ens is not None:
             # stable_id → display_label
-            self._ensg_to_symbol = dict(
-                zip(df_ens["stable_id"], df_ens["display_label"])
-            )
+            self._ensg_to_symbol = dict(zip(df_ens["stable_id"], df_ens["display_label"]))
             self._valid_symbols = set(df_ens["display_label"].dropna())
             log.info(f"  ✓ Ensembl: {len(self._ensg_to_symbol):,} ENSG IDs")
         else:

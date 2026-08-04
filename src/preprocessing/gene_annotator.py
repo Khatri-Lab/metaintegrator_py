@@ -253,7 +253,5 @@ class GeneAnnotator:
     def _build_probe_mapping(table: pd.DataFrame, gene_col: str) -> dict:
         """Build a ``{str(probe_id): raw_value}`` lookup from a GPL table."""
         if "ID" in table.columns:
-            return {
-                str(k): v for k, v in table.set_index("ID")[gene_col].to_dict().items()
-            }
+            return {str(k): v for k, v in table.set_index("ID")[gene_col].to_dict().items()}
         return {str(k): v for k, v in zip(table.index, table[gene_col])}
