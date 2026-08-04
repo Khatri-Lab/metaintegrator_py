@@ -50,9 +50,7 @@ def check_module_files():
 
     if "coconut.py" in found_modules:
         print(f"\n💡 Note: Found coconut.py - this is likely your implementation file.")
-        print(
-            f"   Make sure your tests import from 'coconut' module, not 'coconut_improved'"
-        )
+        print(f"   Make sure your tests import from 'coconut' module, not 'coconut_improved'")
 
     print(f"\nFound {len(found_modules)} potential module file(s)")
     return found_modules
@@ -200,9 +198,7 @@ def test_pytest_coverage():
     for cmd in test_commands:
         print(f"\nTesting command: {cmd}")
         try:
-            result = subprocess.run(
-                cmd.split(), capture_output=True, text=True, timeout=10
-            )
+            result = subprocess.run(cmd.split(), capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
                 print("  ✅ Command successful")
                 if result.stdout:
@@ -230,9 +226,7 @@ def suggest_fixes(successful_imports):
         print("\n🔧 IMMEDIATE ACTIONS:")
         if os.path.exists("coconut.py"):
             print("1. ✅ Found coconut.py - this appears to be your implementation")
-            print(
-                "2. Update test imports to use 'coconut' instead of 'coconut_improved'"
-            )
+            print("2. Update test imports to use 'coconut' instead of 'coconut_improved'")
             print("3. Run coverage with: pytest --cov=coconut test_coconut.py -v")
         else:
             print("1. Create coconut.py with your COCONUT implementation")
@@ -244,9 +238,7 @@ def suggest_fixes(successful_imports):
     print(f"✅ Found {len(successful_imports)} importable module(s)")
 
     # Special handling for coconut.py
-    coconut_py_found = any(
-        filename == "coconut.py" for filename, _, _, _ in successful_imports
-    )
+    coconut_py_found = any(filename == "coconut.py" for filename, _, _, _ in successful_imports)
 
     if coconut_py_found:
         print("\n🎯 COCONUT.PY DETECTED - LIKELY SOLUTION:")
@@ -273,9 +265,7 @@ def suggest_fixes(successful_imports):
                 try:
                     func = getattr(module, func_name)
                     if func_name == "get_a_prior":
-                        func(
-                            [1.0, 2.0]
-                        )  # This should raise NotImplementedError if mock
+                        func([1.0, 2.0])  # This should raise NotImplementedError if mock
                     mock_functions.append(func_name)
                 except NotImplementedError:
                     mock_functions.append(func_name)
@@ -299,15 +289,11 @@ def suggest_fixes(successful_imports):
     # Prioritize coconut.py if available
     if coconut_py_found:
         print("Since coconut.py was found:")
-        print(
-            "1. Test import: python -c 'from coconut import coconut; print(\"✅ Success\")'"
-        )
+        print("1. Test import: python -c 'from coconut import coconut; print(\"✅ Success\")'")
         print(
             "2. Run coverage: pytest --cov=coconut test_coconut.py::TestCoconutMainFunction::test_simple_coconut_functionality -v"
         )
-        print(
-            "3. Full coverage: pytest --cov=coconut --cov-report=html test_coconut.py"
-        )
+        print("3. Full coverage: pytest --cov=coconut --cov-report=html test_coconut.py")
     else:
         best_module = successful_imports[0][1]  # Use first successful import
         print(f"Using {best_module} module:")
@@ -318,9 +304,7 @@ def suggest_fixes(successful_imports):
         print(f"   coverage report -m")
 
         print(f"\n2. Test pytest coverage:")
-        print(
-            f"   pytest --cov={best_module} --cov-report=term-missing test_coconut.py -v"
-        )
+        print(f"   pytest --cov={best_module} --cov-report=term-missing test_coconut.py -v")
 
         print(f"\n3. Generate HTML coverage report:")
         print(f"   pytest --cov={best_module} --cov-report=html test_coconut.py")
@@ -346,9 +330,7 @@ def main():
 
     if not module_files:
         print("\n❌ No module files found!")
-        print(
-            "Please create coconut_improved.py with the actual COCONUT implementation"
-        )
+        print("Please create coconut_improved.py with the actual COCONUT implementation")
         return False
 
     successful_imports = test_module_import(module_files)

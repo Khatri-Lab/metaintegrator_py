@@ -364,9 +364,7 @@ def test_cache_disabled():
     # Should not have the modified cached value (99999)
     # Note: mock data uses fixed seed, so fresh generation gives same values as matrix1
     assert matrix2.iloc[0, 0] != 99999
-    assert (
-        matrix2.iloc[0, 0] == matrix1.iloc[0, 0]
-    )  # Both should be original mock value
+    assert matrix2.iloc[0, 0] == matrix1.iloc[0, 0]  # Both should be original mock value
 
 
 # ===================================================================

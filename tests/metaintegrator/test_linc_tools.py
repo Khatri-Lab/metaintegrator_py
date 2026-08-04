@@ -133,9 +133,7 @@ class TestLincsDataManager:
     @patch("metaintegrator.linc_tools.requests.get")
     @patch("metaintegrator.linc_tools.tempfile.mkdtemp")
     @patch("metaintegrator.linc_tools.zipfile.ZipFile")
-    def test_download_and_extract_success(
-        self, mock_zipfile, mock_tempdir, mock_get, mock_shutil
-    ):
+    def test_download_and_extract_success(self, mock_zipfile, mock_tempdir, mock_get, mock_shutil):
         """Test successful download and extraction."""
         # Setup mocks
         mock_tempdir.return_value = "/tmp/test"
@@ -239,9 +237,7 @@ class TestLincsDataManager:
     @patch.object(LincsDataManager, "_load_files_from_dir")
     @patch.object(LincsDataManager, "_process_annotations")
     @patch("metaintegrator.linc_tools.shutil.rmtree")
-    def test_load_data_success(
-        self, mock_rmtree, mock_process, mock_load_files, mock_download
-    ):
+    def test_load_data_success(self, mock_rmtree, mock_process, mock_load_files, mock_download):
         """Test successful data loading."""
         mock_download.return_value = "/tmp/test"
 
@@ -443,16 +439,12 @@ class TestLincsAnalyzer:
         assert result == "error, no genes found"
 
     @patch.object(LincsAnalyzer, "_get_dataset_data")
-    def test_lincs_data_access_no_perturbagens(
-        self, mock_get_dataset, sample_lincs_data
-    ):
+    def test_lincs_data_access_no_perturbagens(self, mock_get_dataset, sample_lincs_data):
         """Test lincs_data_access with no matching perturbagens."""
         mock_get_dataset.return_value = sample_lincs_data
 
         analyzer = LincsAnalyzer()
-        result = analyzer.lincs_data_access(
-            "CP", genes=["GENE1"], perturbagens=["NONEXISTENT"]
-        )
+        result = analyzer.lincs_data_access("CP", genes=["GENE1"], perturbagens=["NONEXISTENT"])
 
         assert result == "error, no perturbagens found"
 
@@ -462,9 +454,7 @@ class TestLincsAnalyzer:
         mock_get_dataset.return_value = sample_lincs_data
 
         analyzer = LincsAnalyzer()
-        result = analyzer.lincs_data_access(
-            "CP", genes=["GENE1", "GENE2"], perturbagens=["PERT1"]
-        )
+        result = analyzer.lincs_data_access("CP", genes=["GENE1", "GENE2"], perturbagens=["PERT1"])
 
         assert isinstance(result, pd.DataFrame)
         assert "GENE1" in result.index
@@ -477,31 +467,23 @@ class TestLincsAnalyzer:
         mock_get_dataset.return_value = sample_lincs_data
 
         analyzer = LincsAnalyzer()
-        result = analyzer.lincs_data_access(
-            "CP", all_genes=True, perturbagens=["PERT1"]
-        )
+        result = analyzer.lincs_data_access("CP", all_genes=True, perturbagens=["PERT1"])
 
         assert len(result.index) == len(sample_lincs_data.index)
 
     @patch.object(LincsAnalyzer, "_get_dataset_data")
-    def test_lincs_data_access_all_perturbagens(
-        self, mock_get_dataset, sample_lincs_data
-    ):
+    def test_lincs_data_access_all_perturbagens(self, mock_get_dataset, sample_lincs_data):
         """Test lincs_data_access with all_perturbagens=True."""
         mock_get_dataset.return_value = sample_lincs_data
 
         analyzer = LincsAnalyzer()
-        result = analyzer.lincs_data_access(
-            "CP", genes=["GENE1"], all_perturbagens=True
-        )
+        result = analyzer.lincs_data_access("CP", genes=["GENE1"], all_perturbagens=True)
 
         assert len(result.columns) == len(sample_lincs_data.columns)
 
     @patch.object(LincsAnalyzer, "_filter_by_clinical")
     @patch.object(LincsAnalyzer, "_get_dataset_data")
-    def test_lincs_data_access_just_clin(
-        self, mock_get_dataset, mock_filter, sample_lincs_data
-    ):
+    def test_lincs_data_access_just_clin(self, mock_get_dataset, mock_filter, sample_lincs_data):
         """Test lincs_data_access with just_clin=True."""
         mock_get_dataset.return_value = sample_lincs_data
         mock_filter.return_value = ["CLINICAL1"]
@@ -649,9 +631,7 @@ class TestLincsAnalyzer:
 
     @patch("metaintegrator.linc_tools.stats.pearsonr")
     @patch.object(LincsAnalyzer, "_get_dataset_data")
-    def test_lincs_correlate_drop_string(
-        self, mock_get_dataset, mock_pearsonr, sample_signature
-    ):
+    def test_lincs_correlate_drop_string(self, mock_get_dataset, mock_pearsonr, sample_signature):
         """Test lincs_correlate with drop_string parameter."""
         # Create data with column to be dropped
         genes = ["GENE1", "GENE2", "GENE3"]
@@ -671,15 +651,11 @@ class TestLincsAnalyzer:
 
     @patch("metaintegrator.linc_tools.np.corrcoef")
     @patch.object(LincsAnalyzer, "_get_dataset_data")
-    def test_lincs_bait_corr_success(
-        self, mock_get_dataset, mock_corrcoef, sample_lincs_data
-    ):
+    def test_lincs_bait_corr_success(self, mock_get_dataset, mock_corrcoef, sample_lincs_data):
         """Test successful lincs_bait_corr."""
         mock_get_dataset.return_value = sample_lincs_data
         # Mock correlation matrix
-        mock_corrcoef.return_value = np.array(
-            [[1.0, 0.5, 0.3], [0.5, 1.0, 0.7], [0.3, 0.7, 1.0]]
-        )
+        mock_corrcoef.return_value = np.array([[1.0, 0.5, 0.3], [0.5, 1.0, 0.7], [0.3, 0.7, 1.0]])
 
         analyzer = LincsAnalyzer()
         result = analyzer.lincs_bait_corr(baits=["PERT1"])
@@ -702,9 +678,7 @@ class TestLincsAnalyzer:
         assert "error" in result
 
     @patch.object(LincsAnalyzer, "_get_dataset_data")
-    def test_lincs_bait_corr_insufficient_baits(
-        self, mock_get_dataset, sample_lincs_data
-    ):
+    def test_lincs_bait_corr_insufficient_baits(self, mock_get_dataset, sample_lincs_data):
         """Test lincs_bait_corr with insufficient baits."""
         mock_get_dataset.return_value = sample_lincs_data
 
@@ -718,9 +692,7 @@ class TestLincsAnalyzer:
         """Test lincs_bait_corr with cross-dataset correlation."""
         analyzer = LincsAnalyzer()
 
-        with patch.object(
-            analyzer, "_get_dataset_data", return_value=sample_lincs_data
-        ):
+        with patch.object(analyzer, "_get_dataset_data", return_value=sample_lincs_data):
             result = analyzer.lincs_bait_corr(bait_type="cross")
 
         assert isinstance(result, dict)
@@ -787,9 +759,7 @@ class TestLincsVisualizer:
         sample_data = sample_lincs_data.copy()
         sample_data["sig"] = [1.0, -0.5, 2.0, -1.5, 0.8]
 
-        result = visualizer._prepare_heatmap_data(
-            sample_data, None, False, pert_ordered=True
-        )
+        result = visualizer._prepare_heatmap_data(sample_data, None, False, pert_ordered=True)
 
         assert isinstance(result, pd.DataFrame)
         assert "sig" in result.columns
@@ -823,15 +793,11 @@ class TestLincsVisualizer:
         visualizer = LincsVisualizer()
         result = visualizer.lincs_heatmap(sample_lincs_data, out_file="/tmp/test.png")
 
-        mock_savefig.assert_called_once_with(
-            "/tmp/test.png", dpi=300, bbox_inches="tight"
-        )
+        mock_savefig.assert_called_once_with("/tmp/test.png", dpi=300, bbox_inches="tight")
 
     @patch("metaintegrator.linc_tools.plt.subplots")
     @patch("metaintegrator.linc_tools.sns.heatmap")
-    def test_lincs_heatmap_with_title(
-        self, mock_heatmap, mock_subplots, sample_lincs_data
-    ):
+    def test_lincs_heatmap_with_title(self, mock_heatmap, mock_subplots, sample_lincs_data):
         """Test heatmap creation with title."""
         mock_fig = Mock()
         mock_ax = Mock()
@@ -910,9 +876,7 @@ class TestLincsVisualizer:
 class TestUtilityFunctions:
     """Test cases for utility functions."""
 
-    def test_prepare_signature_frame_success(
-        self, mock_meta_object, mock_filter_object
-    ):
+    def test_prepare_signature_frame_success(self, mock_meta_object, mock_filter_object):
         """Test successful signature frame preparation."""
         result = _prepare_signature_frame(mock_meta_object, mock_filter_object)
 
@@ -1103,9 +1067,7 @@ class TestIntegration:
     @patch("metaintegrator.linc_tools.requests.get")
     @patch("metaintegrator.linc_tools.tempfile.mkdtemp")
     @patch("metaintegrator.linc_tools.shutil.rmtree")
-    def test_full_workflow_integration(
-        self, mock_rmtree, mock_tempdir, mock_get, sample_signature
-    ):
+    def test_full_workflow_integration(self, mock_rmtree, mock_tempdir, mock_get, sample_signature):
         """Test integration of data loading and analysis workflow."""
         # Mock HTTP request
         mock_response = Mock()
@@ -1118,9 +1080,7 @@ class TestIntegration:
 
         # Create a simple zip file for testing
         with patch("metaintegrator.linc_tools.zipfile.ZipFile"):
-            with patch(
-                "metaintegrator.linc_tools.os.listdir", return_value=["test.pkl"]
-            ):
+            with patch("metaintegrator.linc_tools.os.listdir", return_value=["test.pkl"]):
                 with patch(
                     "metaintegrator.linc_tools.pd.read_pickle",
                     return_value=pd.DataFrame({"test": [1, 2, 3]}),
@@ -1132,9 +1092,7 @@ class TestIntegration:
 
                         # Should not raise errors
                         loaded = manager.load_data()
-                        assert (
-                            loaded is True or loaded is False
-                        )  # Depends on mocking success
+                        assert loaded is True or loaded is False  # Depends on mocking success
 
     def test_edge_case_empty_data(self):
         """Test handling of edge cases with empty data."""

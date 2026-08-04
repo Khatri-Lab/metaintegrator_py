@@ -23,7 +23,7 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 from visualization.enhanced_plotting import (
-    MetaAnalysisPlotter,
+    EnhancedMetaAnalysisPlotter,
     forest_plot,
     gg_forest_plot,
     heatmap_plot,
@@ -36,19 +36,19 @@ from visualization.enhanced_plotting import (
 )
 
 
-class TestMetaAnalysisPlotter:
-    """Test cases for the MetaAnalysisPlotter class."""
+class TestEnhancedMetaAnalysisPlotter:
+    """Test cases for the EnhancedMetaAnalysisPlotter class."""
 
     @pytest.fixture
     def plotter(self):
-        """Create a MetaAnalysisPlotter instance for testing."""
-        return MetaAnalysisPlotter()
+        """Create a EnhancedMetaAnalysisPlotter instance for testing."""
+        return EnhancedMetaAnalysisPlotter()
 
     @pytest.fixture
     def custom_plotter(self):
-        """Create a custom MetaAnalysisPlotter instance for testing."""
+        """Create a custom EnhancedMetaAnalysisPlotter instance for testing."""
         # Use seaborn-v0_8-darkgrid instead of seaborn (deprecated in matplotlib 3.6+)
-        return MetaAnalysisPlotter(style="seaborn-v0_8-darkgrid", figsize=(12, 8))
+        return EnhancedMetaAnalysisPlotter(style="seaborn-v0_8-darkgrid", figsize=(12, 8))
 
     @pytest.fixture
     def sample_meta_object(self):
@@ -125,13 +125,13 @@ class TestMetaAnalysisPlotter:
         }
 
     def test_init_default(self):
-        """Test MetaAnalysisPlotter initialization with default parameters."""
-        plotter = MetaAnalysisPlotter()
+        """Test EnhancedMetaAnalysisPlotter initialization with default parameters."""
+        plotter = EnhancedMetaAnalysisPlotter()
         assert plotter.style == "default"
         assert plotter.figsize == (10, 6)
 
     def test_init_custom_params(self, custom_plotter):
-        """Test MetaAnalysisPlotter initialization with custom parameters."""
+        """Test EnhancedMetaAnalysisPlotter initialization with custom parameters."""
         assert custom_plotter.style == "seaborn-v0_8-darkgrid"
         assert custom_plotter.figsize == (12, 8)
 
@@ -141,9 +141,7 @@ class TestMetaAnalysisPlotter:
 
     def test_get_meta_data_success(self, plotter, sample_meta_object):
         """Test successful extraction of meta-analysis data."""
-        effect_sizes, std_errors, pooled_results = plotter._get_meta_data(
-            sample_meta_object
-        )
+        effect_sizes, std_errors, pooled_results = plotter._get_meta_data(sample_meta_object)
 
         assert isinstance(effect_sizes, pd.DataFrame)
         assert isinstance(std_errors, pd.DataFrame)
@@ -256,9 +254,7 @@ class TestMetaAnalysisPlotter:
 
     def test_forest_plot_gene_not_found(self, plotter, sample_meta_object):
         """Test forest plot with non-existent gene."""
-        with pytest.raises(
-            ValueError, match="No gene named 'nonexistent' in this metaObject"
-        ):
+        with pytest.raises(ValueError, match="No gene named 'nonexistent' in this metaObject"):
             plotter.forest_plot(sample_meta_object, "nonexistent")
 
     def test_forest_plot_with_save_path(self, plotter, sample_meta_object):
@@ -266,9 +262,7 @@ class TestMetaAnalysisPlotter:
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = Path(temp_dir) / "test_forest_plot.png"
 
-            fig = plotter.forest_plot(
-                sample_meta_object, "gene1", save_path=str(save_path)
-            )
+            fig = plotter.forest_plot(sample_meta_object, "gene1", save_path=str(save_path))
 
             assert save_path.exists()
             assert save_path.stat().st_size > 0  # File is not empty
@@ -294,16 +288,12 @@ class TestMetaAnalysisPlotter:
 
     def test_gg_forest_plot_custom_confidence_level(self, plotter, sample_meta_object):
         """Test gg forest plot with custom confidence level."""
-        fig = plotter.gg_forest_plot(
-            sample_meta_object, ["gene1", "gene2"], conf_level=0.99
-        )
+        fig = plotter.gg_forest_plot(sample_meta_object, ["gene1", "gene2"], conf_level=0.99)
 
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
 
-    def test_prepare_heatmap_data(
-        self, plotter, sample_meta_object, sample_filter_object
-    ):
+    def test_prepare_heatmap_data(self, plotter, sample_meta_object, sample_filter_object):
         """Test heatmap data preparation."""
         result = plotter._prepare_heatmap_data(
             sample_meta_object,
@@ -382,9 +372,7 @@ class TestMetaAnalysisPlotter:
         assert width_large > width  # Should be larger
         assert height_large > height
 
-    def test_heatmap_plot_success(
-        self, plotter, sample_meta_object, sample_filter_object
-    ):
+    def test_heatmap_plot_success(self, plotter, sample_meta_object, sample_filter_object):
         """Test successful heatmap plot generation."""
         fig = plotter.heatmap_plot(sample_meta_object, sample_filter_object)
 
@@ -403,20 +391,14 @@ class TestMetaAnalysisPlotter:
         self, plotter, sample_meta_object, sample_filter_object
     ):
         """Test heatmap plot with custom color range."""
-        fig = plotter.heatmap_plot(
-            sample_meta_object, sample_filter_object, color_range=(-2, 2)
-        )
+        fig = plotter.heatmap_plot(sample_meta_object, sample_filter_object, color_range=(-2, 2))
 
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
 
-    def test_heatmap_plot_no_pooled(
-        self, plotter, sample_meta_object, sample_filter_object
-    ):
+    def test_heatmap_plot_no_pooled(self, plotter, sample_meta_object, sample_filter_object):
         """Test heatmap plot without pooled results."""
-        fig = plotter.heatmap_plot(
-            sample_meta_object, sample_filter_object, display_pooled=False
-        )
+        fig = plotter.heatmap_plot(sample_meta_object, sample_filter_object, display_pooled=False)
 
         assert isinstance(fig, plt.Figure)
         plt.close(fig)
@@ -575,14 +557,10 @@ class TestMetaAnalysisPlotter:
 
     def test_predictive_value_plot_missing_params(self, plotter):
         """Test predictive value plot with missing parameters."""
-        with pytest.raises(
-            ValueError, match="Sensitivity and specificity must be provided"
-        ):
+        with pytest.raises(ValueError, match="Sensitivity and specificity must be provided"):
             plotter.predictive_value_plot(None, 0.9)
 
-        with pytest.raises(
-            ValueError, match="Sensitivity and specificity must be provided"
-        ):
+        with pytest.raises(ValueError, match="Sensitivity and specificity must be provided"):
             plotter.predictive_value_plot(0.8, None)
 
     def test_calculate_auc_confidence_interval(self, plotter):
@@ -599,25 +577,19 @@ class TestMetaAnalysisPlotter:
         """Test AUC CI calculation with edge cases."""
         # No positive samples
         y_true_no_pos = np.array([0, 0, 0, 0])
-        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(
-            y_true_no_pos, 0.5
-        )
+        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true_no_pos, 0.5)
         assert ci_lower == 0.0
         assert ci_upper == 0.0
 
         # No negative samples
         y_true_no_neg = np.array([1, 1, 1, 1])
-        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(
-            y_true_no_neg, 0.5
-        )
+        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true_no_neg, 0.5)
         assert ci_lower == 0.0
         assert ci_upper == 0.0
 
         # Single sample of each class
         y_true_single = np.array([0, 1])
-        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(
-            y_true_single, 0.5
-        )
+        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true_single, 0.5)
         assert 0 <= ci_lower <= 1
         assert 0 <= ci_upper <= 1
 
@@ -832,9 +804,7 @@ class TestMetaAnalysisPlotter:
         scores = plotter._calculate_scores(sample_filter_object, sample_dataset)
 
         assert isinstance(scores, np.ndarray)
-        assert (
-            len(scores) == 5
-        )  # Should match number of samples (columns in expr matrix)
+        assert len(scores) == 5  # Should match number of samples (columns in expr matrix)
 
     def test_calculate_scores_no_genes(self, plotter, sample_dataset):
         """Test score calculation with no genes."""
@@ -1044,12 +1014,12 @@ class TestEdgeCasesAndErrorHandling:
 
     @pytest.fixture
     def plotter(self):
-        """Create a MetaAnalysisPlotter instance for testing."""
-        return MetaAnalysisPlotter()
+        """Create a EnhancedMetaAnalysisPlotter instance for testing."""
+        return EnhancedMetaAnalysisPlotter()
 
     def test_empty_arrays_roc_stats(self):
         """Test ROC stats calculation with empty arrays."""
-        plotter = MetaAnalysisPlotter()
+        plotter = EnhancedMetaAnalysisPlotter()
         y_true = np.array([])
         y_scores = np.array([])
 
@@ -1058,7 +1028,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_single_class_roc_stats(self):
         """Test ROC stats with single class data."""
-        plotter = MetaAnalysisPlotter()
+        plotter = EnhancedMetaAnalysisPlotter()
         y_true = np.array([1, 1, 1])
         y_scores = np.array([0.8, 0.9, 0.7])
 
@@ -1074,7 +1044,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_mismatched_array_lengths(self):
         """Test with mismatched array lengths."""
-        plotter = MetaAnalysisPlotter()
+        plotter = EnhancedMetaAnalysisPlotter()
         y_true = np.array([0, 1])
         y_scores = np.array([0.1, 0.9, 0.5])  # Different length
 
@@ -1083,7 +1053,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_invalid_probability_scores(self):
         """Test with invalid probability scores."""
-        plotter = MetaAnalysisPlotter()
+        plotter = EnhancedMetaAnalysisPlotter()
         y_true = np.array([0, 1, 0, 1])
         y_scores = np.array([-0.5, 1.5, 0.5, 0.8])  # Outside [0,1] range
 
@@ -1097,7 +1067,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_nan_values_in_data(self):
         """Test handling of NaN values in prediction data."""
-        plotter = MetaAnalysisPlotter()
+        plotter = EnhancedMetaAnalysisPlotter()
         y_true = np.array([0, 1, 0, 1])
         y_scores = np.array([0.1, np.nan, 0.2, 0.8])  # NaN score
 
@@ -1106,7 +1076,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_inf_values_in_data(self):
         """Test handling of infinite values in prediction data."""
-        plotter = MetaAnalysisPlotter()
+        plotter = EnhancedMetaAnalysisPlotter()
         y_true = np.array([0, 1, 0, 1])
         y_scores = np.array([0.1, np.inf, 0.2, 0.8])  # Infinite score
 
@@ -1115,7 +1085,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_nan_values_in_meta_data(self):
         """Test handling of NaN values in meta-analysis data."""
-        plotter = MetaAnalysisPlotter()
+        plotter = EnhancedMetaAnalysisPlotter()
         meta_object = {
             "metaAnalysis": {
                 "datasetEffectSizes": pd.DataFrame(
@@ -1143,7 +1113,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_zero_standard_error(self):
         """Test handling of zero standard error values."""
-        plotter = MetaAnalysisPlotter()
+        plotter = EnhancedMetaAnalysisPlotter()
         # Test with valid data but edge case SE
         y_true = np.array([0, 0, 1, 1])
         ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true, 0.5)
@@ -1154,7 +1124,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_extremely_small_standard_error(self):
         """Test with extremely small standard error."""
-        plotter = MetaAnalysisPlotter()
+        plotter = EnhancedMetaAnalysisPlotter()
         y_true = np.array([0] * 1000 + [1] * 1000)  # Large balanced dataset
         ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true, 0.75)
 

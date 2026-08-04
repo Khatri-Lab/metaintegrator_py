@@ -88,16 +88,12 @@ class TestFilterValidator:
         # Should not raise any exception
         self.validator.validate_meta_object(self.valid_meta_object)
 
-        mock_validator.validate_and_extract.assert_called_once_with(
-            self.valid_meta_object
-        )
+        mock_validator.validate_and_extract.assert_called_once_with(self.valid_meta_object)
 
     @patch("metaintegrator.scoring_filter_manager.MetaObjectValidator")
     def test_validate_meta_object_validation_error(self, mock_validator):
         """Test validation failure from core validator."""
-        mock_validator.validate_and_extract.side_effect = ValidationError(
-            "Validation failed"
-        )
+        mock_validator.validate_and_extract.side_effect = ValidationError("Validation failed")
 
         with pytest.raises(FilteringError, match="Meta object validation failed"):
             self.validator.validate_meta_object(self.valid_meta_object)
@@ -109,9 +105,7 @@ class TestFilterValidator:
         with patch(
             "metaintegrator.scoring_filter_manager.MetaObjectValidator.validate_and_extract"
         ):
-            with pytest.raises(
-                FilteringError, match="must contain at least one filter result"
-            ):
+            with pytest.raises(FilteringError, match="must contain at least one filter result"):
                 self.validator.validate_meta_object(invalid_meta_object)
 
     def test_validate_meta_object_empty_filter_results(self):
@@ -121,9 +115,7 @@ class TestFilterValidator:
         with patch(
             "metaintegrator.scoring_filter_manager.MetaObjectValidator.validate_and_extract"
         ):
-            with pytest.raises(
-                FilteringError, match="must contain at least one filter result"
-            ):
+            with pytest.raises(FilteringError, match="must contain at least one filter result"):
                 self.validator.validate_meta_object(invalid_meta_object)
 
     @patch("metaintegrator.scoring_filter_manager.FilterValidator.validate_meta_object")
@@ -131,9 +123,7 @@ class TestFilterValidator:
         """Test validation when all filter names exist."""
         filter_names = ["filter1", "filter2"]
 
-        result = self.validator.validate_filter_names(
-            self.valid_meta_object, filter_names
-        )
+        result = self.validator.validate_filter_names(self.valid_meta_object, filter_names)
 
         assert result == filter_names
         mock_validate.assert_called_once_with(self.valid_meta_object)
@@ -145,9 +135,7 @@ class TestFilterValidator:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            result = self.validator.validate_filter_names(
-                self.valid_meta_object, filter_names
-            )
+            result = self.validator.validate_filter_names(self.valid_meta_object, filter_names)
 
             assert result == ["filter1", "filter2"]
             assert len(w) == 1
@@ -198,15 +186,11 @@ class TestFilterExtractor:
             "timestamp": None,
         }
 
-        with patch(
-            "metaintegrator.scoring_filter_manager.FilterSummary"
-        ) as mock_summary:
+        with patch("metaintegrator.scoring_filter_manager.FilterSummary") as mock_summary:
             mock_summary_instance = Mock()
             mock_summary.return_value = mock_summary_instance
 
-            result = self.extractor.extract_filter_summary(
-                self.sample_meta_object, "test_filter"
-            )
+            result = self.extractor.extract_filter_summary(self.sample_meta_object, "test_filter")
 
             # Verify validator was called
             self.mock_validator.validate_meta_object.assert_called_once_with(
@@ -231,21 +215,15 @@ class TestFilterExtractor:
     def test_extract_filter_summary_filter_not_found(self):
         """Test extraction when filter doesn't exist."""
         with pytest.raises(FilteringError, match="Filter 'nonexistent' not found"):
-            self.extractor.extract_filter_summary(
-                self.sample_meta_object, "nonexistent"
-            )
+            self.extractor.extract_filter_summary(self.sample_meta_object, "nonexistent")
 
     @patch("metaintegrator.scoring_filter_manager.FilterResultsValidator")
     def test_extract_filter_summary_validation_error(self, mock_filter_validator):
         """Test extraction when filter validation fails."""
-        mock_filter_validator.validate_and_extract.side_effect = Exception(
-            "Validation failed"
-        )
+        mock_filter_validator.validate_and_extract.side_effect = Exception("Validation failed")
 
         with pytest.raises(FilteringError, match="Filter extraction failed"):
-            self.extractor.extract_filter_summary(
-                self.sample_meta_object, "test_filter"
-            )
+            self.extractor.extract_filter_summary(self.sample_meta_object, "test_filter")
 
     def test_extract_filter_summary_missing_fields(self):
         """Test extraction with missing optional fields."""
@@ -258,9 +236,7 @@ class TestFilterExtractor:
             mock_validator.validate_and_extract.return_value = None
             mock_validator.OPTIONAL_FIELDS = {"maxSize": 100}
 
-            with patch(
-                "metaintegrator.scoring_filter_manager.FilterSummary"
-            ) as mock_summary:
+            with patch("metaintegrator.scoring_filter_manager.FilterSummary") as mock_summary:
                 self.extractor.extract_filter_summary(minimal_meta, "minimal")
 
                 call_kwargs = mock_summary.call_args[1]
@@ -367,14 +343,10 @@ class TestOverlapCalculator:
         positive_sets = {"filter1": {"GENE1", "GENE2"}, "filter2": {"GENE2", "GENE3"}}
         negative_sets = {"filter1": {"GENE4"}, "filter2": {"GENE5"}}
 
-        with patch(
-            "metaintegrator.scoring_filter_manager.StatisticalUtils"
-        ) as mock_utils:
+        with patch("metaintegrator.scoring_filter_manager.StatisticalUtils") as mock_utils:
             mock_utils.calculate_jaccard_similarity.return_value = 0.33
 
-            result = self.calculator._calculate_jaccard_similarities(
-                positive_sets, negative_sets
-            )
+            result = self.calculator._calculate_jaccard_similarities(positive_sets, negative_sets)
 
             # Should calculate similarity for each pair
             assert "filter1" in result
@@ -568,9 +540,7 @@ class TestFilterManager:
 
         mock_extract.return_value = [mock_summary1, mock_summary2]
 
-        result = self.manager.list_filters(
-            self.sample_meta_object, sort_by="name", ascending=True
-        )
+        result = self.manager.list_filters(self.sample_meta_object, sort_by="name", ascending=True)
 
         assert result[0].name == "a_filter"
         assert result[1].name == "z_filter"
@@ -586,9 +556,7 @@ class TestFilterManager:
 
         mock_extract.return_value = [mock_summary1, mock_summary2]
 
-        result = self.manager.list_filters(
-            self.sample_meta_object, sort_by="total_genes"
-        )
+        result = self.manager.list_filters(self.sample_meta_object, sort_by="total_genes")
 
         # Default ascending=False, so larger first
         assert result[0].total_genes == 10
@@ -638,9 +606,7 @@ class TestFilterManager:
         mock_extract_single.side_effect = [Mock(), Mock()]
         mock_overlaps.return_value = Mock()
 
-        self.manager.compare_filters(
-            self.sample_meta_object, ["filter1", "filter2", "nonexistent"]
-        )
+        self.manager.compare_filters(self.sample_meta_object, ["filter1", "filter2", "nonexistent"])
 
         mock_validate_names.assert_called_once_with(
             self.sample_meta_object, ["filter1", "filter2", "nonexistent"]
@@ -652,26 +618,16 @@ class TestFilterManager:
         """Test filter comparison with less than 2 filters."""
         mock_extract.return_value = [Mock()]  # Only 1 filter
 
-        with pytest.raises(
-            FilteringError, match="Need at least 2 filters for comparison"
-        ):
+        with pytest.raises(FilteringError, match="Need at least 2 filters for comparison"):
             self.manager.compare_filters(self.sample_meta_object)
 
     def test_find_consensus_genes_invalid_agreement(self):
         """Test consensus gene finding with invalid agreement threshold."""
-        with pytest.raises(
-            ConfigurationError, match="min_agreement must be between 0 and 1"
-        ):
-            self.manager.find_consensus_genes(
-                self.sample_meta_object, min_agreement=1.5
-            )
+        with pytest.raises(ConfigurationError, match="min_agreement must be between 0 and 1"):
+            self.manager.find_consensus_genes(self.sample_meta_object, min_agreement=1.5)
 
-        with pytest.raises(
-            ConfigurationError, match="min_agreement must be between 0 and 1"
-        ):
-            self.manager.find_consensus_genes(
-                self.sample_meta_object, min_agreement=-0.1
-            )
+        with pytest.raises(ConfigurationError, match="min_agreement must be between 0 and 1"):
+            self.manager.find_consensus_genes(self.sample_meta_object, min_agreement=-0.1)
 
     @patch.object(FilterExtractor, "extract_all_filter_summaries")
     def test_find_consensus_genes_success(self, mock_extract):
@@ -699,9 +655,7 @@ class TestFilterManager:
         mock_extract.return_value = [mock_summary1, mock_summary2, mock_summary3]
 
         # Test with 50% agreement (need 2 out of 3 filters)
-        result = self.manager.find_consensus_genes(
-            self.sample_meta_object, min_agreement=0.5
-        )
+        result = self.manager.find_consensus_genes(self.sample_meta_object, min_agreement=0.5)
 
         # Verify result structure
         assert "positive" in result
@@ -731,9 +685,7 @@ class TestFilterManager:
         """Test consensus gene finding with no valid filters."""
         mock_extract.return_value = []
 
-        with pytest.raises(
-            FilteringError, match="No valid filters found for consensus analysis"
-        ):
+        with pytest.raises(FilteringError, match="No valid filters found for consensus analysis"):
             self.manager.find_consensus_genes(self.sample_meta_object)
 
     @patch.object(FilterManager, "get_most_recent_filter")
@@ -743,9 +695,7 @@ class TestFilterManager:
         mock_summary = Mock()
         mock_extract.return_value = mock_summary
 
-        result = self.manager.summarize_filter_results(
-            self.sample_meta_object, "specific_filter"
-        )
+        result = self.manager.summarize_filter_results(self.sample_meta_object, "specific_filter")
 
         mock_extract.assert_called_once_with(self.sample_meta_object, "specific_filter")
         mock_most_recent.assert_not_called()
@@ -753,9 +703,7 @@ class TestFilterManager:
 
     @patch.object(FilterManager, "get_most_recent_filter")
     @patch.object(FilterExtractor, "extract_filter_summary")
-    def test_summarize_filter_results_without_name(
-        self, mock_extract, mock_most_recent
-    ):
+    def test_summarize_filter_results_without_name(self, mock_extract, mock_most_recent):
         """Test summarizing filter results without specific filter name."""
         mock_most_recent.return_value = "most_recent_filter"
         mock_summary = Mock()
@@ -764,9 +712,7 @@ class TestFilterManager:
         result = self.manager.summarize_filter_results(self.sample_meta_object)
 
         mock_most_recent.assert_called_once_with(self.sample_meta_object)
-        mock_extract.assert_called_once_with(
-            self.sample_meta_object, "most_recent_filter"
-        )
+        mock_extract.assert_called_once_with(self.sample_meta_object, "most_recent_filter")
         assert result == mock_summary
 
     @patch.object(FilterManager, "compare_filters")
@@ -781,9 +727,7 @@ class TestFilterManager:
             self.sample_meta_object, ["filter1", "filter2"], "positive"
         )
 
-        mock_compare.assert_called_once_with(
-            self.sample_meta_object, ["filter1", "filter2"]
-        )
+        mock_compare.assert_called_once_with(self.sample_meta_object, ["filter1", "filter2"])
         mock_overlap_analysis.get_overlap_matrix.assert_called_once_with("positive")
         assert result == "matrix_data"
 
@@ -806,16 +750,12 @@ class TestFilterManager:
             "positive_overlaps": {"mean": 5.0, "std": 2.0},
             "negative_overlaps": {"mean": 3.0, "std": 1.0},
         }
-        mock_overlap_analysis.get_most_similar_pairs.return_value = [
-            ("filter1", "filter2", 0.75)
-        ]
+        mock_overlap_analysis.get_most_similar_pairs.return_value = [("filter1", "filter2", 0.75)]
         mock_overlap_analysis.get_jaccard_matrix.return_value = pd.DataFrame(
             [[1.0, 0.5], [0.5, 1.0]]
         )
 
-        result = self.manager._generate_comparison_insights(
-            summaries, mock_overlap_analysis
-        )
+        result = self.manager._generate_comparison_insights(summaries, mock_overlap_analysis)
 
         # Verify insights structure
         assert "most_restrictive" in result
@@ -941,15 +881,11 @@ class TestIntegration:
 
         # Mock overlap analysis
         mock_analysis_instance = Mock()
-        mock_analysis_instance.get_overlap_matrix.return_value = pd.DataFrame(
-            [[1, 2], [2, 1]]
-        )
+        mock_analysis_instance.get_overlap_matrix.return_value = pd.DataFrame([[1, 2], [2, 1]])
         mock_analysis_instance.get_jaccard_matrix.return_value = pd.DataFrame(
             [[1.0, 0.5], [0.5, 1.0]]
         )
-        mock_analysis_instance.get_most_similar_pairs.return_value = [
-            ("filter1", "filter2", 0.75)
-        ]
+        mock_analysis_instance.get_most_similar_pairs.return_value = [("filter1", "filter2", 0.75)]
         mock_analysis_instance.overlap_statistics = {
             "positive_overlaps": {"mean": 2.0, "std": 0.5},
             "negative_overlaps": {"mean": 1.0, "std": 0.3},
@@ -962,9 +898,7 @@ class TestIntegration:
             filters = self.manager.list_filters(self.integration_meta_object)
 
             # 2. Get most recent filter
-            most_recent = self.manager.get_most_recent_filter(
-                self.integration_meta_object
-            )
+            most_recent = self.manager.get_most_recent_filter(self.integration_meta_object)
 
             # 3. Compare filters
             comparison = self.manager.compare_filters(self.integration_meta_object)

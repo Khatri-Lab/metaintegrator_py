@@ -206,9 +206,7 @@ class TestPhenotypeProcessor:
             result = self.processor._clean_up_characteristics_col(pheno)
 
             # Should warn about duplicate columns
-            assert any(
-                "duplicate column names" in str(warning.message) for warning in w
-            )
+            assert any("duplicate column names" in str(warning.message) for warning in w)
 
     def test_warn_if_scrambled(self):
         """Test scrambling detection warning."""
@@ -247,9 +245,7 @@ class TestPhenotypeProcessor:
             }
         )
 
-        scrambled = self.processor._check_for_scrambling(
-            normal_pheno, ["characteristics_ch1"]
-        )
+        scrambled = self.processor._check_for_scrambling(normal_pheno, ["characteristics_ch1"])
         print(f"Scrambled columns detected: {scrambled}")
         print("✓ Expected: [] (no scrambling)")
 
@@ -267,9 +263,7 @@ class TestPhenotypeProcessor:
             }
         )
 
-        scrambled = self.processor._check_for_scrambling(
-            scrambled_pheno, ["characteristics_ch1"]
-        )
+        scrambled = self.processor._check_for_scrambling(scrambled_pheno, ["characteristics_ch1"])
         print(f"Scrambled columns detected: {scrambled}")
         print("✓ Expected: ['characteristics_ch1'] (scrambling detected)")
 
@@ -306,16 +300,12 @@ class TestPhenotypeProcessor:
             }
         )
 
-        scrambled = self.processor._check_for_scrambling(
-            nan_pheno, ["characteristics_ch1"]
-        )
+        scrambled = self.processor._check_for_scrambling(nan_pheno, ["characteristics_ch1"])
         print(f"Scrambled columns detected: {scrambled}")
         print("✓ Expected: [] (NaN values should be ignored)")
 
         print("\n" + "=" * 60)
-        print(
-            "All tests completed! The implementation now matches the original R logic."
-        )
+        print("All tests completed! The implementation now matches the original R logic.")
         print("Key insight: Scrambling is detected when different samples in the same")
         print("column have different 'keys' (the part before ': ').")
 
@@ -491,9 +481,7 @@ class TestPhenotypeProcessor:
     def test_class_function_case_sensitivity(self):
         """Test class function case sensitivity."""
         dataset = {
-            "pheno": pd.DataFrame(
-                {"condition": ["Healthy", "Disease", "HEALTHY", "disease"]}
-            )
+            "pheno": pd.DataFrame({"condition": ["Healthy", "Disease", "HEALTHY", "disease"]})
         }
         disease_terms = ["Disease"]  # Exact case match
 
@@ -538,9 +526,7 @@ class TestPhenotypeProcessor:
         df = pd.DataFrame({"status": ["baseline", "treatment", "followup"]})
 
         custom_disease_kw = ["treatment", "followup"]
-        result = self.processor.auto_detect_disease_terms(
-            df, "status", custom_disease_kw
-        )
+        result = self.processor.auto_detect_disease_terms(df, "status", custom_disease_kw)
 
         assert "treatment" in result
         assert "followup" in result
@@ -561,9 +547,7 @@ class TestPhenotypeProcessor:
         """Test class assignment validation with valid data."""
         dataset = {"class": [0, 0, 0, 1, 1, 1, 1]}  # 3 controls, 4 cases
 
-        result = self.processor.validate_class_assignment(
-            dataset, min_cases=3, min_controls=3
-        )
+        result = self.processor.validate_class_assignment(dataset, min_cases=3, min_controls=3)
         assert result is True
 
     def test_validate_class_assignment_insufficient_cases(self):
@@ -572,9 +556,7 @@ class TestPhenotypeProcessor:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            result = self.processor.validate_class_assignment(
-                dataset, min_cases=3, min_controls=3
-            )
+            result = self.processor.validate_class_assignment(dataset, min_cases=3, min_controls=3)
 
             assert result is False
             assert len(w) == 1
@@ -587,9 +569,7 @@ class TestPhenotypeProcessor:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            result = self.processor.validate_class_assignment(
-                dataset, min_cases=3, min_controls=3
-            )
+            result = self.processor.validate_class_assignment(dataset, min_cases=3, min_controls=3)
 
             assert result is False
             assert len(w) == 1
@@ -639,9 +619,7 @@ class TestPhenotypeProcessor:
         """Test class summary with missing required keys."""
         dataset = {"pheno": pd.DataFrame()}  # Missing class
 
-        with pytest.raises(
-            ValueError, match="Dataset must contain 'class' and 'pheno' keys"
-        ):
+        with pytest.raises(ValueError, match="Dataset must contain 'class' and 'pheno' keys"):
             self.processor.create_class_summary(dataset, "tissue")
 
     def test_create_class_summary_missing_column(self):
@@ -691,9 +669,7 @@ class TestConvenienceFunctions:
         result = class_function(self.sample_dataset, "condition", ["disease"])
 
         assert result == {"class": [0, 1, 0]}
-        mock_method.assert_called_once_with(
-            self.sample_dataset, "condition", ["disease"]
-        )
+        mock_method.assert_called_once_with(self.sample_dataset, "condition", ["disease"])
 
     @patch.object(PhenotypeProcessor, "auto_detect_disease_terms")
     def test_auto_detect_disease_terms_convenience(self, mock_method):
@@ -765,9 +741,7 @@ class TestConvenienceFunctions:
                 "age_numeric": [25, 30, 35, 40],
                 "score": [1.5, 2.3, 1.8, 2.1],
                 "empty_col": [np.nan, np.nan, np.nan, np.nan],
-                "many_categories": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"][
-                    :4
-                ],
+                "many_categories": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"][:4],
             }
         )
 
@@ -789,11 +763,7 @@ class TestConvenienceFunctions:
 
         # Check potential class columns
         condition_info = next(
-            (
-                col
-                for col in result["potential_class_columns"]
-                if col["column"] == "condition"
-            ),
+            (col for col in result["potential_class_columns"] if col["column"] == "condition"),
             None,
         )
         assert condition_info is not None
@@ -835,14 +805,10 @@ class TestIntegration:
         cleaned_dataset = processor.clean_up_pheno(dataset)
 
         # 2. Auto-detect disease terms
-        disease_terms = processor.auto_detect_disease_terms(
-            cleaned_dataset["pheno"], "condition"
-        )
+        disease_terms = processor.auto_detect_disease_terms(cleaned_dataset["pheno"], "condition")
 
         # 3. Create class vector
-        final_dataset = processor.class_function(
-            cleaned_dataset, "condition", disease_terms
-        )
+        final_dataset = processor.class_function(cleaned_dataset, "condition", disease_terms)
 
         # 4. Validate class assignment
         is_valid = processor.validate_class_assignment(final_dataset)
@@ -882,9 +848,7 @@ class TestIntegration:
 
         # Validate - use min_cases=2, min_controls=2 since we only have 4 samples total
         # validate_class_assignment() defaults to requiring at least 3 of each type.
-        is_valid = processor.validate_class_assignment(
-            final, min_cases=2, min_controls=2
-        )
+        is_valid = processor.validate_class_assignment(final, min_cases=2, min_controls=2)
 
         assert list(final["class"]) == [0, 1, 0, 1]
         assert is_valid is True
@@ -941,16 +905,12 @@ class TestIntegration:
         """Test error recovery during batch processing."""
         datasets = {
             "good_study": {
-                "pheno": pd.DataFrame(
-                    {"condition": ["control", "disease"], "age": [25, 30]}
-                )
+                "pheno": pd.DataFrame({"condition": ["control", "disease"], "age": [25, 30]})
             },
             "bad_study": {"no_pheno": "missing pheno key"},
         }
 
-        disease_assignments = {
-            "good_study": {"column": "condition", "disease_terms": ["disease"]}
-        }
+        disease_assignments = {"good_study": {"column": "condition", "disease_terms": ["disease"]}}
 
         # Should handle errors gracefully
         with warnings.catch_warnings():
@@ -1021,9 +981,7 @@ class TestEdgeCases:
     def test_all_nan_characteristics(self):
         """Test handling of characteristics with all NaN values."""
         dataset = {
-            "pheno": pd.DataFrame(
-                {"sample": ["S1", "S2"], "characteristics_ch1": [np.nan, np.nan]}
-            )
+            "pheno": pd.DataFrame({"sample": ["S1", "S2"], "characteristics_ch1": [np.nan, np.nan]})
         }
 
         result = self.processor.clean_up_pheno(dataset)
@@ -1033,13 +991,9 @@ class TestEdgeCases:
 
     def test_class_function_with_no_matches(self):
         """Test class function when no disease terms match."""
-        dataset = {
-            "pheno": pd.DataFrame({"condition": ["control", "normal", "healthy"]})
-        }
+        dataset = {"pheno": pd.DataFrame({"condition": ["control", "normal", "healthy"]})}
 
-        result = self.processor.class_function(
-            dataset, "condition", ["disease", "cancer"]
-        )
+        result = self.processor.class_function(dataset, "condition", ["disease", "cancer"])
 
         # Should create all-zero class vector
         assert list(result["class"]) == [0, 0, 0]
@@ -1048,18 +1002,14 @@ class TestEdgeCases:
         """Test class function when all terms are disease terms."""
         dataset = {"pheno": pd.DataFrame({"condition": ["disease", "cancer", "tumor"]})}
 
-        result = self.processor.class_function(
-            dataset, "condition", ["disease", "cancer", "tumor"]
-        )
+        result = self.processor.class_function(dataset, "condition", ["disease", "cancer", "tumor"])
 
         # Should create all-ones class vector
         assert list(result["class"]) == [1, 1, 1]
 
     def test_auto_detect_with_no_clear_patterns(self):
         """Test disease term detection with ambiguous data."""
-        df = pd.DataFrame(
-            {"condition": ["A", "B", "C", "D"]}  # No clear disease/control patterns
-        )
+        df = pd.DataFrame({"condition": ["A", "B", "C", "D"]})  # No clear disease/control patterns
 
         result = self.processor.auto_detect_disease_terms(df, "condition")
 

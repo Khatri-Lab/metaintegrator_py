@@ -61,9 +61,7 @@ def find_test_subdirectories(input_dir: str) -> List[str]:
         has_tests = False
         try:
             for py_file in item.rglob("*.py"):
-                if py_file.name.startswith("test_") or py_file.name.endswith(
-                    "_test.py"
-                ):
+                if py_file.name.startswith("test_") or py_file.name.endswith("_test.py"):
                     has_tests = True
                     break
         except (PermissionError, OSError):
@@ -442,9 +440,7 @@ def generate_html_dashboard(results: List[Dict[str, Any]], output_dir: str, args
         if failed_total > 0 and r["failures"]:
             failure_file = f"failures_{dir_name.replace('/', '_')}.html"
             generate_failure_detail_page(result, os.path.join(output_dir, failure_file))
-            failed_display = (
-                f'<a href="{failure_file}" class="clickable">{failed_total}</a>'
-            )
+            failed_display = f'<a href="{failure_file}" class="clickable">{failed_total}</a>'
         else:
             failed_display = str(failed_total)
 
@@ -721,9 +717,7 @@ def print_console_summary(results: List[Dict[str, Any]]):
         failed_total = r["failed"] + r["errors"]
         status = "✓ PASSED" if failed_total == 0 else "✗ FAILED"
 
-        print(
-            f"{dir_name:<30} {r['total']:>8} {r['passed']:>8} {failed_total:>8} {status:>12}"
-        )
+        print(f"{dir_name:<30} {r['total']:>8} {r['passed']:>8} {failed_total:>8} {status:>12}")
 
     # Grand total
     grand_failed = grand_total["failed"] + grand_total["errors"]
@@ -737,9 +731,7 @@ def print_console_summary(results: List[Dict[str, Any]]):
 
     # Summary stats
     success_rate = (
-        (grand_total["passed"] / grand_total["total"] * 100)
-        if grand_total["total"] > 0
-        else 0
+        (grand_total["passed"] / grand_total["total"] * 100) if grand_total["total"] > 0 else 0
     )
     print(f"\n📊 Overall Statistics:")
     print(f"   Total Tests: {grand_total['total']}")
@@ -804,25 +796,19 @@ def run_pytest_with_dashboard(args) -> int:
                     continue
                 elif fmt == "html":
                     cov_dir = (
-                        f"{args.coverage_dir}_{dir_name}"
-                        if args.recursive
-                        else args.coverage_dir
+                        f"{args.coverage_dir}_{dir_name}" if args.recursive else args.coverage_dir
                     )
                     cmd.append(f"--cov-report=html:{cov_dir}")
                 elif fmt == "xml":
                     cov_dir = (
-                        f"{args.coverage_dir}_{dir_name}"
-                        if args.recursive
-                        else args.coverage_dir
+                        f"{args.coverage_dir}_{dir_name}" if args.recursive else args.coverage_dir
                     )
                     os.makedirs(cov_dir, exist_ok=True)
                     xml_path = os.path.join(cov_dir, "coverage.xml")
                     cmd.append(f"--cov-report=xml:{xml_path}")
                 elif fmt == "json":
                     cov_dir = (
-                        f"{args.coverage_dir}_{dir_name}"
-                        if args.recursive
-                        else args.coverage_dir
+                        f"{args.coverage_dir}_{dir_name}" if args.recursive else args.coverage_dir
                     )
                     os.makedirs(cov_dir, exist_ok=True)
                     json_path = os.path.join(cov_dir, "coverage.json")
@@ -867,9 +853,7 @@ Examples:
   python test_runner_all.py --input-dir tests --recursive --generate-dashboard --dashboard-dir my_results
         """,
     )
-    parser.add_argument(
-        "--input-dir", required=True, help="Directory containing unit tests"
-    )
+    parser.add_argument("--input-dir", required=True, help="Directory containing unit tests")
     parser.add_argument(
         "--run-type",
         choices=["unittest", "pytest"],
@@ -881,9 +865,7 @@ Examples:
         action="store_true",
         help="Recursively find and run tests in all subdirectories",
     )
-    parser.add_argument(
-        "--verbosity", type=int, default=0, help="Verbosity level (0-3)"
-    )
+    parser.add_argument("--verbosity", type=int, default=0, help="Verbosity level (0-3)")
     parser.add_argument(
         "--coverage",
         action="store_true",
@@ -894,9 +876,7 @@ Examples:
         default="src",
         help="Source directory to measure coverage for (default: src)",
     )
-    parser.add_argument(
-        "--coverage-dir", default="coverage", help="Directory for coverage output"
-    )
+    parser.add_argument("--coverage-dir", default="coverage", help="Directory for coverage output")
     parser.add_argument(
         "--coverage-format",
         default="html",

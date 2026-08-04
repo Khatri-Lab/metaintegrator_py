@@ -256,23 +256,18 @@ class TestProbePlatformFromFilename:
 
     def test_standard_format(self):
         assert (
-            NCBIFetcher._probe_platform_from_filename(
-                "GSE11909-GPL96_series_matrix.txt.gz"
-            )
+            NCBIFetcher._probe_platform_from_filename("GSE11909-GPL96_series_matrix.txt.gz")
             == "GPL96"
         )
 
     def test_no_gpl(self):
         assert (
-            NCBIFetcher._probe_platform_from_filename("GSE11909_series_matrix.txt.gz")
-            == "unknown"
+            NCBIFetcher._probe_platform_from_filename("GSE11909_series_matrix.txt.gz") == "unknown"
         )
 
     def test_multi_digit_gpl(self):
         assert (
-            NCBIFetcher._probe_platform_from_filename(
-                "GSE50635-GPL6947_series_matrix.txt.gz"
-            )
+            NCBIFetcher._probe_platform_from_filename("GSE50635-GPL6947_series_matrix.txt.gz")
             == "GPL6947"
         )
 

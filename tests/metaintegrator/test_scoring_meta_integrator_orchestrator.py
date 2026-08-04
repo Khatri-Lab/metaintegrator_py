@@ -324,13 +324,9 @@ class TestOrchestrationResults:
 class TestEnhancedMetaIntegratorOrchestrator:
     """Test suite for EnhancedMetaIntegratorOrchestrator."""
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_initialization(
@@ -351,13 +347,9 @@ class TestEnhancedMetaIntegratorOrchestrator:
         assert hasattr(orchestrator, "result_summarizer")
         assert hasattr(orchestrator, "export_engine")
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_initialization_with_default_config(
@@ -369,13 +361,9 @@ class TestEnhancedMetaIntegratorOrchestrator:
         assert isinstance(orchestrator.config, OrchestratorConfig)
         assert orchestrator.config.log_level == "INFO"
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_component_initialization_failure(
@@ -397,13 +385,9 @@ class TestEnhancedMetaIntegratorOrchestrator:
     @patch(
         "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorOrchestrator._assess_input_quality"
     )
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_complete_analysis_standard_workflow(
@@ -438,13 +422,9 @@ class TestEnhancedMetaIntegratorOrchestrator:
     @patch(
         "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorOrchestrator._validate_and_preprocess_inputs"
     )
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_complete_analysis_advanced_workflow(
@@ -475,13 +455,9 @@ class TestEnhancedMetaIntegratorOrchestrator:
     @patch(
         "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorOrchestrator._validate_and_preprocess_inputs"
     )
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_complete_analysis_minimal_workflow(
@@ -499,20 +475,14 @@ class TestEnhancedMetaIntegratorOrchestrator:
         """Test running complete analysis with minimal workflow."""
         orchestrator = EnhancedMetaIntegratorOrchestrator(default_config)
 
-        results = orchestrator.run_complete_analysis(
-            sample_meta_object, "test_analysis", "minimal"
-        )
+        results = orchestrator.run_complete_analysis(sample_meta_object, "test_analysis", "minimal")
 
         assert isinstance(results, OrchestrationResults)
         mock_workflow.assert_called_once()
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_complete_analysis_invalid_workflow(
@@ -547,13 +517,9 @@ class TestEnhancedMetaIntegratorOrchestrator:
     @patch(
         "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorOrchestrator.run_complete_analysis"
     )
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_batch_analysis_sequential(
@@ -599,13 +565,9 @@ class TestEnhancedMetaIntegratorOrchestrator:
     @patch(
         "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorOrchestrator.run_complete_analysis"
     )
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_batch_analysis_parallel(
@@ -640,9 +602,7 @@ class TestEnhancedMetaIntegratorOrchestrator:
         # Setup mock executor with proper context manager support
         mock_executor_instance = MagicMock()
         # Make submit return a new future each time (important for dict keys)
-        mock_executor_instance.submit.side_effect = (
-            lambda *args, **kwargs: create_mock_future()
-        )
+        mock_executor_instance.submit.side_effect = lambda *args, **kwargs: create_mock_future()
         mock_executor_instance.__enter__ = Mock(return_value=mock_executor_instance)
         mock_executor_instance.__exit__ = Mock(return_value=False)
         mock_executor.return_value = mock_executor_instance
@@ -677,13 +637,9 @@ class TestWorkflowMethods:
         """Setup for each test method."""
         self.config = OrchestratorConfig(fail_fast=False)
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_standard_workflow_success(
@@ -725,13 +681,9 @@ class TestWorkflowMethods:
         assert "scoring_duration" in results.performance_metrics
         assert "summarization_duration" in results.performance_metrics
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_standard_workflow_filtering_failure(
@@ -765,13 +717,9 @@ class TestWorkflowMethods:
         assert len(results.errors) > 0
         assert results.errors[0]["component"] == "filtering"
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_advanced_workflow_with_fallback(
@@ -810,13 +758,9 @@ class TestWorkflowMethods:
         assert results.filter_results is not None
         assert orchestrator.meta_filter.filter_meta_analysis.call_count == 2
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_run_minimal_workflow(
@@ -865,13 +809,9 @@ class TestValidationMethods:
         """Setup for each test method."""
         self.config = OrchestratorConfig()
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_validate_and_preprocess_inputs_valid(
@@ -899,13 +839,9 @@ class TestValidationMethods:
         assert results.validation_results["input_validation"] == "passed"
         assert len(results.errors) == 0
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_validate_and_preprocess_inputs_invalid_type(
@@ -931,13 +867,9 @@ class TestValidationMethods:
         assert len(results.errors) > 0
         assert "input_validation" in results.errors[0]["component"]
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_validate_and_preprocess_inputs_missing_data(
@@ -962,13 +894,9 @@ class TestValidationMethods:
         assert results.validation_results["input_validation"] == "failed"
         assert len(results.errors) > 0
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_validate_and_preprocess_inputs_auto_fix(
@@ -998,20 +926,14 @@ class TestValidationMethods:
         del data["effect_fdr"]
         meta_object_with_missing_col = {"original_result": data}
 
-        orchestrator._validate_and_preprocess_inputs(
-            meta_object_with_missing_col, results
-        )
+        orchestrator._validate_and_preprocess_inputs(meta_object_with_missing_col, results)
 
         assert results.validation_results["input_validation"] == "passed"
         assert "effect_fdr" in meta_object_with_missing_col["original_result"].columns
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_assess_input_quality(
@@ -1041,13 +963,9 @@ class TestValidationMethods:
         assert "overall_quality_score" in results.quality_assessment
         assert isinstance(results.quality_assessment["overall_quality_score"], float)
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_validate_outputs(
@@ -1096,13 +1014,9 @@ class TestErrorHandling:
         """Setup for each test method."""
         self.config = OrchestratorConfig()
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_handle_component_error(
@@ -1129,13 +1043,9 @@ class TestErrorHandling:
         assert "timestamp" in results.errors[0]
         assert "traceback" in results.errors[0]
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_create_error_result(
@@ -1166,13 +1076,9 @@ class TestUtilityMethods:
         """Setup for each test method."""
         self.config = OrchestratorConfig()
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_get_component_status(
@@ -1189,13 +1095,9 @@ class TestUtilityMethods:
         assert "export_engine" in status
         assert all(s == "initialized" for s in status.values())
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_clear_all_caches(
@@ -1215,13 +1117,9 @@ class TestUtilityMethods:
         orchestrator.gene_scorer.clear_cache.assert_called_once()
         orchestrator.result_summarizer.clear_analysis_cache.assert_called_once()
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_get_component_versions(
@@ -1248,13 +1146,9 @@ class TestUtilityMethods:
 class TestLegacyCompatibility:
     """Test suite for legacy compatibility class."""
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_legacy_orchestrator_initialization(
@@ -1280,13 +1174,9 @@ class TestLegacyCompatibility:
     @patch(
         "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorOrchestrator.run_complete_analysis"
     )
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_legacy_run_analysis_method(
@@ -1330,9 +1220,7 @@ class TestLegacyCompatibility:
         assert "export_paths" in result
 
         # Verify method was called correctly
-        mock_run_complete.assert_called_once_with(
-            sample_meta_object, "test_analysis", "standard"
-        )
+        mock_run_complete.assert_called_once_with(sample_meta_object, "test_analysis", "standard")
 
 
 # ==================================================================
@@ -1345,18 +1233,12 @@ class TestExportAndReporting:
 
     def setup_method(self):
         """Setup for each test method."""
-        self.config = OrchestratorConfig(
-            auto_export_results=False, auto_generate_reports=False
-        )
+        self.config = OrchestratorConfig(auto_export_results=False, auto_generate_reports=False)
 
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_auto_export_results(
         self,
@@ -1411,13 +1293,9 @@ class TestExportAndReporting:
     @patch(
         "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorOrchestrator._generate_comprehensive_reports"
     )
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_generate_comprehensive_reports(
@@ -1470,13 +1348,9 @@ class TestIntegration:
             fail_fast=False,
         )
 
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedMetaIntegratorFilter")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedGeneScorer")
-    @patch(
-        "metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer"
-    )
+    @patch("metaintegrator.scoring_meta_integrator_orchestrator.EnhancedResultSummarizer")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.ExportEngine")
     @patch("metaintegrator.scoring_meta_integrator_orchestrator.StatisticalAnalyzer")
     def test_end_to_end_standard_workflow(

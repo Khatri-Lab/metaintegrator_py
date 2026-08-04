@@ -80,9 +80,7 @@ class TestPlotEffectSizeDistribution:
             }
         }
 
-    def test_plot_effect_size_distribution_density(
-        self, plotter, meta_object_with_effect_sizes
-    ):
+    def test_plot_effect_size_distribution_density(self, plotter, meta_object_with_effect_sizes):
         """Test effect size distribution plot with density curves."""
         fig = plotter.plot_effect_size_distribution(
             meta_object_with_effect_sizes, overlay_density=True
@@ -98,9 +96,7 @@ class TestPlotEffectSizeDistribution:
         # Clean up
         plt.close(fig)
 
-    def test_plot_effect_size_distribution_histograms(
-        self, plotter, meta_object_with_effect_sizes
-    ):
+    def test_plot_effect_size_distribution_histograms(self, plotter, meta_object_with_effect_sizes):
         """Test effect size distribution plot with histograms."""
         fig = plotter.plot_effect_size_distribution(
             meta_object_with_effect_sizes, bins=30, overlay_density=False
@@ -118,9 +114,7 @@ class TestPlotEffectSizeDistribution:
         # Clean up
         plt.close(fig)
 
-    def test_plot_effect_size_distribution_save(
-        self, plotter, meta_object_with_effect_sizes
-    ):
+    def test_plot_effect_size_distribution_save(self, plotter, meta_object_with_effect_sizes):
         """Test saving effect size distribution plot."""
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = Path(temp_dir) / "test_plot.png"
@@ -205,9 +199,7 @@ class TestVolcanoPlot:
 
     def test_plot_volcano_custom_thresholds(self, plotter, meta_object_for_volcano):
         """Test volcano plot with custom thresholds."""
-        fig = plotter.plot_volcano(
-            meta_object_for_volcano, es_threshold=1.0, fdr_threshold=0.01
-        )
+        fig = plotter.plot_volcano(meta_object_for_volcano, es_threshold=1.0, fdr_threshold=0.01)
 
         assert isinstance(fig, plt.Figure)
 
@@ -228,9 +220,7 @@ class TestVolcanoPlot:
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = Path(temp_dir) / "volcano_test.png"
 
-            fig = plotter.plot_volcano(
-                meta_object_for_volcano, save_path=str(save_path)
-            )
+            fig = plotter.plot_volcano(meta_object_for_volcano, save_path=str(save_path))
 
             assert save_path.exists()
             assert save_path.stat().st_size > 0
@@ -342,9 +332,7 @@ class TestForestPlot:
             save_path = Path(temp_dir) / "forest_test.png"
             genes = ["BRCA1", "TP53"]
 
-            fig = plotter.plot_forest_plot(
-                meta_object_for_forest, genes, save_path=str(save_path)
-            )
+            fig = plotter.plot_forest_plot(meta_object_for_forest, genes, save_path=str(save_path))
 
             assert save_path.exists()
             assert save_path.stat().st_size > 0
@@ -461,9 +449,7 @@ class TestHeatmapPlot:
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = Path(temp_dir) / "heatmap_test.png"
 
-            fig = plotter.plot_heatmap(
-                meta_object_for_heatmap, save_path=str(save_path)
-            )
+            fig = plotter.plot_heatmap(meta_object_for_heatmap, save_path=str(save_path))
 
             assert save_path.exists()
             assert save_path.stat().st_size > 0
@@ -565,9 +551,7 @@ class TestStudyOverview:
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = Path(temp_dir) / "overview_test.png"
 
-            fig = plotter.plot_study_overview(
-                meta_object_for_overview, save_path=str(save_path)
-            )
+            fig = plotter.plot_study_overview(meta_object_for_overview, save_path=str(save_path))
 
             assert save_path.exists()
             assert save_path.stat().st_size > 0
@@ -577,9 +561,7 @@ class TestStudyOverview:
 
     def test_extract_study_stats(self, plotter, meta_object_for_overview):
         """Test _extract_study_stats method."""
-        stats_df = plotter._extract_study_stats(
-            meta_object_for_overview["originalData"]
-        )
+        stats_df = plotter._extract_study_stats(meta_object_for_overview["originalData"])
 
         assert isinstance(stats_df, pd.DataFrame)
         expected_columns = ["Study", "Cases", "Controls", "Total_Samples", "Genes"]
@@ -588,9 +570,7 @@ class TestStudyOverview:
 
         # Check specific values
         assert len(stats_df) == 3  # Three studies
-        assert all(
-            stats_df["Total_Samples"] == stats_df["Cases"] + stats_df["Controls"]
-        )
+        assert all(stats_df["Total_Samples"] == stats_df["Cases"] + stats_df["Controls"])
 
 
 class TestMASummary:
@@ -633,9 +613,7 @@ class TestMASummary:
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = Path(temp_dir) / "summary_test.png"
 
-            fig = plotter.plot_ma_summary(
-                meta_object_for_summary, save_path=str(save_path)
-            )
+            fig = plotter.plot_ma_summary(meta_object_for_summary, save_path=str(save_path))
 
             assert save_path.exists()
             assert save_path.stat().st_size > 0
@@ -813,18 +791,14 @@ class TestEdgeCases:
         }
 
         # Test with histograms instead of density curves to avoid KDE issues
-        fig = plotter.plot_effect_size_distribution(
-            identical_meta, overlay_density=False
-        )
+        fig = plotter.plot_effect_size_distribution(identical_meta, overlay_density=False)
         assert isinstance(fig, plt.Figure)
 
         # Clean up
         plt.close(fig)
 
         # Also test density curves - should now handle identical values gracefully
-        fig2 = plotter.plot_effect_size_distribution(
-            identical_meta, overlay_density=True
-        )
+        fig2 = plotter.plot_effect_size_distribution(identical_meta, overlay_density=True)
         assert isinstance(fig2, plt.Figure)
 
         # Clean up
@@ -852,18 +826,13 @@ class TestIntegration:
                     index=genes,
                 ),
                 "datasetEffectSizeStandardErrors": pd.DataFrame(
-                    {
-                        study: np.random.uniform(0.1, 0.3, len(genes))
-                        for study in studies
-                    },
+                    {study: np.random.uniform(0.1, 0.3, len(genes)) for study in studies},
                     index=genes,
                 ),
                 "pooledResults": pd.DataFrame(
                     {
                         "effectSize": np.random.normal(0, 1, len(genes)),
-                        "effectSizeStandardError": np.random.uniform(
-                            0.1, 0.2, len(genes)
-                        ),
+                        "effectSizeStandardError": np.random.uniform(0.1, 0.2, len(genes)),
                         "effectSizeFDR": np.random.uniform(0.001, 0.1, len(genes)),
                         "effectSizePval": np.random.uniform(0.001, 0.1, len(genes)),
                         "numStudies": np.random.randint(2, 5, len(genes)),

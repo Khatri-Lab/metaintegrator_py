@@ -165,9 +165,7 @@ class TestCOCONUTIntegrator:
         # The code checks keys in order: expr, class, keys
         # incomplete_dataset_object has 'expr' but missing 'class' and 'keys'
         # So it should fail on 'class' first
-        with pytest.raises(
-            ValueError, match="Dataset object missing required key: class"
-        ):
+        with pytest.raises(ValueError, match="Dataset object missing required key: class"):
             integrator._validate_dataset_object(incomplete_dataset_object)
 
     def test_create_pheno_dataframe_with_existing_pheno(
@@ -300,9 +298,7 @@ class TestSampleLevelGeneExtractor:
         """Test _prepare_expression_data with invalid input."""
         extractor = SampleLevelGeneExtractor()
 
-        with pytest.raises(
-            ValueError, match="Expression data must be a 2D array or DataFrame"
-        ):
+        with pytest.raises(ValueError, match="Expression data must be a 2D array or DataFrame"):
             extractor._prepare_expression_data("invalid_input")
 
     def test_extract_data_from_gem_success(self, sample_dataset_object):
@@ -324,9 +320,7 @@ class TestSampleLevelGeneExtractor:
 
         assert isinstance(result, pd.DataFrame)
         assert "keys" in result.columns
-        assert len(result) > len(
-            sample_expression_data
-        )  # Should expand due to multi-gene keys
+        assert len(result) > len(sample_expression_data)  # Should expand due to multi-gene keys
 
     def test_expand_df_sample_level_mismatched_length(self, sample_expression_data):
         """Test _expand_df_sample_level with mismatched key length."""
@@ -421,9 +415,7 @@ class TestCOCONUTDataProcessor:
         """Test prepare_coconut_input with filter results."""
         filter_results = {"posGeneNames": ["GENE1", "GENE2"], "negGeneNames": ["GENE3"]}
 
-        result = COCONUTDataProcessor.prepare_coconut_input(
-            sample_meta_object, filter_results
-        )
+        result = COCONUTDataProcessor.prepare_coconut_input(sample_meta_object, filter_results)
 
         assert isinstance(result, dict)
         assert len(result) == 2  # Two datasets
@@ -438,9 +430,7 @@ class TestCOCONUTDataProcessor:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            result = COCONUTDataProcessor.prepare_coconut_input(
-                sample_meta_object, filter_results
-            )
+            result = COCONUTDataProcessor.prepare_coconut_input(sample_meta_object, filter_results)
 
             # Empty dict means target_genes will be empty, which triggers warning
             assert len(w) == 1
@@ -451,9 +441,7 @@ class TestCOCONUTDataProcessor:
         """Test successful validate_coconut_format."""
         valid_data = {
             "dataset1": {
-                "pheno": pd.DataFrame(
-                    {"class": [0, 1, 0, 1]}, index=["S1", "S2", "S3", "S4"]
-                ),
+                "pheno": pd.DataFrame({"class": [0, 1, 0, 1]}, index=["S1", "S2", "S3", "S4"]),
                 "genes": pd.DataFrame([[1, 2, 3, 4]], columns=["S1", "S2", "S3", "S4"]),
             }
         }
@@ -518,12 +506,8 @@ class TestCOCONUTDataProcessor:
         assert os.path.exists(os.path.join(output_dir, "dataset1_genes.csv"))
 
         # Check file contents
-        pheno_df = pd.read_csv(
-            os.path.join(output_dir, "dataset1_pheno.csv"), index_col=0
-        )
-        genes_df = pd.read_csv(
-            os.path.join(output_dir, "dataset1_genes.csv"), index_col=0
-        )
+        pheno_df = pd.read_csv(os.path.join(output_dir, "dataset1_pheno.csv"), index_col=0)
+        genes_df = pd.read_csv(os.path.join(output_dir, "dataset1_genes.csv"), index_col=0)
 
         assert "class" in pheno_df.columns
         assert "age" in pheno_df.columns
@@ -669,9 +653,7 @@ class TestConvenienceFunctions:
         assert result == mock_result
 
     @patch.object(SampleLevelGeneExtractor, "get_sample_level_gene_data")
-    def test_get_sample_level_gene_data_function(
-        self, mock_method, sample_dataset_object
-    ):
+    def test_get_sample_level_gene_data_function(self, mock_method, sample_dataset_object):
         """Test get_sample_level_gene_data convenience function."""
         mock_result = Mock()
         mock_method.return_value = mock_result
@@ -780,9 +762,7 @@ class TestEdgeCases:
         extractor = SampleLevelGeneExtractor()
         nonexistent_genes = ["NONEXISTENT1", "NONEXISTENT2"]
 
-        result = extractor.get_sample_level_gene_data(
-            sample_dataset_object, nonexistent_genes
-        )
+        result = extractor.get_sample_level_gene_data(sample_dataset_object, nonexistent_genes)
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == len(nonexistent_genes)
@@ -800,9 +780,7 @@ class TestEdgeCases:
         }
 
         extractor = SampleLevelGeneExtractor()
-        result = extractor.get_sample_level_gene_data(
-            dataset_object, ["GENE1", "GENE2"]
-        )
+        result = extractor.get_sample_level_gene_data(dataset_object, ["GENE1", "GENE2"])
 
         # All zeros should be replaced with 1.0 (default replacement value)
         assert (result == 1.0).all().all()
@@ -816,9 +794,7 @@ class TestEdgeCases:
         }
 
         extractor = SampleLevelGeneExtractor()
-        result = extractor.get_sample_level_gene_data(
-            dataset_object, ["GENE1", "GENE2"]
-        )
+        result = extractor.get_sample_level_gene_data(dataset_object, ["GENE1", "GENE2"])
 
         # Negative values should be replaced with 1.0
         assert result.loc["GENE1", "S1"] == 1.0  # -1 replaced
@@ -831,17 +807,13 @@ class TestEdgeCases:
     def test_single_sample_dataset(self):
         """Test with a dataset containing only one sample."""
         dataset_object = {
-            "expr": pd.DataFrame(
-                [[10.5], [8.2]], columns=["Sample_1"], index=["probe1", "probe2"]
-            ),
+            "expr": pd.DataFrame([[10.5], [8.2]], columns=["Sample_1"], index=["probe1", "probe2"]),
             "keys": ["GENE1", "GENE2"],
             "class": [0],
         }
 
         extractor = SampleLevelGeneExtractor()
-        result = extractor.get_sample_level_gene_data(
-            dataset_object, ["GENE1", "GENE2"]
-        )
+        result = extractor.get_sample_level_gene_data(dataset_object, ["GENE1", "GENE2"])
 
         assert isinstance(result, pd.DataFrame)
         assert result.shape == (2, 1)  # 2 genes, 1 sample
@@ -856,9 +828,7 @@ class TestEdgeCases:
         }
 
         extractor = SampleLevelGeneExtractor()
-        result = extractor.get_sample_level_gene_data(
-            dataset_object, ["GENE_α", "GENE_β"]
-        )
+        result = extractor.get_sample_level_gene_data(dataset_object, ["GENE_α", "GENE_β"])
 
         assert isinstance(result, pd.DataFrame)
         assert "GENE_α" in result.index

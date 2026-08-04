@@ -127,9 +127,7 @@ class TestParseSeriesMatrixCornerCases:
         header = '"ID_REF"\t"S1"\t"S2"'
         lines.append(header)
         for i in range(1000):
-            lines.append(
-                f'"P{i}"\t"{np.random.randn():.4f}"\t"{np.random.randn():.4f}"'
-            )
+            lines.append(f'"P{i}"\t"{np.random.randn():.4f}"\t"{np.random.randn():.4f}"')
 
         gz = _make_gz(lines)
         df, _ = NCBIFetcher._parse_series_matrix(gz)

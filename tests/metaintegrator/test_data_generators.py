@@ -54,9 +54,7 @@ class TestDataGenerator:
         # Add missing values
         if missing_rate > 0:
             n_missing = int(n_genes * n_samples * missing_rate)
-            missing_indices = np.random.choice(
-                n_genes * n_samples, n_missing, replace=False
-            )
+            missing_indices = np.random.choice(n_genes * n_samples, n_missing, replace=False)
             missing_rows = missing_indices // n_samples
             missing_cols = missing_indices % n_samples
             expr_data[missing_rows, missing_cols] = np.nan
@@ -271,9 +269,7 @@ class TestValidationUtils:
             "se_positive": (valid_se > 0).all() if len(valid_se) > 0 else True,
             "es_finite": np.isfinite(valid_es).all() if len(valid_es) > 0 else True,
             "se_finite": np.isfinite(valid_se).all() if len(valid_se) > 0 else True,
-            "reasonable_es_range": (
-                (np.abs(valid_es) < 20).all() if len(valid_es) > 0 else True
-            ),
+            "reasonable_es_range": ((np.abs(valid_es) < 20).all() if len(valid_es) > 0 else True),
             "reasonable_se_range": (valid_se < 10).all() if len(valid_se) > 0 else True,
         }
 

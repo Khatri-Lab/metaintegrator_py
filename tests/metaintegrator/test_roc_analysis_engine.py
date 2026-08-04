@@ -273,9 +273,7 @@ class TestROCAnalysisEngine:
         assert roc_engine is not None
         assert isinstance(roc_engine, ROCAnalysisEngine)
 
-    def test_calculate_roc_curve_perfect_separation(
-        self, roc_engine, perfect_separation_data
-    ):
+    def test_calculate_roc_curve_perfect_separation(self, roc_engine, perfect_separation_data):
         """Test ROC calculation with perfect separation."""
         y_true, y_scores = perfect_separation_data
         result = roc_engine.calculate_roc_curve(y_true, y_scores)
@@ -546,9 +544,7 @@ class TestSignatureScoringEngine:
         """Test basic signature score calculation."""
         expr_matrix, gene_keys, pos_genes, neg_genes = expression_data
 
-        scores = scoring_engine.calculate_scores(
-            expr_matrix, gene_keys, pos_genes, neg_genes
-        )
+        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, pos_genes, neg_genes)
 
         # Check output format
         assert isinstance(scores, np.ndarray)
@@ -582,9 +578,7 @@ class TestSignatureScoringEngine:
         pos_genes = ["gene1", "gene2"]
         neg_genes = ["gene3"]
 
-        scores = scoring_engine.calculate_scores(
-            expr_array, gene_keys, pos_genes, neg_genes
-        )
+        scores = scoring_engine.calculate_scores(expr_array, gene_keys, pos_genes, neg_genes)
 
         assert isinstance(scores, np.ndarray)
         assert len(scores) == 4  # Number of samples
@@ -602,9 +596,7 @@ class TestSignatureScoringEngine:
 
         np.testing.assert_array_equal(scores, np.zeros(expr_matrix.shape[1]))
 
-    def test_calculate_scores_only_positive_genes(
-        self, scoring_engine, expression_data
-    ):
+    def test_calculate_scores_only_positive_genes(self, scoring_engine, expression_data):
         """Test score calculation with only positive genes."""
         expr_matrix, gene_keys, pos_genes, _ = expression_data
 
@@ -618,9 +610,7 @@ class TestSignatureScoringEngine:
 
         np.testing.assert_array_almost_equal(scores, expected_scores)
 
-    def test_calculate_scores_only_negative_genes(
-        self, scoring_engine, expression_data
-    ):
+    def test_calculate_scores_only_negative_genes(self, scoring_engine, expression_data):
         """Test score calculation with only negative genes."""
         expr_matrix, gene_keys, _, neg_genes = expression_data
 
@@ -665,9 +655,7 @@ class TestSignatureScoringEngine:
         pos_genes = ["geneA"]  # Should use both probe1 and probe2
         neg_genes = ["geneB"]
 
-        scores = scoring_engine.calculate_scores(
-            expr_matrix, gene_keys, pos_genes, neg_genes
-        )
+        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, pos_genes, neg_genes)
 
         # Calculate expected: mean of geneA probes - mean of geneB probes
         expected_scores = []
@@ -720,9 +708,7 @@ class TestSignatureScoringEngine:
 
     def test_mean_difference_score_edge_cases(self, scoring_engine):
         """Test mean difference scoring with edge cases."""
-        expr_matrix = pd.DataFrame(
-            {"sample1": [1.0, 2.0, 3.0], "sample2": [4.0, 5.0, 6.0]}
-        )
+        expr_matrix = pd.DataFrame({"sample1": [1.0, 2.0, 3.0], "sample2": [4.0, 5.0, 6.0]})
 
         # Empty indices
         scores = scoring_engine._mean_difference_score(expr_matrix, [], [])
@@ -786,9 +772,7 @@ class TestKesterBuntinxEngine:
             {
                 "name": "Perfect Study",
                 "y_true": np.array([0, 0, 0, 1, 1, 1]),
-                "y_scores": np.array(
-                    [0.1, 0.2, 0.3, 0.7, 0.8, 0.9]
-                ),  # Perfect separation
+                "y_scores": np.array([0.1, 0.2, 0.3, 0.7, 0.8, 0.9]),  # Perfect separation
             }
         ]
 
@@ -1097,9 +1081,7 @@ class TestUnifiedROCAnalyzer:
         # Verify matplotlib calls
         mock_subplots.assert_called_once_with(figsize=(8, 6))
         mock_tight.assert_called_once()
-        mock_savefig.assert_called_once_with(
-            "/tmp/test.png", dpi=300, bbox_inches="tight"
-        )
+        mock_savefig.assert_called_once_with("/tmp/test.png", dpi=300, bbox_inches="tight")
 
     @patch("matplotlib.pyplot.subplots")
     def test_plot_roc_curves_kester_buntinx(
@@ -1271,18 +1253,14 @@ class TestUnifiedROCAnalyzer:
         assert "individual_studies" in result
         assert len(result["individual_studies"]) == 1
 
-    def test_error_handling_empty_meta_object(
-        self, unified_analyzer, mock_filter_object
-    ):
+    def test_error_handling_empty_meta_object(self, unified_analyzer, mock_filter_object):
         """Test error handling with empty meta object."""
         empty_meta = {"originalData": {}}
 
         with pytest.raises(ValueError, match="No valid studies"):
             unified_analyzer.pooled_roc_analysis(empty_meta, mock_filter_object)
 
-    def test_error_handling_invalid_class_data(
-        self, unified_analyzer, mock_filter_object
-    ):
+    def test_error_handling_invalid_class_data(self, unified_analyzer, mock_filter_object):
         """Test error handling with invalid class data."""
         invalid_meta = {
             "originalData": {
@@ -1372,9 +1350,7 @@ class TestMetaAnalysisUtilities:
         sample_sizes = [100, 50]
 
         with pytest.raises(ValueError, match="Unknown method"):
-            MetaAnalysisUtilities.calculate_pooled_auc(
-                aucs, sample_sizes, method="unknown"
-            )
+            MetaAnalysisUtilities.calculate_pooled_auc(aucs, sample_sizes, method="unknown")
 
     def test_calculate_pooled_tpr_weighted(self):
         """Test weighted pooled TPR calculation."""
@@ -1409,9 +1385,7 @@ class TestMetaAnalysisUtilities:
 
     def test_calculate_pooled_tpr_empty_list(self):
         """Test pooled TPR with empty curve list."""
-        pooled_tpr = MetaAnalysisUtilities.calculate_pooled_tpr(
-            [], [], method="weighted"
-        )
+        pooled_tpr = MetaAnalysisUtilities.calculate_pooled_tpr([], [], method="weighted")
 
         assert len(pooled_tpr) == 0
 
@@ -1434,9 +1408,7 @@ class TestMetaAnalysisUtilities:
 
         # Check that interpolated values are reasonable
         assert all(0 <= fpr <= 1 for fpr in common_fpr)
-        assert all(
-            all(0 <= tpr <= 1 for tpr in tpr_curve) for tpr_curve in interpolated_tprs
-        )
+        assert all(all(0 <= tpr <= 1 for tpr in tpr_curve) for tpr_curve in interpolated_tprs)
 
     def test_interpolate_roc_curves_custom_fpr(self):
         """Test ROC curve interpolation with custom FPR grid."""
@@ -1504,9 +1476,7 @@ class TestMetaAnalysisUtilities:
 
     def test_calculate_confidence_bands_empty(self):
         """Test confidence band calculation with empty input."""
-        lower, upper = MetaAnalysisUtilities.calculate_confidence_bands(
-            [], [], method="std"
-        )
+        lower, upper = MetaAnalysisUtilities.calculate_confidence_bands([], [], method="std")
 
         assert len(lower) == 0
         assert len(upper) == 0
@@ -1608,16 +1578,12 @@ class TestConvenienceFunctions:
         """Test calculate_signature_scores convenience function."""
         expr_matrix, gene_keys, pos_genes, neg_genes = expression_data
 
-        scores = calculate_signature_scores(
-            expr_matrix, gene_keys, pos_genes, neg_genes
-        )
+        scores = calculate_signature_scores(expr_matrix, gene_keys, pos_genes, neg_genes)
 
         assert isinstance(scores, np.ndarray)
         assert len(scores) == expr_matrix.shape[1]
 
-    def test_convenience_functions_with_different_confidence(
-        self, perfect_separation_data
-    ):
+    def test_convenience_functions_with_different_confidence(self, perfect_separation_data):
         """Test convenience functions with different confidence levels."""
         y_true, y_scores = perfect_separation_data
 
@@ -1648,22 +1614,16 @@ class TestAdvancedConvenienceFunctions:
         assert 0 <= result["auc"] <= 1
 
     @patch.object(UnifiedROCAnalyzer, "pooled_roc_plot")
-    def test_pooled_roc_plot_convenience(
-        self, mock_method, mock_meta_object, mock_filter_object
-    ):
+    def test_pooled_roc_plot_convenience(self, mock_method, mock_meta_object, mock_filter_object):
         """Test pooled_roc_plot convenience function."""
         mock_method.return_value = Mock()
 
         fig = pooled_roc_plot(mock_meta_object, mock_filter_object, smoothed=False)
 
-        mock_method.assert_called_once_with(
-            mock_meta_object, mock_filter_object, smoothed=False
-        )
+        mock_method.assert_called_once_with(mock_meta_object, mock_filter_object, smoothed=False)
 
     @patch.object(UnifiedROCAnalyzer, "summary_roc_plot")
-    def test_summary_roc_plot_convenience(
-        self, mock_method, mock_meta_object, mock_filter_object
-    ):
+    def test_summary_roc_plot_convenience(self, mock_method, mock_meta_object, mock_filter_object):
         """Test summary_roc_plot convenience function."""
         mock_method.return_value = Mock()
 
@@ -1672,9 +1632,7 @@ class TestAdvancedConvenienceFunctions:
         mock_method.assert_called_once_with(mock_meta_object, mock_filter_object)
 
     @patch.object(UnifiedROCAnalyzer, "summary_roc_calc")
-    def test_summary_roc_calc_convenience(
-        self, mock_method, mock_meta_object, mock_filter_object
-    ):
+    def test_summary_roc_calc_convenience(self, mock_method, mock_meta_object, mock_filter_object):
         """Test summary_roc_calc convenience function."""
         mock_method.return_value = pd.DataFrame(
             {"AUC": [0.8], "AUCupper": [0.9], "AUClower": [0.7]}
@@ -1719,9 +1677,7 @@ class TestIntegration:
         roc_engine = ROCAnalysisEngine()
 
         # Calculate signature scores
-        scores = scoring_engine.calculate_scores(
-            expr_matrix, gene_keys, pos_genes, neg_genes
-        )
+        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, pos_genes, neg_genes)
 
         # Create mock class labels
         y_true = np.array([0, 0, 1, 1])  # Binary classification
@@ -1879,9 +1835,7 @@ class TestAdvancedIntegration:
         filter_obj = {"posGeneNames": ["pos_gene"], "negGeneNames": ["neg_gene"]}
 
         # Run analysis
-        results = unified_analyzer.pooled_roc_analysis(
-            meta_obj, filter_obj, method="simple"
-        )
+        results = unified_analyzer.pooled_roc_analysis(meta_obj, filter_obj, method="simple")
 
         # Should have good separation
         auc = results["pooled_curve"]["auc"]
@@ -2019,9 +1973,7 @@ class TestEdgeCases:
     def test_meta_analysis_edge_cases(self):
         """Test meta-analysis utilities edge cases."""
         # Single study
-        pooled_auc = MetaAnalysisUtilities.calculate_pooled_auc(
-            [0.8], [100], method="weighted"
-        )
+        pooled_auc = MetaAnalysisUtilities.calculate_pooled_auc([0.8], [100], method="weighted")
         assert pooled_auc == 0.8
 
         # Zero sample sizes (should still work)
@@ -2143,9 +2095,7 @@ class TestPerformance:
         neg_genes = [f"gene_{i}" for i in range(50, 100)]  # Next 50 genes
 
         # Should complete without memory issues
-        scores = scoring_engine.calculate_scores(
-            expr_matrix, gene_keys, pos_genes, neg_genes
-        )
+        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, pos_genes, neg_genes)
 
         assert len(scores) == n_samples
         assert isinstance(scores, np.ndarray)
@@ -2211,9 +2161,7 @@ class TestAdvancedPerformance:
         filter_obj = {"posGeneNames": ["gene1"], "negGeneNames": ["gene2"]}
 
         # Should complete efficiently
-        result = unified_analyzer.pooled_roc_analysis(
-            meta_obj, filter_obj, method="simple"
-        )
+        result = unified_analyzer.pooled_roc_analysis(meta_obj, filter_obj, method="simple")
 
         assert len(result["individual_studies"]) == 20
         assert "pooled_curve" in result
@@ -2248,9 +2196,7 @@ class TestAdvancedPerformance:
         filter_obj = {"posGeneNames": ["gene1"], "negGeneNames": ["gene2"]}
 
         # Should handle large sample size efficiently
-        result = unified_analyzer.pooled_roc_analysis(
-            wide_meta, filter_obj, method="simple"
-        )
+        result = unified_analyzer.pooled_roc_analysis(wide_meta, filter_obj, method="simple")
 
         assert "pooled_curve" in result
         assert len(result["individual_studies"]) == 1
@@ -2335,9 +2281,7 @@ class TestStatisticalValidation:
         pos_genes = ["pos1", "pos2", "pos3"]
         neg_genes = ["neg1", "neg2"]
 
-        scores = scoring_engine.calculate_scores(
-            expr_matrix, gene_keys, pos_genes, neg_genes
-        )
+        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, pos_genes, neg_genes)
 
         # Class 1 scores should generally be higher than class 0 scores
         scores_class0 = scores[: n_samples // 2]

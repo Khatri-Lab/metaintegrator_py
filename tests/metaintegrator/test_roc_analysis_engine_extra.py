@@ -174,9 +174,7 @@ class TestKesterBuntinxEngine:
             {
                 "name": "Perfect Study",
                 "y_true": np.array([0, 0, 0, 1, 1, 1]),
-                "y_scores": np.array(
-                    [0.1, 0.2, 0.3, 0.7, 0.8, 0.9]
-                ),  # Perfect separation
+                "y_scores": np.array([0.1, 0.2, 0.3, 0.7, 0.8, 0.9]),  # Perfect separation
             }
         ]
 
@@ -435,9 +433,7 @@ class TestUnifiedROCAnalyzer:
         # Verify matplotlib calls
         mock_subplots.assert_called_once_with(figsize=(8, 6))
         mock_tight.assert_called_once()
-        mock_savefig.assert_called_once_with(
-            "/tmp/test.png", dpi=300, bbox_inches="tight"
-        )
+        mock_savefig.assert_called_once_with("/tmp/test.png", dpi=300, bbox_inches="tight")
 
     @patch("matplotlib.pyplot.subplots")
     def test_plot_roc_curves_kester_buntinx(
@@ -559,18 +555,14 @@ class TestUnifiedROCAnalyzer:
         assert "individual_studies" in result
         assert len(result["individual_studies"]) == 1
 
-    def test_error_handling_empty_meta_object(
-        self, unified_analyzer, mock_filter_object
-    ):
+    def test_error_handling_empty_meta_object(self, unified_analyzer, mock_filter_object):
         """Test error handling with empty meta object."""
         empty_meta = {"originalData": {}}
 
         with pytest.raises(ValueError, match="No valid studies"):
             unified_analyzer.pooled_roc_analysis(empty_meta, mock_filter_object)
 
-    def test_error_handling_invalid_class_data(
-        self, unified_analyzer, mock_filter_object
-    ):
+    def test_error_handling_invalid_class_data(self, unified_analyzer, mock_filter_object):
         """Test error handling with invalid class data."""
         invalid_meta = {
             "originalData": {
@@ -760,9 +752,7 @@ class TestAdvancedIntegration:
         filter_obj = {"posGeneNames": ["pos_gene"], "negGeneNames": ["neg_gene"]}
 
         # Run analysis
-        results = unified_analyzer.pooled_roc_analysis(
-            meta_obj, filter_obj, method="simple"
-        )
+        results = unified_analyzer.pooled_roc_analysis(meta_obj, filter_obj, method="simple")
 
         # Should have good separation
         auc = results["pooled_curve"]["auc"]
@@ -787,22 +777,16 @@ class TestAdvancedConvenienceFunctions:
         assert 0 <= result["auc"] <= 1
 
     @patch.object(UnifiedROCAnalyzer, "pooled_roc_plot")
-    def test_pooled_roc_plot_convenience(
-        self, mock_method, mock_meta_object, mock_filter_object
-    ):
+    def test_pooled_roc_plot_convenience(self, mock_method, mock_meta_object, mock_filter_object):
         """Test pooled_roc_plot convenience function."""
         mock_method.return_value = Mock()
 
         fig = pooled_roc_plot(mock_meta_object, mock_filter_object, smoothed=False)
 
-        mock_method.assert_called_once_with(
-            mock_meta_object, mock_filter_object, smoothed=False
-        )
+        mock_method.assert_called_once_with(mock_meta_object, mock_filter_object, smoothed=False)
 
     @patch.object(UnifiedROCAnalyzer, "summary_roc_plot")
-    def test_summary_roc_plot_convenience(
-        self, mock_method, mock_meta_object, mock_filter_object
-    ):
+    def test_summary_roc_plot_convenience(self, mock_method, mock_meta_object, mock_filter_object):
         """Test summary_roc_plot convenience function."""
         mock_method.return_value = Mock()
 
@@ -811,9 +795,7 @@ class TestAdvancedConvenienceFunctions:
         mock_method.assert_called_once_with(mock_meta_object, mock_filter_object)
 
     @patch.object(UnifiedROCAnalyzer, "summary_roc_calc")
-    def test_summary_roc_calc_convenience(
-        self, mock_method, mock_meta_object, mock_filter_object
-    ):
+    def test_summary_roc_calc_convenience(self, mock_method, mock_meta_object, mock_filter_object):
         """Test summary_roc_calc convenience function."""
         mock_method.return_value = pd.DataFrame(
             {"AUC": [0.8], "AUCupper": [0.9], "AUClower": [0.7]}
@@ -945,9 +927,7 @@ class TestAdvancedPerformance:
         filter_obj = {"posGeneNames": ["gene1"], "negGeneNames": ["gene2"]}
 
         # Should complete efficiently
-        result = unified_analyzer.pooled_roc_analysis(
-            meta_obj, filter_obj, method="simple"
-        )
+        result = unified_analyzer.pooled_roc_analysis(meta_obj, filter_obj, method="simple")
 
         assert len(result["individual_studies"]) == 20
         assert "pooled_curve" in result
@@ -982,9 +962,7 @@ class TestAdvancedPerformance:
         filter_obj = {"posGeneNames": ["gene1"], "negGeneNames": ["gene2"]}
 
         # Should handle large sample size efficiently
-        result = unified_analyzer.pooled_roc_analysis(
-            wide_meta, filter_obj, method="simple"
-        )
+        result = unified_analyzer.pooled_roc_analysis(wide_meta, filter_obj, method="simple")
 
         assert "pooled_curve" in result
         assert len(result["individual_studies"]) == 1

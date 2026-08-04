@@ -7,10 +7,7 @@ in the tests/ directory and its subdirectories.
 Python port of R MetaIntegrator package
 """
 
-import os
 import shutil
-import sqlite3
-import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock
@@ -19,16 +16,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
-"""Check Python path and module availability at conftest.py."""
-print("🔍 PYTHON PATH ANALYSIS")
-print("=" * 50)
-print(f"Current working directory: {os.getcwd()}")
-print(f"Python executable: {sys.executable}")
-print(f"Python path entries:")
-for i, path in enumerate(sys.path):
-    print(f"  {i}: {path}")
-print()
 
 from tests.metaintegrator.test_data_generators import (
     TestDataGenerator,
@@ -80,9 +67,7 @@ def multi_study_dataset():
 @pytest.fixture
 def significance_matrices():
     """Pre-computed significance matrices for Fisher testing."""
-    return TestDataGenerator.create_significance_matrices(
-        n_studies=3, n_genes=50, seed=42
-    )
+    return TestDataGenerator.create_significance_matrices(n_studies=3, n_genes=50, seed=42)
 
 
 @pytest.fixture
@@ -137,9 +122,7 @@ def assert_valid_pvalues(pvalues_df, expected_cols=None):
     # Validate p-value properties for each p-value column
     for col in expected_cols:
         if col.startswith("P_") or col.startswith("Q_"):
-            validation_results = TestValidationUtils.validate_pvalue_properties(
-                pvalues_df[col]
-            )
+            validation_results = TestValidationUtils.validate_pvalue_properties(pvalues_df[col])
 
             for property_name, is_valid in validation_results.items():
                 assert is_valid, f"P-value validation failed for {col}: {property_name}"
@@ -168,9 +151,7 @@ def assert_valid_fisher_combination(fisher_results_df):
     for col in fisher_results_df.columns:
         if "F.stat" in col:
             valid_stats = fisher_results_df[col].dropna()
-            assert (
-                valid_stats >= 0
-            ).all(), f"Fisher statistics must be non-negative: {col}"
+            assert (valid_stats >= 0).all(), f"Fisher statistics must be non-negative: {col}"
 
         elif "F.pval" in col or "F.Qval" in col:
             valid_pvals = fisher_results_df[col].dropna()
@@ -206,20 +187,6 @@ def create_meta_object_from_studies(studies_list, study_names=None):
         meta_object["originalData"][name] = formatted_study
 
     return meta_object
-
-
-# Add these custom pytest markers for the new functionality
-# (add to your existing pytestmark or markers section)
-
-# Additional custom pytest markers for meta-analysis functionality
-pytest.mark.meta_analysis = pytest.mark.meta_analysis
-pytest.mark.effect_size = pytest.mark.effect_size
-pytest.mark.fisher_combination = pytest.mark.fisher_combination
-pytest.mark.qvalue_correction = pytest.mark.qvalue_correction
-
-
-# Add parameterized test data generators
-# (complement your existing generators)
 
 
 def generate_test_effect_sizes():
@@ -264,9 +231,7 @@ def clean_cache_dir(temp_cache_dir, request):
     test_id = str(uuid.uuid4()).replace("-", "")[:16]
     test_name = getattr(request.node, "name", "unknown_test")
     # Sanitize test name for filesystem safety
-    safe_test_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in test_name)[
-        :50
-    ]
+    safe_test_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in test_name)[:50]
     test_cache = temp_cache_dir / f"test_{safe_test_name}_{test_id}"
     test_cache.mkdir(exist_ok=True)
     yield test_cache
@@ -276,93 +241,19 @@ def clean_cache_dir(temp_cache_dir, request):
 
 
 @pytest.fixture
-def gene_annotation_engine(clean_cache_dir):
-    """Create a GeneAnnotationEngine instance for testing."""
-    # Import here to avoid circular imports
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.join(current_dir, "..", "src")
-    sys.path.insert(0, os.path.normpath(project_root))
+def gene_annotator():
+    """Create a GeneAnnotator instance for testing.
 
-    from preprocessing.annotation_loader import AnnotationLoader
+    The real annotator (preprocessing.gene_annotator.GeneAnnotator) is
+    stateless and operates directly on an in-memory GPL annotation
+    DataFrame -- there is no persistent gene-annotation database to
+    populate. Optional Ensembl validation is available via
+    preprocessing.gene_validation.EnsemblGeneValidator, which loads its
+    reference set from bundled package data (no network/DB required).
+    """
+    from preprocessing.gene_annotator import GeneAnnotator
 
-    # Create the engine
-    engine = AnnotationLoader()
-
-    # Populate with test data
-    _populate_test_database(engine.db_path)
-
-    return engine
-
-
-def _populate_test_database(db_path):
-    """Populate test database with sample gene annotation data."""
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-
-    # Insert test genes if they don't exist
-    test_genes = [
-        (
-            "ENSG00000111640",
-            "GAPDH",
-            "2597",
-            "glyceraldehyde-3-phosphate dehydrogenase",
-            "homo_sapiens",
-        ),
-        ("ENSG00000142168", "SOD1", "6647", "superoxide dismutase 1", "homo_sapiens"),
-        (
-            "ENSG00000171862",
-            "PTEN",
-            "5728",
-            "phosphatase and tensin homolog",
-            "homo_sapiens",
-        ),
-        ("ENSG00000141510", "TP53", "7157", "tumor protein p53", "homo_sapiens"),
-        ("ENSG00000075624", "ACTB", "60", "actin beta", "homo_sapiens"),
-    ]
-
-    for ensg_id, symbol, entrez, name, species in test_genes:
-        # Insert into gene_annotations (ignore if exists)
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO gene_annotations
-                (ensembl_gene_id, gene_symbol, entrez_id, gene_name, species)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (ensg_id, symbol, entrez, name, species),
-        )
-
-        # Add mappings for symbol to ensembl
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO id_mappings
-                (source_id, source_type, target_id, target_type, species)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (symbol, "gene_symbol", ensg_id, "ensembl_gene", species),
-        )
-
-        # Add mappings for entrez to symbol
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO id_mappings
-                (source_id, source_type, target_id, target_type, species)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (entrez, "entrez", symbol, "gene_symbol", species),
-        )
-
-        # Add mappings for ensembl to symbol
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO id_mappings
-                (source_id, source_type, target_id, target_type, species)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (ensg_id, "ensembl_gene", symbol, "gene_symbol", species),
-        )
-
-    conn.commit()
-    conn.close()
+    return GeneAnnotator()
 
 
 @pytest.fixture
@@ -395,8 +286,7 @@ def mock_phenotype_data():
             "title": [f"Sample_{i}" for i in range(n_samples)],
             "source_name_ch1": ["tissue"] * n_samples,
             "characteristics_ch1": [
-                f'disease state: {"disease" if i < 10 else "control"}'
-                for i in range(n_samples)
+                f'disease state: {"disease" if i < 10 else "control"}' for i in range(n_samples)
             ],
             "platform_id": ["GPL570"] * n_samples,
         },
@@ -443,8 +333,7 @@ def mock_geo_series_matrix():
                     "title": [f"Sample_{i}" for i in range(20)],
                     "source_name_ch1": ["tissue"] * 20,
                     "characteristics_ch1": [
-                        f'disease state: {"disease" if i < 10 else "control"}'
-                        for i in range(20)
+                        f'disease state: {"disease" if i < 10 else "control"}' for i in range(20)
                     ],
                 },
                 index=[f"GSM{i}" for i in range(20)],
@@ -459,6 +348,7 @@ def mock_geo_series_matrix():
             "platform_info": {"platform": "GPL570"},
         }
     }
+
 
 @pytest.fixture
 def mock_gem_object(mock_expression_data, mock_phenotype_data):
@@ -478,71 +368,28 @@ def mock_gem_object(mock_expression_data, mock_phenotype_data):
 
 
 @pytest.fixture
-def geo_data_loader(clean_cache_dir):
-    """Create a GEODataLoader instance for testing."""
-    return GEODataLoader(cache_dir=str(clean_cache_dir))
+def geo_loader(clean_cache_dir):
+    """Create a real DataLoaderFactory-backed GEO loader for testing.
+
+    Replaces the old fixture that instantiated a nonexistent
+    ``GEODataLoader`` class. The real entry point is
+    ``preprocessing.loader_factory.DataLoaderFactory``.
+    """
+    from preprocessing.loader_factory import DataLoaderFactory
+
+    return DataLoaderFactory.create_geo_loader(cache_dir=str(clean_cache_dir))
 
 
 @pytest.fixture
-def gene_annotation_engine(clean_cache_dir):
-    """Create a GeneAnnotationEngine instance for testing."""
-    return AnnotationLoader()
+def ensembl_gene_validator():
+    """Create a real EnsemblGeneValidator for testing.
 
+    Loads its reference set from bundled package data -- no network
+    connection, database, or mock is required.
+    """
+    from preprocessing.gene_validation import EnsemblGeneValidator
 
-@pytest.fixture
-def mock_mysql_connection():
-    """Mock MySQL database connection for testing."""
-    mock_conn = Mock()
-    mock_cursor = Mock()
-
-    # Configure mock cursor
-    mock_cursor.fetchall.return_value = [
-        ("GAPDH", "ENSG00000111640"),
-        ("SOD1", "ENSG00000142168"),
-        ("PTEN", "ENSG00000171862"),
-    ]
-
-    mock_conn.cursor.return_value = mock_cursor
-    mock_conn.is_connected.return_value = True
-
-    return mock_conn
-
-
-@pytest.fixture
-def mock_ensembl_response():
-    """Mock Ensembl database response data."""
-    return {
-        "GAPDH": "ENSG00000111640",
-        "SOD1": "ENSG00000142168",
-        "PTEN": "ENSG00000171862",
-        "TP53": "ENSG00000141510",
-    }
-
-
-@pytest.fixture(autouse=True)
-def setup_test_environment():
-    """Set up test environment before each test."""
-    # Suppress warnings during testing
-    import warnings
-
-    warnings.filterwarnings(
-        "ignore", category=UserWarning, message=".*mysql-connector-python.*"
-    )
-    warnings.filterwarnings(
-        "ignore", category=UserWarning, message=".*Database features will be limited.*"
-    )
-    warnings.filterwarnings(
-        "ignore", category=UserWarning, message=".*Some features will be limited.*"
-    )
-    warnings.filterwarnings("ignore", category=FutureWarning)
-
-    # Set random seed for reproducible tests
-    np.random.seed(42)
-
-    yield
-
-    # Cleanup after test
-    # Any global cleanup can go here
+    return EnsemblGeneValidator()
 
 
 @pytest.fixture
@@ -628,78 +475,6 @@ def mixed_identifier_types():
     }
 
 
-# Helper functions for tests
-
-def create_test_database(db_path: Path):
-    """Create a test database with sample gene annotation data."""
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-
-    # Create tables
-    cursor.execute("""
-        CREATE TABLE gene_annotations
-        (
-            ensembl_gene_id TEXT PRIMARY KEY,
-            gene_symbol     TEXT,
-            entrez_id       TEXT,
-            gene_name       TEXT,
-            species         TEXT DEFAULT 'homo_sapiens'
-        )
-        """)
-
-    cursor.execute("""
-        CREATE TABLE id_mappings
-        (
-            source_id   TEXT,
-            source_type TEXT,
-            target_id   TEXT,
-            target_type TEXT,
-            species     TEXT DEFAULT 'homo_sapiens',
-            PRIMARY KEY (source_id, source_type, target_type, species)
-        )
-        """)
-
-    # Insert test data
-    test_genes = [
-        ("ENSG00000111640", "GAPDH", "960", "glyceraldehyde-3-phosphate dehydrogenase"),
-        ("ENSG00000142168", "SOD1", "6647", "superoxide dismutase 1"),
-        ("ENSG00000171862", "PTEN", "5728", "phosphatase and tensin homolog"),
-        ("ENSG00000141510", "TP53", "7157", "tumor protein p53"),
-    ]
-
-    for ensg_id, symbol, entrez, name in test_genes:
-        cursor.execute(
-            """
-            INSERT INTO gene_annotations
-                (ensembl_gene_id, gene_symbol, entrez_id, gene_name)
-            VALUES (?, ?, ?, ?)
-            """,
-            (ensg_id, symbol, entrez, name),
-        )
-
-        # Add mappings
-        cursor.execute(
-            """
-            INSERT INTO id_mappings
-                (source_id, source_type, target_id, target_type)
-            VALUES (?, ?, ?, ?)
-            """,
-            (symbol, "gene_symbol", ensg_id, "ensembl_gene"),
-        )
-
-        cursor.execute(
-            """
-            INSERT INTO id_mappings
-                (source_id, source_type, target_id, target_type)
-            VALUES (?, ?, ?, ?)
-            """,
-            (entrez, "entrez", symbol, "gene_symbol"),
-        )
-
-    conn.commit()
-    conn.close()
-
-
 # Helper functions for parameterized tests
 def generate_identifier_type_combinations():
     """Generate combinations of identifier types for testing."""
@@ -749,57 +524,3 @@ def assert_valid_gem_object(gem):
     assert isinstance(gem["expr"], pd.DataFrame)
     assert len(gem["keys"]) == gem["expr"].shape[0]
     assert len(gem["class"]) in [gem["expr"].shape[1], len(gem["expr"].columns)]
-
-
-# Custom pytest markers
-pytestmark = pytest.mark.geo
-
-
-# Test data generators for parameterized tests
-def generate_test_gse_ids():
-    """Generate test GSE IDs for parameterized tests."""
-    return ["GSE12345", "GSE67890", "GSE11111", "GSE22222"]
-
-
-def generate_test_platforms():
-    """Generate test platform IDs for parameterized tests."""
-    return ["GPL570", "GPL96", "GPL6244", "GPL10558"]
-
-
-def generate_identifier_type_combinations():
-    """Generate combinations of identifier types for testing."""
-    types = ["gene_symbol", "ensembl_gene", "entrez", "refseq_mrna"]
-    combinations = []
-
-    for source in types:
-        for target in types:
-            if source != target:
-                combinations.append((source, target))
-
-    return combinations
-
-
-@pytest.fixture(autouse=True)
-def setup_test_environment():
-    """Set up test environment before each test."""
-    # Suppress warnings during testing
-    import warnings
-
-    warnings.filterwarnings(
-        "ignore", category=UserWarning, message=".*mysql-connector-python.*"
-    )
-    warnings.filterwarnings(
-        "ignore", category=UserWarning, message=".*Database features will be limited.*"
-    )
-    warnings.filterwarnings(
-        "ignore", category=UserWarning, message=".*Some features will be limited.*"
-    )
-    warnings.filterwarnings("ignore", category=FutureWarning)
-
-    # Set random seed for reproducible tests
-    np.random.seed(42)
-
-    yield
-
-    # Cleanup after test
-    # Any global cleanup can go here

@@ -156,13 +156,9 @@ class RefactoringValidationTest:
         data = pd.DataFrame(
             {
                 "effect_size": np.random.normal(0, 0.5, n_genes),
-                "effect_fdr": np.random.beta(
-                    2, 8, n_genes
-                ),  # Skewed towards smaller values
+                "effect_fdr": np.random.beta(2, 8, n_genes),  # Skewed towards smaller values
                 "fisher_score": np.random.gamma(2, 2, n_genes),
-                "heterogeneity": np.random.beta(
-                    1, 9, n_genes
-                ),  # Mostly low heterogeneity
+                "heterogeneity": np.random.beta(1, 9, n_genes),  # Mostly low heterogeneity
                 "heterogeneity_pval": np.random.uniform(0, 1, n_genes),
                 "number_studies": np.random.randint(3, 15, n_genes),
             },
@@ -228,9 +224,7 @@ class RefactoringValidationTest:
         def test_statistical_analyzer():
             from metaintegrator.scoring_core import SummaryConfig
 
-            config = SummaryConfig(
-                include_distributions=True, include_correlations=True
-            )
+            config = SummaryConfig(include_distributions=True, include_correlations=True)
             analyzer = StatisticalAnalyzer(config)
 
             # Test with actual data
@@ -320,9 +314,7 @@ class RefactoringValidationTest:
             )
             scorer = EnhancedGeneScorer(config)
 
-            scores = scorer.score_genes(
-                self.test_meta_object, ScoringMethod.EFFECT_SIZE
-            )
+            scores = scorer.score_genes(self.test_meta_object, ScoringMethod.EFFECT_SIZE)
 
             # Check if confidence intervals were computed
             ci = scorer.get_last_confidence_intervals()
@@ -417,9 +409,7 @@ class RefactoringValidationTest:
             legacy_config = SummaryConfig()
             legacy_summarizer = ResultSummarizer(legacy_config)
 
-            summary = legacy_summarizer.summarize(
-                self.test_meta_object["original_result"]
-            )
+            summary = legacy_summarizer.summarize(self.test_meta_object["original_result"])
             assert summary is not None
 
         self._run_test("Enhanced Summarizer", test_enhanced_summarizer)
@@ -492,9 +482,7 @@ class RefactoringValidationTest:
             }
             legacy_orchestrator = MetaIntegratorOrchestrator(legacy_config)
 
-            results = legacy_orchestrator.run_analysis(
-                self.test_meta_object, "legacy_test"
-            )
+            results = legacy_orchestrator.run_analysis(self.test_meta_object, "legacy_test")
 
             assert "success" in results
             assert "filter_results" in results or "errors" in results
@@ -534,9 +522,7 @@ class RefactoringValidationTest:
         """Test new features added in refactoring."""
 
         def test_adaptive_thresholds():
-            config = EnhancedFilterConfig(
-                adaptive_thresholds=True, min_effect_size_percentile=50
-            )
+            config = EnhancedFilterConfig(adaptive_thresholds=True, min_effect_size_percentile=50)
             filter_obj = EnhancedMetaIntegratorFilter(config)
 
             results = filter_obj.filter_meta_analysis(self.test_meta_object, "adaptive")
@@ -545,9 +531,7 @@ class RefactoringValidationTest:
             assert "effect_size" in results.adaptive_thresholds_used
 
         def test_gene_prioritization():
-            config = EnhancedFilterConfig(
-                prioritize_by_strength=True, max_genes_per_direction=10
-            )
+            config = EnhancedFilterConfig(prioritize_by_strength=True, max_genes_per_direction=10)
             filter_obj = EnhancedMetaIntegratorFilter(config)
 
             results = filter_obj.filter_meta_analysis(self.test_meta_object, "standard")
@@ -600,16 +584,13 @@ class RefactoringValidationTest:
                 "modules_imported": IMPORTS_SUCCESSFUL,
                 "core_functionality": passed_tests > total_tests * 0.7,
                 "integration_working": any(
-                    "Workflow" in r["test_name"] and r["success"]
-                    for r in self.test_results
+                    "Workflow" in r["test_name"] and r["success"] for r in self.test_results
                 ),
                 "backward_compatibility": any(
-                    "Legacy" in r["test_name"] and r["success"]
-                    for r in self.test_results
+                    "Legacy" in r["test_name"] and r["success"] for r in self.test_results
                 ),
                 "new_features_working": any(
-                    "Adaptive" in r["test_name"] and r["success"]
-                    for r in self.test_results
+                    "Adaptive" in r["test_name"] and r["success"] for r in self.test_results
                 ),
             },
         }
@@ -654,13 +635,9 @@ def main():
         if "refactoring_validation" in results:
             val = results["refactoring_validation"]
             print(f"  - Modules imported: {'✅' if val['modules_imported'] else '❌'}")
-            print(
-                f"  - Core functionality: {'✅' if val['core_functionality'] else '❌'}"
-            )
+            print(f"  - Core functionality: {'✅' if val['core_functionality'] else '❌'}")
             print(f"  - Integration: {'✅' if val['integration_working'] else '❌'}")
-            print(
-                f"  - Backward compatibility: {'✅' if val['backward_compatibility'] else '❌'}"
-            )
+            print(f"  - Backward compatibility: {'✅' if val['backward_compatibility'] else '❌'}")
             print(f"  - New features: {'✅' if val['new_features_working'] else '❌'}")
 
     return results

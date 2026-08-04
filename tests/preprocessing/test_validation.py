@@ -69,9 +69,7 @@ def valid_geo_dataset(valid_expression_matrix, valid_phenotype_data):
         "fData": pd.DataFrame(
             {
                 "ID": valid_expression_matrix.index,
-                "Gene Symbol": [
-                    f"GENE{i % 100}" for i in range(len(valid_expression_matrix))
-                ],
+                "Gene Symbol": [f"GENE{i % 100}" for i in range(len(valid_expression_matrix))],
             }
         ),
     }
@@ -83,9 +81,7 @@ def valid_annotation():
     return pd.DataFrame(
         {
             "ID": [f"PROBE_{i}" for i in range(1000)],
-            "Gene Symbol": [
-                f"GENE{i % 100}" if i % 10 != 0 else None for i in range(1000)
-            ],
+            "Gene Symbol": [f"GENE{i % 100}" if i % 10 != 0 else None for i in range(1000)],
         }
     )
 
@@ -186,9 +182,7 @@ class TestValidatePhenotypeData:
 
     def test_valid_phenotype(self, valid_phenotype_data, valid_expression_matrix):
         """Test validation of valid phenotype data."""
-        is_valid, errors = validate_phenotype_data(
-            valid_phenotype_data, valid_expression_matrix
-        )
+        is_valid, errors = validate_phenotype_data(valid_phenotype_data, valid_expression_matrix)
 
         assert is_valid == True
         assert len(errors) == 0
@@ -197,9 +191,7 @@ class TestValidatePhenotypeData:
         """Test phenotype with mismatched sample count."""
         expr = pd.DataFrame(np.random.randn(100, 10))  # 10 samples
 
-        is_valid, errors = validate_phenotype_data(
-            valid_phenotype_data, expr  # 20 samples
-        )
+        is_valid, errors = validate_phenotype_data(valid_phenotype_data, expr)  # 20 samples
 
         assert is_valid == False
         assert any("mismatch" in err.lower() for err in errors)
@@ -269,9 +261,7 @@ class TestValidateGEODataset:
     def test_fdata_length_mismatch(self, valid_geo_dataset):
         """Test fData length mismatch."""
         dataset = valid_geo_dataset.copy()
-        dataset["fData"] = pd.DataFrame(
-            {"ID": [f"PROBE_{i}" for i in range(500)]}  # Wrong length
-        )
+        dataset["fData"] = pd.DataFrame({"ID": [f"PROBE_{i}" for i in range(500)]})  # Wrong length
 
         is_valid, errors = validate_geo_dataset(dataset)
 
@@ -315,9 +305,7 @@ class TestValidatePlatformAnnotation:
 
     def test_annotation_missing_id_column(self):
         """Test annotation missing ID column."""
-        bad_annot = pd.DataFrame(
-            {"Symbol": ["GENE1", "GENE2"], "Name": ["Gene 1", "Gene 2"]}
-        )
+        bad_annot = pd.DataFrame({"Symbol": ["GENE1", "GENE2"], "Name": ["Gene 1", "Gene 2"]})
 
         is_valid, errors, stats = validate_platform_annotation(bad_annot)
 
@@ -367,9 +355,7 @@ class TestCheckDataCompatibility:
     def test_low_gene_overlap_warning(self):
         """Test warning for low gene overlap."""
         dataset1 = {
-            "expr": pd.DataFrame(
-                np.random.randn(100, 5), index=[f"Gene_{i}" for i in range(100)]
-            ),
+            "expr": pd.DataFrame(np.random.randn(100, 5), index=[f"Gene_{i}" for i in range(100)]),
             "pheno": pd.DataFrame(),
             "platform_info": {},
         }
@@ -381,9 +367,7 @@ class TestCheckDataCompatibility:
             "platform_info": {},
         }
 
-        is_compatible, warnings_list, stats = check_data_compatibility(
-            [dataset1, dataset2]
-        )
+        is_compatible, warnings_list, stats = check_data_compatibility([dataset1, dataset2])
 
         assert stats["common_genes"] == 0
         assert any("Low gene overlap" in w for w in warnings_list)

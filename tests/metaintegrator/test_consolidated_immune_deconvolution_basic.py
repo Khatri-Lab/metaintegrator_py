@@ -64,10 +64,7 @@ class TestImmunoStatesDeconvolver:
         deconvolver = ImmunoStatesDeconvolver(self.basis_matrix)
         assert deconvolver.basis_matrix is not None
         assert deconvolver.basis_matrix.shape == (100, 13)
-        assert (
-            list(deconvolver.basis_matrix.columns)
-            == ImmunoStatesDeconvolver.DEFAULT_CELL_TYPES
-        )
+        assert list(deconvolver.basis_matrix.columns) == ImmunoStatesDeconvolver.DEFAULT_CELL_TYPES
 
     def test_init_without_basis_matrix(self):
         """Test initialization without basis matrix (loads default)."""
@@ -88,9 +85,7 @@ class TestImmunoStatesDeconvolver:
 
         assert deconvolver.basis_matrix is not None
         assert isinstance(deconvolver.basis_matrix, pd.DataFrame)
-        assert deconvolver.basis_matrix.shape[1] == len(
-            ImmunoStatesDeconvolver.DEFAULT_CELL_TYPES
-        )
+        assert deconvolver.basis_matrix.shape[1] == len(ImmunoStatesDeconvolver.DEFAULT_CELL_TYPES)
 
     def test_get_os_type(self):
         """Test OS type detection."""
@@ -222,9 +217,7 @@ class TestImmunoStatesDeconvolver:
 
         assert result is not None
         assert result.shape == matrix.shape
-        assert not np.array_equal(
-            result, matrix
-        )  # Should be different after normalization
+        assert not np.array_equal(result, matrix)  # Should be different after normalization
 
     def test_enhanced_quantile_normalize_error_handling(self):
         """Test quantile normalization error handling."""
@@ -269,9 +262,7 @@ class TestImmunoStatesDeconvolver:
     def test_enhanced_deconvolve_sample_insufficient_genes(self):
         """Test single sample deconvolution with insufficient genes."""
         sample_idx = 0
-        expr_vector = np.array(
-            [1, 2, np.nan, np.nan, np.nan]
-        )  # Only 2 valid genes < 10
+        expr_vector = np.array([1, 2, np.nan, np.nan, np.nan])  # Only 2 valid genes < 10
         basis = np.random.randn(5, 3)
         cell_types = ["Type1", "Type2", "Type3"]
 
@@ -342,12 +333,8 @@ class TestImmunoStatesDeconvolver:
         """Test running IS deconvolution successfully."""
         expression_matrix = np.random.randn(50, 20)  # 50 genes, 20 samples
 
-        with patch.object(
-            self.deconvolver, "_enhanced_is_deconvolution"
-        ) as mock_deconv:
-            mock_deconv.return_value = pd.DataFrame(
-                {"sample": ["S1", "S2"], "Type1": [0.5, 0.6]}
-            )
+        with patch.object(self.deconvolver, "_enhanced_is_deconvolution") as mock_deconv:
+            mock_deconv.return_value = pd.DataFrame({"sample": ["S1", "S2"], "Type1": [0.5, 0.6]})
             result = self.deconvolver._enhanced_is_deconvolution(expression_matrix)
 
         assert result is not None
@@ -649,9 +636,7 @@ class TestImmunoStatesMetaAnalyzer:
 
     def test_handle_excluded_datasets(self):
         """Test handling of excluded datasets."""
-        immuno_result = {
-            "originalData": {"dataset1": {}, "dataset2": {}, "dataset3": {}}
-        }
+        immuno_result = {"originalData": {"dataset1": {}, "dataset2": {}, "dataset3": {}}}
         successful_names = ["dataset1", "dataset3"]
 
         with warnings.catch_warnings(record=True) as w:
@@ -698,9 +683,7 @@ class TestImmunoStatesMetaAnalyzer:
 
     def test_prepare_dataset_results_without_sample_column(self):
         """Test dataset results preparation without sample column."""
-        immuno_expr = pd.DataFrame(
-            {"Type1": [0.3, 0.4], "Type2": [0.7, 0.6], "Type3": [0.1, 0.2]}
-        )
+        immuno_expr = pd.DataFrame({"Type1": [0.3, 0.4], "Type2": [0.7, 0.6], "Type3": [0.1, 0.2]})
 
         result = self.analyzer._prepare_dataset_results(immuno_expr)
 
@@ -822,9 +805,7 @@ class TestImmunoStatesUtils:
 
     def test_validate_deconvolution_results_valid(self):
         """Test validation of valid deconvolution results."""
-        is_valid, errors = ImmunoStatesUtils.validate_deconvolution_results(
-            self.sample_results
-        )
+        is_valid, errors = ImmunoStatesUtils.validate_deconvolution_results(self.sample_results)
 
         assert is_valid is True
         assert len(errors) == 0
@@ -843,9 +824,7 @@ class TestImmunoStatesUtils:
             "dataset2": None,  # No results
         }
 
-        is_valid, errors = ImmunoStatesUtils.validate_deconvolution_results(
-            invalid_results
-        )
+        is_valid, errors = ImmunoStatesUtils.validate_deconvolution_results(invalid_results)
 
         assert is_valid is False
         assert len(errors) > 0
@@ -915,9 +894,7 @@ class TestImmunoStatesUtils:
     def test_export_deconvolution_results(self):
         """Test exporting deconvolution results to CSV."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            ImmunoStatesUtils.export_deconvolution_results(
-                self.sample_results, temp_dir
-            )
+            ImmunoStatesUtils.export_deconvolution_results(self.sample_results, temp_dir)
 
             # Check that files were created
             files = os.listdir(temp_dir)

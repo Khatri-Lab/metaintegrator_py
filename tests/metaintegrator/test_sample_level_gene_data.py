@@ -107,9 +107,7 @@ class TestSampleLevelGeneDataProcessor:
 
         simple_keys = ["GENE1", "GENE2,GENE3"]
 
-        result = SampleLevelGeneDataProcessor._expand_df_sample_level(
-            simple_df, simple_keys
-        )
+        result = SampleLevelGeneDataProcessor._expand_df_sample_level(simple_df, simple_keys)
 
         # Should have 3 rows (1 for GENE1, 2 for GENE2,GENE3)
         assert len(result) == 3
@@ -127,9 +125,7 @@ class TestSampleLevelGeneDataProcessor:
 
         simple_keys = ["GENE1, GENE2 , GENE3"]
 
-        result = SampleLevelGeneDataProcessor._expand_df_sample_level(
-            simple_df, simple_keys
-        )
+        result = SampleLevelGeneDataProcessor._expand_df_sample_level(simple_df, simple_keys)
 
         # Should strip spaces from gene names
         expected_genes = ["GENE1", "GENE2", "GENE3"]
@@ -137,9 +133,7 @@ class TestSampleLevelGeneDataProcessor:
 
     def test_summarize_split_single_probe(self):
         """Test summarization with single probe per gene."""
-        single_probe_data = pd.DataFrame(
-            {"Sample1": [5.0], "Sample2": [6.0], "keys": ["GENE1"]}
-        )
+        single_probe_data = pd.DataFrame({"Sample1": [5.0], "Sample2": [6.0], "keys": ["GENE1"]})
 
         result = SampleLevelGeneDataProcessor._summarize_split(single_probe_data)
 
@@ -381,9 +375,7 @@ class TestEdgeCases:
             "keys": ["GENE1", "GENE2", "GENE3"],
         }
 
-        result = getSampleLevelGeneData(
-            single_probe_dataset, ["GENE1", "GENE2", "GENE3"]
-        )
+        result = getSampleLevelGeneData(single_probe_dataset, ["GENE1", "GENE2", "GENE3"])
 
         # Should match input exactly (no averaging needed)
         assert result.shape == (3, 2)

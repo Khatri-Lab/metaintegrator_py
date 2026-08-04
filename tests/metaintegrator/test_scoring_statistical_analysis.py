@@ -95,9 +95,7 @@ def empty_dataframe():
 @pytest.fixture
 def single_row_dataframe():
     """Create a single-row DataFrame for edge case testing."""
-    return pd.DataFrame(
-        {"gene_id": ["GENE_001"], "pvalue": [0.05], "effect_size": [1.5]}
-    )
+    return pd.DataFrame({"gene_id": ["GENE_001"], "pvalue": [0.05], "effect_size": [1.5]})
 
 
 @pytest.fixture
@@ -247,9 +245,7 @@ class TestStatisticalAnalyzer:
         analyzer = StatisticalAnalyzer(config=sample_config)
         df = pd.DataFrame({"empty_col": []})
 
-        with patch.object(
-            DataFrameUtils, "get_numeric_columns", return_value=["empty_col"]
-        ):
+        with patch.object(DataFrameUtils, "get_numeric_columns", return_value=["empty_col"]):
             result = analyzer._calculate_basic_statistics(df)
 
         assert result == {}
@@ -259,9 +255,7 @@ class TestStatisticalAnalyzer:
         analyzer = StatisticalAnalyzer(config=sample_config)
         df = pd.DataFrame({"zero_mean": [0, 0, 0, 0, 0]})
 
-        with patch.object(
-            DataFrameUtils, "get_numeric_columns", return_value=["zero_mean"]
-        ):
+        with patch.object(DataFrameUtils, "get_numeric_columns", return_value=["zero_mean"]):
             result = analyzer._calculate_basic_statistics(df)
 
         assert np.isnan(result["zero_mean"]["cv"])
@@ -303,9 +297,7 @@ class TestStatisticalAnalyzer:
         analyzer = StatisticalAnalyzer(config=sample_config)
         df = pd.DataFrame({"small_col": [1, 2]})  # Only 2 values
 
-        with patch.object(
-            DataFrameUtils, "get_numeric_columns", return_value=["small_col"]
-        ):
+        with patch.object(DataFrameUtils, "get_numeric_columns", return_value=["small_col"]):
             result = analyzer._calculate_distribution_statistics(df)
 
         assert result == {}
@@ -315,9 +307,7 @@ class TestStatisticalAnalyzer:
         analyzer = StatisticalAnalyzer(config=sample_config)
         df = pd.DataFrame({"problematic_col": np.random.normal(0, 1, 100)})
 
-        with patch.object(
-            DataFrameUtils, "get_numeric_columns", return_value=["problematic_col"]
-        ):
+        with patch.object(DataFrameUtils, "get_numeric_columns", return_value=["problematic_col"]):
             with patch("scipy.stats.shapiro", side_effect=Exception("Test error")):
                 result = analyzer._calculate_distribution_statistics(df)
 
@@ -358,16 +348,12 @@ class TestStatisticalAnalyzer:
         assert "error" in result
         assert "at least 2 numeric columns" in result["error"]
 
-    def test_calculate_correlation_statistics_error_handling(
-        self, sample_config, sample_dataframe
-    ):
+    def test_calculate_correlation_statistics_error_handling(self, sample_config, sample_dataframe):
         """Test correlation statistics error handling."""
         analyzer = StatisticalAnalyzer(config=sample_config)
 
         # Mock the _find_high_correlations method to raise an exception inside the try-catch block
-        with patch.object(
-            analyzer, "_find_high_correlations", side_effect=Exception("Test error")
-        ):
+        with patch.object(analyzer, "_find_high_correlations", side_effect=Exception("Test error")):
             result = analyzer._calculate_correlation_statistics(sample_dataframe)
 
         assert "error" in result
@@ -385,9 +371,7 @@ class TestStatisticalAnalyzer:
         assert len(significance_keys) > 0
 
         # Should find effect_size and log_fold_change as effect columns
-        effect_keys = [
-            k for k in result.keys() if "effect_size" in k or "log_fold_change" in k
-        ]
+        effect_keys = [k for k in result.keys() if "effect_size" in k or "log_fold_change" in k]
         assert len(effect_keys) > 0
 
     def test_fit_best_distribution(self, sample_config, normal_distribution_data):
@@ -531,9 +515,7 @@ def test_correlation_error_handling():
         analyzer = StatisticalAnalyzer(config=config)
 
         # Mock the _find_high_correlations method to raise an exception inside the try-catch block
-        with patch.object(
-            analyzer, "_find_high_correlations", side_effect=Exception("Test error")
-        ):
+        with patch.object(analyzer, "_find_high_correlations", side_effect=Exception("Test error")):
             result = analyzer._calculate_correlation_statistics(sample_dataframe)
 
         # Check that error was properly handled
@@ -774,9 +756,7 @@ class TestDistributionAnalyzer:
         """Test bootstrap confidence interval calculation."""
         analyzer = DistributionAnalyzer()
 
-        result = analyzer._bootstrap_ci(
-            normal_distribution_data, n_bootstrap=100, confidence=0.95
-        )
+        result = analyzer._bootstrap_ci(normal_distribution_data, n_bootstrap=100, confidence=0.95)
 
         expected_keys = ["mean_ci", "std_ci", "median_ci"]
 
@@ -790,12 +770,8 @@ class TestDistributionAnalyzer:
         """Test bootstrap CI with different confidence levels."""
         analyzer = DistributionAnalyzer()
 
-        ci_90 = analyzer._bootstrap_ci(
-            normal_distribution_data, n_bootstrap=50, confidence=0.90
-        )
-        ci_99 = analyzer._bootstrap_ci(
-            normal_distribution_data, n_bootstrap=50, confidence=0.99
-        )
+        ci_90 = analyzer._bootstrap_ci(normal_distribution_data, n_bootstrap=50, confidence=0.90)
+        ci_99 = analyzer._bootstrap_ci(normal_distribution_data, n_bootstrap=50, confidence=0.99)
 
         # 99% CI should be wider than 90% CI
         assert (ci_99["mean_ci"][1] - ci_99["mean_ci"][0]) > (
@@ -818,9 +794,7 @@ class TestDistributionAnalyzer:
         values = [result[f"p{p}"] for p in expected_percentiles]
         assert all(values[i] <= values[i + 1] for i in range(len(values) - 1))
 
-    def test_compare_distributions(
-        self, normal_distribution_data, skewed_distribution_data
-    ):
+    def test_compare_distributions(self, normal_distribution_data, skewed_distribution_data):
         """Test distribution comparison functionality."""
         analyzer = DistributionAnalyzer()
 
@@ -844,9 +818,7 @@ class TestDistributionAnalyzer:
 
         assert result == {}  # No comparisons for single dataset
 
-    def test_compare_two_distributions(
-        self, normal_distribution_data, skewed_distribution_data
-    ):
+    def test_compare_two_distributions(self, normal_distribution_data, skewed_distribution_data):
         """Test two-distribution comparison."""
         analyzer = DistributionAnalyzer()
 

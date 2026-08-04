@@ -53,9 +53,7 @@ class TestCleanSymbolDirect:
         assert annotator.clean_symbol("CD6", is_assignment=False) == "CD6"
 
     def test_triple_slash_separator(self, annotator):
-        assert (
-            annotator.clean_symbol("CD6 /// IL2RG", is_assignment=False) == "CD6,IL2RG"
-        )
+        assert annotator.clean_symbol("CD6 /// IL2RG", is_assignment=False) == "CD6,IL2RG"
 
     def test_semicolon_separator(self, annotator):
         assert annotator.clean_symbol("BRCA1;TP53", is_assignment=False) == "BRCA1,TP53"
@@ -92,9 +90,7 @@ class TestCleanSymbolDirect:
 
     def test_double_slash_within_entry(self, annotator):
         """Double-slash (//) splits fields within an entry."""
-        result = annotator.clean_symbol(
-            "TP53 // tumor protein p53", is_assignment=False
-        )
+        result = annotator.clean_symbol("TP53 // tumor protein p53", is_assignment=False)
         assert result == "TP53"
 
 
@@ -309,9 +305,7 @@ class TestRealWorldEdgeCases:
 
     def test_gpl96_multi_gene_probe(self, annotator):
         """GPL96 Gene Symbol: 'IGLC1 /// IGLC2 /// IGLC7'"""
-        result = annotator.clean_symbol(
-            "IGLC1 /// IGLC2 /// IGLC7", is_assignment=False
-        )
+        result = annotator.clean_symbol("IGLC1 /// IGLC2 /// IGLC7", is_assignment=False)
         assert result == "IGLC1,IGLC2,IGLC7"
 
     def test_gpl6244_assignment_with_description(self, annotator):

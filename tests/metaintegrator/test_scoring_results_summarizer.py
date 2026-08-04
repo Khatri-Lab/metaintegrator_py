@@ -61,12 +61,8 @@ def sample_results_df():
             "fdr": np.random.beta(1.5, 8.5, n_genes),  # Similar but slightly larger
             "log_fold_change": np.random.normal(0, 2, n_genes),
             "beta": np.random.normal(0, 1, n_genes),
-            "pathway": np.random.choice(
-                ["pathway_A", "pathway_B", "pathway_C"], n_genes
-            ),
-            "study": np.random.choice(
-                ["study_1", "study_2", "study_3", "study_4"], n_genes
-            ),
+            "pathway": np.random.choice(["pathway_A", "pathway_B", "pathway_C"], n_genes),
+            "study": np.random.choice(["study_1", "study_2", "study_3", "study_4"], n_genes),
             "expression_level": np.random.lognormal(0, 1, n_genes),
             "confidence_interval_low": np.random.normal(-1, 0.5, n_genes),
             "confidence_interval_high": np.random.normal(1, 0.5, n_genes),
@@ -153,9 +149,7 @@ class TestEnhancedSummaryConfig:
 
         # Check inherited defaults
         assert config.include_distributions == True
-        assert (
-            config.include_correlations == False
-        )  # Default is False in SummaryConfig base class
+        assert config.include_correlations == False  # Default is False in SummaryConfig base class
         assert config.significance_thresholds == [0.05, 0.01, 0.001]
 
         # Check enhanced defaults
@@ -192,9 +186,7 @@ class TestEnhancedSummaryConfig:
 
     def test_invalid_visualization_format(self):
         """Test validation of visualization_format parameter."""
-        with pytest.raises(
-            ValueError, match="visualization_format must be one of: png, svg, pdf"
-        ):
+        with pytest.raises(ValueError, match="visualization_format must be one of: png, svg, pdf"):
             EnhancedSummaryConfig(visualization_format="invalid")
 
     def test_invalid_plot_style(self):
@@ -294,16 +286,12 @@ class TestSummarizeResults:
     """Test the main summarize_results method."""
 
     def get_enhanced_result_summarizer_obj_with_output(self):
-        export_config = ExportConfig(
-            base_output_dir=Path("/tmp/unittest_metaintegrator")
-        )
+        export_config = ExportConfig(base_output_dir=Path("/tmp/unittest_metaintegrator"))
 
         summarizer = EnhancedResultSummarizer(export_config=export_config)
         return summarizer
 
-    @patch(
-        "metaintegrator.scoring_results_summarizer.MetaAnalysisValidator.validate_dataframe"
-    )
+    @patch("metaintegrator.scoring_results_summarizer.MetaAnalysisValidator.validate_dataframe")
     def test_summarize_results_basic(self, mock_validate, sample_results_df):
         """Test basic summarize_results functionality."""
         # Create mocks
@@ -315,9 +303,7 @@ class TestSummarizeResults:
         }
 
         mock_export_engine = Mock()
-        mock_export_engine.export_analysis_results.return_value = {
-            "csv": "/path/to/results.csv"
-        }
+        mock_export_engine.export_analysis_results.return_value = {"csv": "/path/to/results.csv"}
         mock_export_engine.export_statistical_summary.return_value = {
             "json": "/path/to/summary.json"
         }
@@ -373,12 +359,8 @@ class TestSummarizeResults:
         with patch(
             "metaintegrator.scoring_results_summarizer.MetaAnalysisValidator.validate_dataframe"
         ):
-            export_config = ExportConfig(
-                base_output_dir=Path("/tmp/unittest_metaintegrator")
-            )
-            summarizer = EnhancedResultSummarizer(
-                config=config, export_config=export_config
-            )
+            export_config = ExportConfig(base_output_dir=Path("/tmp/unittest_metaintegrator"))
+            summarizer = EnhancedResultSummarizer(config=config, export_config=export_config)
 
             result = summarizer.summarize_results(sample_results_df, "test_analysis")
 
@@ -386,9 +368,7 @@ class TestSummarizeResults:
             assert result["pathway_analysis"] is not None
             assert result["study_analysis"] is not None
 
-    @patch(
-        "metaintegrator.scoring_results_summarizer.MetaAnalysisValidator.validate_dataframe"
-    )
+    @patch("metaintegrator.scoring_results_summarizer.MetaAnalysisValidator.validate_dataframe")
     def test_summarize_results_validation_error(self, mock_validate, sample_results_df):
         """Test summarize_results with validation error."""
         mock_validate.side_effect = ValidationError("Invalid DataFrame")
@@ -468,9 +448,7 @@ class TestAnalyzeGeneLevel:
         assert result["total_genes"] == 0
         assert len(result["gene_statistics"]) == 0
 
-    def test_analyze_gene_level_with_missing_data(
-        self, sample_results_with_missing_data
-    ):
+    def test_analyze_gene_level_with_missing_data(self, sample_results_with_missing_data):
         """Test gene analysis with missing data."""
         summarizer = EnhancedResultSummarizer()
         result = summarizer._analyze_gene_level(sample_results_with_missing_data)
@@ -496,9 +474,7 @@ class TestAssessDataQuality:
 
         assert 0 <= result["overall_score"] <= 100
 
-    def test_assess_data_quality_with_missing_data(
-        self, sample_results_with_missing_data
-    ):
+    def test_assess_data_quality_with_missing_data(self, sample_results_with_missing_data):
         """Test quality assessment with missing data."""
         summarizer = EnhancedResultSummarizer()
         result = summarizer._assess_data_quality(sample_results_with_missing_data)
@@ -827,9 +803,7 @@ class TestHelperMethods:
             "data_consistency": {"issues": ["Duplicate identifiers"]},
         }
 
-        recommendations = summarizer._generate_quality_recommendations(
-            quality_assessment
-        )
+        recommendations = summarizer._generate_quality_recommendations(quality_assessment)
 
         assert len(recommendations) == 3
         assert any("imputation" in rec.lower() for rec in recommendations)
@@ -880,9 +854,7 @@ class TestVisualizationAndExport:
     def test_auto_export(self, sample_results_df):
         """Test auto-export functionality."""
         mock_export_engine = Mock()
-        mock_export_engine.export_analysis_results.return_value = {
-            "csv": "/path/to/results.csv"
-        }
+        mock_export_engine.export_analysis_results.return_value = {"csv": "/path/to/results.csv"}
         mock_export_engine.export_statistical_summary.return_value = {
             "json": "/path/to/summary.json"
         }
@@ -901,9 +873,7 @@ class TestVisualizationAndExport:
     def test_auto_export_error_handling(self, sample_results_df):
         """Test auto-export error handling."""
         mock_export_engine = Mock()
-        mock_export_engine.export_analysis_results.side_effect = Exception(
-            "Export failed"
-        )
+        mock_export_engine.export_analysis_results.side_effect = Exception("Export failed")
 
         summarizer = EnhancedResultSummarizer()
         summarizer.export_engine = mock_export_engine
@@ -972,9 +942,7 @@ class TestResultSummarizer:
         mock_summarize.assert_called_once_with(sample_results_df)
 
     @patch.object(EnhancedResultSummarizer, "summarize_results")
-    def test_summarize_method_with_no_statistical_summary(
-        self, mock_summarize, sample_results_df
-    ):
+    def test_summarize_method_with_no_statistical_summary(self, mock_summarize, sample_results_df):
         """Test legacy summarize method when no statistical summary exists."""
         mock_comprehensive = {"other_data": "test"}
         mock_summarize.return_value = mock_comprehensive
@@ -1032,9 +1000,7 @@ class TestIntegration:
             "metaintegrator.scoring_results_summarizer.MetaAnalysisValidator.validate_dataframe"
         ):
             summarizer = EnhancedResultSummarizer(config=config)
-            result = summarizer.summarize_results(
-                sample_results_df, "comprehensive_test"
-            )
+            result = summarizer.summarize_results(sample_results_df, "comprehensive_test")
 
             # Check all components are present and non-None
             assert result["trend_analysis"] is not None
@@ -1086,9 +1052,7 @@ class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
     def get_enhanced_result_summarizer_obj_with_output(self):
-        export_config = ExportConfig(
-            base_output_dir=Path("/tmp/unittest_metaintegrator")
-        )
+        export_config = ExportConfig(base_output_dir=Path("/tmp/unittest_metaintegrator"))
 
         summarizer = EnhancedResultSummarizer(export_config=export_config)
         return summarizer
@@ -1180,9 +1144,7 @@ class TestEdgeCases:
         ):
             summarizer = self.get_enhanced_result_summarizer_obj_with_output()
 
-            result = summarizer.summarize_results(
-                large_effects_df, "large_effects_test"
-            )
+            result = summarizer.summarize_results(large_effects_df, "large_effects_test")
 
             # Should detect extreme values in quality assessment
             issues = result["quality_assessment"]["data_consistency"]["issues"]

@@ -84,21 +84,13 @@ class TestBiologicalAnnotator:
         assert "KDM5D" in annotator.default_male_genes
 
         # Verify they are copies, not references
-        assert (
-            annotator.default_female_genes
-            is not ba.BiologicalAnnotator.DEFAULT_FEMALE_GENES
-        )
-        assert (
-            annotator.default_male_genes
-            is not ba.BiologicalAnnotator.DEFAULT_MALE_GENES
-        )
+        assert annotator.default_female_genes is not ba.BiologicalAnnotator.DEFAULT_FEMALE_GENES
+        assert annotator.default_male_genes is not ba.BiologicalAnnotator.DEFAULT_MALE_GENES
 
     def test_get_sample_level_gene_data_with_dataframe(self):
         """Test _get_sample_level_gene_data with DataFrame input"""
         genes = ["XIST", "KDM5D"]
-        result = self.annotator._get_sample_level_gene_data(
-            self.mock_dataset_dataframe, genes
-        )
+        result = self.annotator._get_sample_level_gene_data(self.mock_dataset_dataframe, genes)
 
         assert result is not None
         assert isinstance(result, pd.DataFrame)
@@ -109,9 +101,7 @@ class TestBiologicalAnnotator:
     def test_get_sample_level_gene_data_with_numpy(self):
         """Test _get_sample_level_gene_data with numpy array input"""
         genes = ["XIST", "KDM5D"]
-        result = self.annotator._get_sample_level_gene_data(
-            self.mock_dataset_simple, genes
-        )
+        result = self.annotator._get_sample_level_gene_data(self.mock_dataset_simple, genes)
 
         assert result is not None
         assert isinstance(result, pd.DataFrame)
@@ -121,9 +111,7 @@ class TestBiologicalAnnotator:
     def test_get_sample_level_gene_data_no_matching_genes(self):
         """Test _get_sample_level_gene_data with no matching genes"""
         genes = ["NONEXISTENT_GENE"]
-        result = self.annotator._get_sample_level_gene_data(
-            self.mock_dataset_simple, genes
-        )
+        result = self.annotator._get_sample_level_gene_data(self.mock_dataset_simple, genes)
 
         assert result is None
 
@@ -154,9 +142,7 @@ class TestBiologicalAnnotator:
         fem_genes = ["XIST"]
         mal_genes = ["KDM5D"]
 
-        result = self.annotator._map_clusters_to_sex(
-            centroids, all_genes, fem_genes, mal_genes
-        )
+        result = self.annotator._map_clusters_to_sex(centroids, all_genes, fem_genes, mal_genes)
 
         assert result == 0  # Cluster 0 should be female
 
@@ -172,9 +158,7 @@ class TestBiologicalAnnotator:
         fem_genes = ["XIST"]
         mal_genes = []
 
-        result = self.annotator._map_clusters_to_sex(
-            centroids, all_genes, fem_genes, mal_genes
-        )
+        result = self.annotator._map_clusters_to_sex(centroids, all_genes, fem_genes, mal_genes)
 
         assert result == 1  # Cluster 1 has higher female expression
 
@@ -190,9 +174,7 @@ class TestBiologicalAnnotator:
         fem_genes = []
         mal_genes = ["KDM5D"]
 
-        result = self.annotator._map_clusters_to_sex(
-            centroids, all_genes, fem_genes, mal_genes
-        )
+        result = self.annotator._map_clusters_to_sex(centroids, all_genes, fem_genes, mal_genes)
 
         assert result == 0  # Cluster 0 has lower male expression, so female
 
@@ -209,9 +191,7 @@ class TestBiologicalAnnotator:
         fem_genes = ["XIST"]
         mal_genes = ["KDM5D"]
 
-        result = self.annotator._map_clusters_to_sex(
-            centroids, all_genes, fem_genes, mal_genes
-        )
+        result = self.annotator._map_clusters_to_sex(centroids, all_genes, fem_genes, mal_genes)
 
         assert result is None  # Should be ambiguous
 
@@ -222,9 +202,7 @@ class TestBiologicalAnnotator:
         fem_genes = []
         mal_genes = []
 
-        result = self.annotator._map_clusters_to_sex(
-            centroids, all_genes, fem_genes, mal_genes
-        )
+        result = self.annotator._map_clusters_to_sex(centroids, all_genes, fem_genes, mal_genes)
 
         assert result is None
 
@@ -233,9 +211,7 @@ class TestBiologicalAnnotator:
         """Test successful sex inference"""
         # Mock KMeans behavior
         mock_kmeans = Mock()
-        mock_kmeans.fit_predict.return_value = np.array(
-            [0, 1, 0, 1]
-        )  # Alternating clusters
+        mock_kmeans.fit_predict.return_value = np.array([0, 1, 0, 1])  # Alternating clusters
         mock_kmeans.cluster_centers_ = np.array(
             [
                 [10.0, 1.0],  # Cluster 0: high female, low male
@@ -271,9 +247,7 @@ class TestBiologicalAnnotator:
 
             assert result is None
             assert len(w) > 0
-            assert "No sex classification genes found in dataset keys" in str(
-                w[0].message
-            )
+            assert "No sex classification genes found in dataset keys" in str(w[0].message)
 
     def test_infer_sex_custom_genes(self):
         """Test infer_sex with custom gene lists"""
@@ -303,9 +277,7 @@ class TestBiologicalAnnotator:
 
     def test_infer_sex_empty_expression_data(self):
         """Test infer_sex with empty expression data"""
-        with patch.object(
-            self.annotator, "_get_sample_level_gene_data", return_value=None
-        ):
+        with patch.object(self.annotator, "_get_sample_level_gene_data", return_value=None):
             # Force the warnings filter to record every warning
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
@@ -313,9 +285,7 @@ class TestBiologicalAnnotator:
                 result = self.annotator.infer_sex(self.mock_dataset_simple)
                 assert result is None
                 assert len(w) > 0
-                assert "Could not extract expression data for sex genes" in str(
-                    w[0].message
-                )
+                assert "Could not extract expression data for sex genes" in str(w[0].message)
 
     @patch("metaintegrator.biological_annotation.KMeans")
     def test_infer_sex_ambiguous_clusters(self, mock_kmeans_class):
@@ -331,9 +301,7 @@ class TestBiologicalAnnotator:
         with patch.object(
             self.annotator, "_get_sample_level_gene_data", return_value=mock_expr_data
         ):
-            with patch.object(
-                self.annotator, "_map_clusters_to_sex", return_value=None
-            ):
+            with patch.object(self.annotator, "_map_clusters_to_sex", return_value=None):
                 # Force the warnings filter to record every warning
                 with warnings.catch_warnings(record=True) as w:
                     warnings.simplefilter("always")
@@ -390,9 +358,7 @@ class TestBiologicalAnnotator:
 
     def test_add_sex_to_dataset(self):
         """Test add_sex_to_dataset method"""
-        with patch.object(
-            self.annotator, "infer_sex", return_value=np.array(["female", "male"])
-        ):
+        with patch.object(self.annotator, "infer_sex", return_value=np.array(["female", "male"])):
             dataset = {"some_key": "some_value"}
             result = self.annotator.add_sex_to_dataset(dataset)
 
@@ -402,9 +368,7 @@ class TestBiologicalAnnotator:
 
     def test_add_sex_to_dataset_existing_pheno(self):
         """Test add_sex_to_dataset with existing pheno dict"""
-        with patch.object(
-            self.annotator, "infer_sex", return_value=np.array(["female", "male"])
-        ):
+        with patch.object(self.annotator, "infer_sex", return_value=np.array(["female", "male"])):
             dataset = {"pheno": {"age": [25, 30]}}
             result = self.annotator.add_sex_to_dataset(dataset)
 

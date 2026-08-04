@@ -291,15 +291,11 @@ class TestDatasetValidator:
     def valid_dataset_dict(self):
         """Create valid dataset dictionary."""
         return {
-            "expr": pd.DataFrame(
-                np.random.randn(10, 5), columns=[f"sample_{i}" for i in range(5)]
-            ),
+            "expr": pd.DataFrame(np.random.randn(10, 5), columns=[f"sample_{i}" for i in range(5)]),
             "pheno": pd.DataFrame(
                 {"condition": [0, 1, 0, 1, 0]}, index=[f"sample_{i}" for i in range(5)]
             ),
-            "class": pd.Series(
-                [0, 1, 0, 1, 0], index=[f"sample_{i}" for i in range(5)]
-            ),
+            "class": pd.Series([0, 1, 0, 1, 0], index=[f"sample_{i}" for i in range(5)]),
             "keys": [f"gene_{i}" for i in range(10)],
             "formattedName": "test_dataset",
         }
@@ -347,9 +343,7 @@ class TestDatasetValidator:
         assert any("pheno" in error and "null" in error for error in errors)
         assert any("keys" in error and "null" in error for error in errors)
 
-    def test_validate_field_types_incorrect(
-        self, dataset_validator, invalid_dataset_dict
-    ):
+    def test_validate_field_types_incorrect(self, dataset_validator, invalid_dataset_dict):
         """Test validation with incorrect field types."""
         result = dataset_validator.validate(invalid_dataset_dict)
 
@@ -363,9 +357,7 @@ class TestDatasetValidator:
         dataset = {
             "expr": pd.DataFrame(np.random.randn(5, 3)),
             "pheno": pd.DataFrame({"condition": [0, 1, 0]}, index=[0, 1, 2]),
-            "class": pd.Series(
-                [2, 3, 4], index=[0, 1, 2]
-            ),  # Invalid values but proper Series
+            "class": pd.Series([2, 3, 4], index=[0, 1, 2]),  # Invalid values but proper Series
             "keys": ["gene1", "gene2", "gene3", "gene4", "gene5"],
         }
 
@@ -407,9 +399,7 @@ class TestDatasetValidator:
 
         assert result.is_valid == False
         errors = result.get_errors()
-        assert any(
-            "infinite values" in error and "test_with_inf" in error for error in errors
-        )
+        assert any("infinite values" in error and "test_with_inf" in error for error in errors)
 
 
 class TestMetaAnalysisValidator:
@@ -449,9 +439,7 @@ class TestMetaAnalysisValidator:
             "analysisDescription": "Test meta-analysis",
         }
 
-    def test_validate_valid_meta_analysis(
-        self, meta_analysis_validator, valid_meta_analysis_dict
-    ):
+    def test_validate_valid_meta_analysis(self, meta_analysis_validator, valid_meta_analysis_dict):
         """Test validation of valid MetaAnalysis."""
         result = meta_analysis_validator.validate(valid_meta_analysis_dict)
 
@@ -500,17 +488,9 @@ class TestMetaAnalysisValidator:
 
         assert result.is_valid is False
         errors = result.get_errors()
-        assert any(
-            "datasetEffectSizes" in error and "incorrect type" in error
-            for error in errors
-        )
-        assert any(
-            "pooledResults" in error and "incorrect type" in error for error in errors
-        )
-        assert any(
-            "analysisDescription" in error and "incorrect type" in error
-            for error in errors
-        )
+        assert any("datasetEffectSizes" in error and "incorrect type" in error for error in errors)
+        assert any("pooledResults" in error and "incorrect type" in error for error in errors)
+        assert any("analysisDescription" in error and "incorrect type" in error for error in errors)
 
     def test_validate_pooled_results_missing_entries(self, meta_analysis_validator):
         """Test validation with missing pooled results entries."""
@@ -528,9 +508,7 @@ class TestMetaAnalysisValidator:
 
         assert result.is_valid is False
         errors = result.get_errors()
-        assert any(
-            "effectSizeStandardError" in error and "null" in error for error in errors
-        )
+        assert any("effectSizeStandardError" in error and "null" in error for error in errors)
 
     def test_validate_pooled_results_invalid_ranges(self, meta_analysis_validator):
         """Test validation with invalid value ranges in pooled results."""
@@ -560,10 +538,7 @@ class TestMetaAnalysisValidator:
 
         assert result.is_valid is False
         errors = result.get_errors()
-        assert any(
-            "effectSizeStandardError" in error and "negative" in error
-            for error in errors
-        )
+        assert any("effectSizeStandardError" in error and "negative" in error for error in errors)
         assert any("effectSizePval" in error and "range" in error for error in errors)
 
 
@@ -590,9 +565,7 @@ class TestMetaFilterValidator:
             "timestamp": datetime.now(),
         }
 
-    def test_validate_valid_meta_filter(
-        self, meta_filter_validator, valid_meta_filter_dict
-    ):
+    def test_validate_valid_meta_filter(self, meta_filter_validator, valid_meta_filter_dict):
         """Test validation of valid MetaFilter."""
         result = meta_filter_validator.validate(valid_meta_filter_dict)
 
@@ -683,16 +656,9 @@ class TestMetaFilterValidator:
         assert result.is_valid is False
         errors = result.get_errors()
         assert any("FDRThresh" in error and "range" in error for error in errors)
-        assert any(
-            "effectSizeThresh" in error and "non-negative" in error for error in errors
-        )
-        assert any(
-            "numberStudiesThresh" in error and "non-negative" in error
-            for error in errors
-        )
-        assert any(
-            "heterogeneityPvalThresh" in error and "range" in error for error in errors
-        )
+        assert any("effectSizeThresh" in error and "non-negative" in error for error in errors)
+        assert any("numberStudiesThresh" in error and "non-negative" in error for error in errors)
+        assert any("heterogeneityPvalThresh" in error and "range" in error for error in errors)
 
 
 class TestMetaObjectValidator:
@@ -724,13 +690,9 @@ class TestMetaObjectValidator:
             }
         }
 
-    def test_validate_pre_analysis_stage(
-        self, meta_object_validator, valid_meta_object
-    ):
+    def test_validate_pre_analysis_stage(self, meta_object_validator, valid_meta_object):
         """Test validation at PRE_ANALYSIS stage."""
-        result = meta_object_validator.validate(
-            valid_meta_object, ObjectStage.PRE_ANALYSIS
-        )
+        result = meta_object_validator.validate(valid_meta_object, ObjectStage.PRE_ANALYSIS)
 
         assert result.is_valid == True
         assert result.object_type == "Meta"
@@ -781,20 +743,14 @@ class TestMetaObjectValidator:
 
     def test_get_validation_components(self, meta_object_validator):
         """Test _get_validation_components method."""
-        pre_analysis = meta_object_validator._get_validation_components(
-            ObjectStage.PRE_ANALYSIS
-        )
+        pre_analysis = meta_object_validator._get_validation_components(ObjectStage.PRE_ANALYSIS)
         assert pre_analysis == ["originalData"]
 
-        pre_filter = meta_object_validator._get_validation_components(
-            ObjectStage.PRE_FILTER
-        )
+        pre_filter = meta_object_validator._get_validation_components(ObjectStage.PRE_FILTER)
         expected_pre_filter = ["originalData", "metaAnalysis", "leaveOneOutAnalysis"]
         assert pre_filter == expected_pre_filter
 
-        post_filter = meta_object_validator._get_validation_components(
-            ObjectStage.POST_FILTER
-        )
+        post_filter = meta_object_validator._get_validation_components(ObjectStage.POST_FILTER)
         expected_post_filter = [
             "originalData",
             "metaAnalysis",
@@ -837,9 +793,7 @@ class TestDataObjectValidator:
         assert result.is_valid == True
         assert result.object_type == "Dataset"
 
-    def test_validate_invalid_object_type_string(
-        self, data_object_validator, valid_dataset
-    ):
+    def test_validate_invalid_object_type_string(self, data_object_validator, valid_dataset):
         """Test validation with invalid object type string."""
         result = data_object_validator.validate(valid_dataset, "InvalidType")
 
@@ -847,21 +801,15 @@ class TestDataObjectValidator:
         errors = result.get_errors()
         assert any("Invalid object type: InvalidType" in error for error in errors)
 
-    def test_validate_invalid_object_stage_string(
-        self, data_object_validator, valid_dataset
-    ):
+    def test_validate_invalid_object_stage_string(self, data_object_validator, valid_dataset):
         """Test validation with invalid object stage string."""
-        result = data_object_validator.validate(
-            valid_dataset, ObjectType.META, "InvalidStage"
-        )
+        result = data_object_validator.validate(valid_dataset, ObjectType.META, "InvalidStage")
 
         assert result.is_valid is False
         errors = result.get_errors()
         assert any("Invalid object stage: InvalidStage" in error for error in errors)
 
-    def test_validate_unsupported_object_type(
-        self, data_object_validator, valid_dataset
-    ):
+    def test_validate_unsupported_object_type(self, data_object_validator, valid_dataset):
         """Test validation with unsupported object type."""
 
         # Create a mock enum that's not in the supported list

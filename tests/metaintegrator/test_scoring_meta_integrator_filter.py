@@ -209,9 +209,7 @@ class TestEnhancedFilterConfig(unittest.TestCase):
             }
 
             with self.assertRaises(ValueError) as context:
-                EnhancedFilterConfig(
-                    use_combined_criteria=True, criteria_weights=invalid_weights
-                )
+                EnhancedFilterConfig(use_combined_criteria=True, criteria_weights=invalid_weights)
             self.assertIn("criteria_weights must sum to 1.0", str(context.exception))
 
     def test_valid_criteria_weights(self):
@@ -540,9 +538,7 @@ class TestEnhancedMetaIntegratorFilter(unittest.TestCase):
 
     def test_filter_meta_analysis_combined_strategy(self):
         """Test filter_meta_analysis with combined criteria strategy."""
-        results = self.filter_obj.filter_meta_analysis(
-            self.meta_object, "combined_criteria"
-        )
+        results = self.filter_obj.filter_meta_analysis(self.meta_object, "combined_criteria")
 
         self.assertIsInstance(results, EnhancedFilterResults)
 
@@ -585,9 +581,7 @@ class TestEnhancedMetaIntegratorFilter(unittest.TestCase):
         """Test apply_sequential_filtering method."""
         strategies = ["standard", "adaptive"]
 
-        results = self.filter_obj.apply_sequential_filtering(
-            self.meta_object, strategies
-        )
+        results = self.filter_obj.apply_sequential_filtering(self.meta_object, strategies)
 
         self.assertIsInstance(results, EnhancedFilterResults)
         self.assertGreater(len(results.filtering_steps), 1)
@@ -657,9 +651,7 @@ class TestEnhancedMetaIntegratorFilter(unittest.TestCase):
         gene_scores = {"GENE1": 0.9, "GENE2": 0.7, "GENE3": 0.8, "GENE4": 0.6}
         max_genes = 2
 
-        limited_genes = self.filter_obj._limit_genes_by_priority(
-            genes, gene_scores, max_genes
-        )
+        limited_genes = self.filter_obj._limit_genes_by_priority(genes, gene_scores, max_genes)
 
         self.assertEqual(len(limited_genes), 2)
         self.assertIn("GENE1", limited_genes)  # Highest score
@@ -671,9 +663,7 @@ class TestEnhancedMetaIntegratorFilter(unittest.TestCase):
         gene_scores = {"GENE1": 0.9, "GENE2": 0.7}
         max_genes = 5
 
-        limited_genes = self.filter_obj._limit_genes_by_priority(
-            genes, gene_scores, max_genes
-        )
+        limited_genes = self.filter_obj._limit_genes_by_priority(genes, gene_scores, max_genes)
 
         self.assertEqual(limited_genes, genes)
 
@@ -701,9 +691,7 @@ class TestEnhancedMetaIntegratorFilter(unittest.TestCase):
 
     def test_assess_filter_performance_no_genes(self):
         """Test performance assessment with no filtered genes."""
-        performance = self.filter_obj._assess_filter_performance(
-            self.sample_data, [], []
-        )
+        performance = self.filter_obj._assess_filter_performance(self.sample_data, [], [])
 
         self.assertEqual(performance["genes_retained"], 0)
         self.assertEqual(performance["retention_rate"], 0)
@@ -718,9 +706,7 @@ class TestEnhancedMetaIntegratorFilter(unittest.TestCase):
         self.assertIn("cache_size", summary)
 
         expected_strategies = ["standard", "adaptive", "combined_criteria"]
-        self.assertEqual(
-            sorted(summary["available_strategies"]), sorted(expected_strategies)
-        )
+        self.assertEqual(sorted(summary["available_strategies"]), sorted(expected_strategies))
 
     def test_clear_cache(self):
         """Test clear_cache method."""

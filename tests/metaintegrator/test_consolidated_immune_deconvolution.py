@@ -136,22 +136,14 @@ class TestGeneAlignmentCriticalFix:
         basis_values = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])  # Distinct values
         expr_values = np.array([[10, 11, 12, 13], [14, 15, 16, 17], [18, 19, 20, 21]])
 
-        basis_df = pd.DataFrame(
-            basis_values, index=basis_genes, columns=["CT1", "CT2", "CT3"]
-        )
-        expr_df = pd.DataFrame(
-            expr_values, index=expr_genes, columns=["S1", "S2", "S3", "S4"]
-        )
+        basis_df = pd.DataFrame(basis_values, index=basis_genes, columns=["CT1", "CT2", "CT3"])
+        expr_df = pd.DataFrame(expr_values, index=expr_genes, columns=["S1", "S2", "S3", "S4"])
 
         # Name-based alignment (CORRECT)
-        aligned_basis, aligned_expr = self.deconvolver._align_genes_by_name(
-            basis_df, expr_df
-        )
+        aligned_basis, aligned_expr = self.deconvolver._align_genes_by_name(basis_df, expr_df)
 
         # Expected order: GENE_A, GENE_M, GENE_Z
-        expected_basis_order = np.array(
-            [[4, 5, 6], [7, 8, 9], [1, 2, 3]]
-        )  # Reordered by name
+        expected_basis_order = np.array([[4, 5, 6], [7, 8, 9], [1, 2, 3]])  # Reordered by name
         expected_expr_order = np.array(
             [[10, 11, 12, 13], [14, 15, 16, 17], [18, 19, 20, 21]]
         )  # Already in order
@@ -223,9 +215,7 @@ class TestBasisMatrixHandling:
 
             # Look for the specific warning we expect
             nan_warnings = [
-                warning
-                for warning in w
-                if "contains NaN values" in str(warning.message)
+                warning for warning in w if "contains NaN values" in str(warning.message)
             ]
             assert len(nan_warnings) >= 1
 
@@ -325,9 +315,7 @@ class TestEnhancedQuantileNormalization:
         self.deconvolver = ImmunoStatesDeconvolver()
 
         # Create test matrix with known properties
-        self.test_matrix = np.array(
-            [[1, 5, 9], [2, 6, 10], [3, 7, 11], [4, 8, 12]], dtype=float
-        )
+        self.test_matrix = np.array([[1, 5, 9], [2, 6, 10], [3, 7, 11], [4, 8, 12]], dtype=float)
 
     def test_enhanced_quantile_normalize_basic(self):
         """Test basic quantile normalization functionality."""
@@ -375,9 +363,7 @@ class TestEnhancedQuantileNormalization:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            normalized = self.deconvolver._enhanced_quantile_normalize(
-                problematic_matrix
-            )
+            normalized = self.deconvolver._enhanced_quantile_normalize(problematic_matrix)
 
             # Should handle gracefully and return original matrix
             if len(w) > 0:
@@ -425,9 +411,7 @@ class TestEnhancedDataExtraction:
     def test_extract_data_for_genes_enhanced_promiscuous_probes(self):
         """Test handling of promiscuous probes."""
         dataset = {
-            "expr": pd.DataFrame(
-                np.random.randn(5, 8), columns=[f"Sample_{i}" for i in range(8)]
-            ),
+            "expr": pd.DataFrame(np.random.randn(5, 8), columns=[f"Sample_{i}" for i in range(8)]),
             "keys": ["Gene1", "Gene2,Gene3", "Gene4", "Gene5,Gene6,Gene7", "Gene8"],
         }
 
@@ -461,9 +445,7 @@ class TestEnhancedDataExtraction:
         }
 
         target_genes = ["GENE_B", "GENE_D", "GENE_F"]
-        result = self.deconvolver._extract_data_for_genes_enhanced(
-            dataset, gene_names=target_genes
-        )
+        result = self.deconvolver._extract_data_for_genes_enhanced(dataset, gene_names=target_genes)
 
         if result is not None:
             assert set(result.index) == set(target_genes)
@@ -496,9 +478,7 @@ class TestEnhancedDataExtraction:
     def test_extract_data_for_genes_enhanced_invalid_keys(self):
         """Test handling of invalid gene keys."""
         dataset = {
-            "expr": pd.DataFrame(
-                np.random.randn(5, 8), columns=[f"Sample_{i}" for i in range(8)]
-            ),
+            "expr": pd.DataFrame(np.random.randn(5, 8), columns=[f"Sample_{i}" for i in range(8)]),
             "keys": ["", "NA", "nan", "GENE_D", "GENE_E"],  # Mix of invalid and valid
         }
 
@@ -507,9 +487,7 @@ class TestEnhancedDataExtraction:
         if result is not None:
             # Should only have valid genes
             assert len(result) <= 2  # GENE_D and GENE_E
-            valid_genes = [
-                gene for gene in result.index if gene not in ["", "NA", "nan"]
-            ]
+            valid_genes = [gene for gene in result.index if gene not in ["", "NA", "nan"]]
             assert len(valid_genes) == len(result)
 
 
@@ -583,9 +561,7 @@ class TestEnhancedDeconvolution:
 
         cell_types = ["Type1", "Type2", "Type3", "Type4", "Type5"]
 
-        result = self.deconvolver._enhanced_deconvolve_sample(
-            0, sample_expr, basis, cell_types
-        )
+        result = self.deconvolver._enhanced_deconvolve_sample(0, sample_expr, basis, cell_types)
 
         assert isinstance(result, dict)
         assert result["sample"] == "Sample_0"
@@ -615,9 +591,7 @@ class TestEnhancedDeconvolution:
         basis = np.random.randn(10, 3)
         cell_types = ["Type1", "Type2", "Type3"]
 
-        result = self.deconvolver._enhanced_deconvolve_sample(
-            0, sample_expr, basis, cell_types
-        )
+        result = self.deconvolver._enhanced_deconvolve_sample(0, sample_expr, basis, cell_types)
 
         assert isinstance(result, dict)
         assert result["sample"] == "Sample_0"
@@ -686,9 +660,7 @@ class TestEnhancedDeconvolutionPipeline:
                     "expr": pd.DataFrame(
                         np.random.randn(25, 12),
                         columns=[f"Sample_{i}" for i in range(12)],
-                        index=[
-                            f"Gene_{i:03d}" for i in range(10, 35)
-                        ],  # Different gene range
+                        index=[f"Gene_{i:03d}" for i in range(10, 35)],  # Different gene range
                     ),
                     "keys": [f"Gene_{i:03d}" for i in range(10, 35)],
                     "class": [0] * 6 + [1] * 6,
@@ -706,9 +678,7 @@ class TestEnhancedDeconvolutionPipeline:
         # Check that at least some datasets were processed
         # (May not be all due to random data)
         processed_datasets = [
-            name
-            for name, res in result["immunoStates"].items()
-            if res is not None and len(res) > 0
+            name for name, res in result["immunoStates"].items() if res is not None and len(res) > 0
         ]
 
         # Should process at least one dataset successfully
@@ -731,9 +701,7 @@ class TestEnhancedDeconvolutionPipeline:
             columns=["CellTypeA", "CellTypeB", "CellTypeC"],
         )
 
-        result = immunostates_deconv(
-            self.meta_object, max_cores=1, basis_matrix=custom_basis
-        )
+        result = immunostates_deconv(self.meta_object, max_cores=1, basis_matrix=custom_basis)
 
         assert "immunoStates" in result
 
@@ -751,9 +719,7 @@ class TestEnhancedDeconvolutionPipeline:
             temp_file = f.name
 
         try:
-            result = immunostates_deconv(
-                self.meta_object, max_cores=1, basis_matrix_path=temp_file
-            )
+            result = immunostates_deconv(self.meta_object, max_cores=1, basis_matrix_path=temp_file)
 
             assert "immunoStates" in result
         finally:
@@ -966,16 +932,10 @@ class TestEdgeCasesAndRobustness:
         deconvolver = ImmunoStatesDeconvolver()
 
         # Test with single common gene
-        basis_single = pd.DataFrame(
-            [[1, 2]], index=["GENE_A"], columns=["Type1", "Type2"]
-        )
-        expr_single = pd.DataFrame(
-            [[3, 4, 5]], index=["GENE_A"], columns=["S1", "S2", "S3"]
-        )
+        basis_single = pd.DataFrame([[1, 2]], index=["GENE_A"], columns=["Type1", "Type2"])
+        expr_single = pd.DataFrame([[3, 4, 5]], index=["GENE_A"], columns=["S1", "S2", "S3"])
 
-        aligned_basis, aligned_expr = deconvolver._align_genes_by_name(
-            basis_single, expr_single
-        )
+        aligned_basis, aligned_expr = deconvolver._align_genes_by_name(basis_single, expr_single)
 
         assert aligned_basis.shape == (1, 2)
         assert aligned_expr.shape == (1, 3)
@@ -1033,15 +993,11 @@ class TestEdgeCasesAndRobustness:
 
             # Should succeed after removing duplicates
             assert aligned_basis.shape[0] == aligned_expr.shape[0]
-            assert (
-                aligned_basis.shape[0] == 3
-            )  # GENE_A, GENE_B, GENE_C (duplicates removed)
+            assert aligned_basis.shape[0] == 3  # GENE_A, GENE_B, GENE_C (duplicates removed)
 
             # Should warn about duplicate removal
             duplicate_warnings = [
-                warning
-                for warning in w
-                if "duplicate gene names" in str(warning.message).lower()
+                warning for warning in w if "duplicate gene names" in str(warning.message).lower()
             ]
             assert len(duplicate_warnings) >= 1
 

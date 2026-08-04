@@ -126,9 +126,7 @@ class TestMetaAnalysisPowerCalculator:
         assert self.calculator._resolve_heterogeneity("small") == 0.33
         assert self.calculator._resolve_heterogeneity("moderate") == 1.0
         assert self.calculator._resolve_heterogeneity("large") == 3.0
-        assert (
-            self.calculator._resolve_heterogeneity("SMALL") == 0.33
-        )  # case insensitive
+        assert self.calculator._resolve_heterogeneity("SMALL") == 0.33  # case insensitive
 
     def test_resolve_heterogeneity_numeric(self):
         """Test heterogeneity resolution with numeric inputs."""
@@ -217,19 +215,13 @@ class TestMetaAnalysisPowerCalculator:
 
     def test_validate_inputs_invalid_alpha(self):
         """Test input validation with invalid alpha."""
-        with pytest.raises(
-            ValueError, match="Alpha must be between 0 and 1 \\(exclusive\\)"
-        ):
+        with pytest.raises(ValueError, match="Alpha must be between 0 and 1 \\(exclusive\\)"):
             self.calculator._validate_inputs(0.5, 20, 10, "moderate", 2, 0.0)
 
-        with pytest.raises(
-            ValueError, match="Alpha must be between 0 and 1 \\(exclusive\\)"
-        ):
+        with pytest.raises(ValueError, match="Alpha must be between 0 and 1 \\(exclusive\\)"):
             self.calculator._validate_inputs(0.5, 20, 10, "moderate", 2, 1.0)
 
-        with pytest.raises(
-            ValueError, match="Alpha must be between 0 and 1 \\(exclusive\\)"
-        ):
+        with pytest.raises(ValueError, match="Alpha must be between 0 and 1 \\(exclusive\\)"):
             self.calculator._validate_inputs(0.5, 20, 10, "moderate", 2, 1.5)
 
     def test_power_analysis_grid(self):
@@ -238,9 +230,7 @@ class TestMetaAnalysisPowerCalculator:
         sample_sizes = [10, 20, 30]
         num_studies_list = [5, 10]
 
-        df = self.calculator.power_analysis_grid(
-            effect_sizes, sample_sizes, num_studies_list
-        )
+        df = self.calculator.power_analysis_grid(effect_sizes, sample_sizes, num_studies_list)
 
         assert isinstance(df, pd.DataFrame)
         assert len(df) == len(effect_sizes) * len(sample_sizes) * len(num_studies_list)
@@ -263,9 +253,7 @@ class TestMetaAnalysisPowerCalculator:
 
     def test_power_analysis_grid_with_heterogeneity(self):
         """Test power analysis grid with different heterogeneity settings."""
-        df = self.calculator.power_analysis_grid(
-            [0.5], [20], [10], heterogeneity="large"
-        )
+        df = self.calculator.power_analysis_grid([0.5], [20], [10], heterogeneity="large")
 
         assert df.iloc[0]["heterogeneity"] == 3.0
 
@@ -407,9 +395,7 @@ class TestPowerAnalysisPlotter:
     @patch("matplotlib.pyplot.subplots")
     @patch("matplotlib.pyplot.tight_layout")
     @patch("matplotlib.pyplot.savefig")
-    def test_plot_power_curve_studies(
-        self, mock_savefig, mock_tight_layout, mock_subplots
-    ):
+    def test_plot_power_curve_studies(self, mock_savefig, mock_tight_layout, mock_subplots):
         """Test plotting power curve for studies."""
         # Mock matplotlib objects
         mock_fig = MagicMock()
@@ -496,9 +482,7 @@ class TestPowerAnalysisPlotter:
 
         self.plotter.plot_power_curve(power_data, "studies", save_path="/tmp/test.png")
 
-        mock_savefig.assert_called_once_with(
-            "/tmp/test.png", dpi=300, bbox_inches="tight"
-        )
+        mock_savefig.assert_called_once_with("/tmp/test.png", dpi=300, bbox_inches="tight")
 
     @patch("seaborn.heatmap")
     @patch("matplotlib.pyplot.subplots")
@@ -668,9 +652,10 @@ class TestIntegration:
         assert len(grid_df) == 8  # 2 * 2 * 2 combinations
 
         # Test plotting grid
-        with patch("seaborn.heatmap") as mock_heatmap, patch(
-            "matplotlib.pyplot.subplots"
-        ) as mock_subplots:
+        with (
+            patch("seaborn.heatmap") as mock_heatmap,
+            patch("matplotlib.pyplot.subplots") as mock_subplots,
+        ):
             mock_fig = MagicMock()
             mock_ax = MagicMock()
             mock_subplots.return_value = (mock_fig, mock_ax)

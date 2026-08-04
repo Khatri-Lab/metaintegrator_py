@@ -98,9 +98,7 @@ class TestHybridGeoSource:
 
         source = HybridGeoSource.__new__(HybridGeoSource)
         source.cache_dir = tmp_path
-        source._download_and_parse_series_matrices = MagicMock(
-            return_value={"GPL96": expr_df}
-        )
+        source._download_and_parse_series_matrices = MagicMock(return_value={"GPL96": expr_df})
         source._load_geoparse = MagicMock(return_value=gse)
 
         rds = source.fetch("GSE11909")
@@ -137,9 +135,7 @@ class TestHybridGeoSource:
 
         source = HybridGeoSource.__new__(HybridGeoSource)
         source.cache_dir = tmp_path
-        source._download_and_parse_series_matrices = MagicMock(
-            return_value={"GPL96": expr_df}
-        )
+        source._download_and_parse_series_matrices = MagicMock(return_value={"GPL96": expr_df})
         source._load_geoparse = MagicMock(return_value=gse)
 
         with pytest.raises(ValueError, match="No platforms"):
@@ -341,9 +337,7 @@ class TestThinWrapper:
         MockFactory.create_geo_loader.return_value = mock_loader
 
         load_geo_datasets_r_parity(["GSE11909"], cache_dir="/tmp/x", stop_on_error=True)
-        mock_loader.load_multiple.assert_called_once_with(
-            ["GSE11909"], stop_on_error=True
-        )
+        mock_loader.load_multiple.assert_called_once_with(["GSE11909"], stop_on_error=True)
 
 
 class TestFactoryStrategies:
@@ -354,9 +348,7 @@ class TestFactoryStrategies:
         from preprocessing.loader_factory import DataLoaderFactory
         from preprocessing.base import DataLoader
 
-        loader = DataLoaderFactory.create_geo_loader(
-            strategy="hybrid", cache_dir="/tmp/t"
-        )
+        loader = DataLoaderFactory.create_geo_loader(strategy="hybrid", cache_dir="/tmp/t")
         assert isinstance(loader, DataLoader)
         MockSource.assert_called_once_with(cache_dir="/tmp/t")
 

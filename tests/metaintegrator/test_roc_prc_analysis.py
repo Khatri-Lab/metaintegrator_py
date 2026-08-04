@@ -146,9 +146,7 @@ class TestPRCAnalyzer:
         y_true_no_pos = np.array([0, 0, 0])
         y_scores_no_pos = np.array([0.1, 0.2, 0.3])
 
-        lower, upper = self.analyzer._calculate_auprc_ci(
-            y_true_no_pos, y_scores_no_pos, 0.5
-        )
+        lower, upper = self.analyzer._calculate_auprc_ci(y_true_no_pos, y_scores_no_pos, 0.5)
         assert lower == upper == 0.5
 
 

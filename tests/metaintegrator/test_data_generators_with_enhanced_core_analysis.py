@@ -60,9 +60,7 @@ class TestDataGenerator:
         # Add missing values
         if missing_rate > 0:
             n_missing = int(n_genes * n_samples * missing_rate)
-            missing_indices = np.random.choice(
-                n_genes * n_samples, n_missing, replace=False
-            )
+            missing_indices = np.random.choice(n_genes * n_samples, n_missing, replace=False)
             missing_rows = missing_indices // n_samples
             missing_cols = missing_indices % n_samples
             expr_data[missing_rows, missing_cols] = np.nan
@@ -242,9 +240,7 @@ class TestRegressionValidation:
         # Q-values should generally be >= P-values
         from metaintegrator.core_analysis import MetaAnalysisCore
 
-        pvals = MetaAnalysisCore.get_ttest_pvalues(
-            standard_study["expr"], standard_study["class"]
-        )
+        pvals = MetaAnalysisCore.get_ttest_pvalues(standard_study["expr"], standard_study["class"])
 
         # Allow small numerical differences
         tolerance = 1e-10
@@ -263,9 +259,7 @@ class TestRegressionValidation:
         combined = EnhancedMetaAnalysis.combine_significances(significance_matrices)
 
         # Apply Fisher's method
-        fisher_result = FisherCombination._apply_fisher_vectorized(
-            combined["sigs_up"], "up"
-        )
+        fisher_result = FisherCombination._apply_fisher_vectorized(combined["sigs_up"], "up")
 
         # fisher_result could be
         # Empty DataFrame\nColumns: []\nIndex: [].columns
@@ -314,9 +308,7 @@ class TestEdgeCasesAndRobustness:
         """Test behavior when a study has all missing values for some genes."""
         from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 
-        study = TestDataGenerator.create_synthetic_study(
-            n_genes=10, n_samples=8, seed=111
-        )
+        study = TestDataGenerator.create_synthetic_study(n_genes=10, n_samples=8, seed=111)
 
         # Set first 3 genes to all missing
         study["expr"].iloc[0:3, :] = np.nan
@@ -398,9 +390,7 @@ class TestPerformanceAndScalability:
         """Test performance with larger datasets."""
         from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 
-        large_study = TestDataGenerator.create_synthetic_study(
-            n_genes=1000, n_samples=50, seed=888
-        )
+        large_study = TestDataGenerator.create_synthetic_study(n_genes=1000, n_samples=50, seed=888)
 
         import time
 

@@ -227,9 +227,7 @@ class TestExportEngine:
         config = ExportConfig(base_output_dir=temp_dir, timestamp_files=False)
         engine = ExportEngine(config=config)
 
-        result_path = engine._export_dataframe(
-            sample_dataframe, "test_data", ExportFormat.CSV
-        )
+        result_path = engine._export_dataframe(sample_dataframe, "test_data", ExportFormat.CSV)
 
         assert result_path.exists()
         assert result_path.suffix == ".csv"
@@ -243,9 +241,7 @@ class TestExportEngine:
         config = ExportConfig(base_output_dir=temp_dir, timestamp_files=False)
         engine = ExportEngine(config=config)
 
-        result_path = engine._export_dataframe(
-            sample_dataframe, "test_data", ExportFormat.EXCEL
-        )
+        result_path = engine._export_dataframe(sample_dataframe, "test_data", ExportFormat.EXCEL)
 
         assert result_path.exists()
         assert result_path.suffix == ".xlsx"
@@ -259,9 +255,7 @@ class TestExportEngine:
         config = ExportConfig(base_output_dir=temp_dir, timestamp_files=False)
         engine = ExportEngine(config=config)
 
-        result_path = engine._export_dataframe(
-            sample_dataframe, "test_data", ExportFormat.TSV
-        )
+        result_path = engine._export_dataframe(sample_dataframe, "test_data", ExportFormat.TSV)
 
         assert result_path.exists()
         assert result_path.suffix == ".tsv"
@@ -271,9 +265,7 @@ class TestExportEngine:
         config = ExportConfig(base_output_dir=temp_dir, timestamp_files=False)
         engine = ExportEngine(config=config)
 
-        result_path = engine._export_dataframe(
-            sample_dataframe, "test_data", ExportFormat.PARQUET
-        )
+        result_path = engine._export_dataframe(sample_dataframe, "test_data", ExportFormat.PARQUET)
 
         assert result_path.exists()
         assert result_path.suffix == ".parquet"
@@ -283,9 +275,7 @@ class TestExportEngine:
         config = ExportConfig(base_output_dir=temp_dir, timestamp_files=False)
         engine = ExportEngine(config=config)
 
-        result_path = engine._export_dataframe(
-            sample_dataframe, "test_data", ExportFormat.PICKLE
-        )
+        result_path = engine._export_dataframe(sample_dataframe, "test_data", ExportFormat.PICKLE)
 
         assert result_path.exists()
         assert result_path.suffix == ".pkl"
@@ -295,9 +285,7 @@ class TestExportEngine:
         config = ExportConfig(base_output_dir=temp_dir, timestamp_files=False)
         engine = ExportEngine(config=config)
 
-        result_path = engine._export_dataframe(
-            sample_dataframe, "test_data", ExportFormat.JSON
-        )
+        result_path = engine._export_dataframe(sample_dataframe, "test_data", ExportFormat.JSON)
 
         assert result_path.exists()
         assert result_path.suffix == ".json"
@@ -384,9 +372,7 @@ class TestExportEngine:
         assert "timestamp" in engine.export_registry["test_analysis"]
         assert "files" in engine.export_registry["test_analysis"]
 
-    def test_export_analysis_results_with_additional_data(
-        self, temp_dir, sample_dataframe
-    ):
+    def test_export_analysis_results_with_additional_data(self, temp_dir, sample_dataframe):
         """Test analysis results export with additional data."""
         config = ExportConfig(base_output_dir=temp_dir)
         engine = ExportEngine(config=config)
@@ -412,9 +398,7 @@ class TestExportEngine:
         engine = ExportEngine(config=config)
 
         # Mock _export_dataframe to raise exception
-        with patch.object(
-            engine, "_export_dataframe", side_effect=Exception("Export failed")
-        ):
+        with patch.object(engine, "_export_dataframe", side_effect=Exception("Export failed")):
             exported_files = engine.export_analysis_results(
                 results=sample_dataframe, analysis_name="test_failure"
             )
@@ -444,9 +428,7 @@ class TestExportEngine:
         for file_path in exported_files.values():
             assert file_path.exists()
 
-    def test_export_statistical_summary_with_plots(
-        self, temp_dir, sample_statistical_summary
-    ):
+    def test_export_statistical_summary_with_plots(self, temp_dir, sample_statistical_summary):
         """Test statistical summary export with plots enabled."""
         config = ExportConfig(base_output_dir=temp_dir, include_plots=True)
         engine = ExportEngine(config=config)
@@ -672,9 +654,7 @@ class TestExportEngine:
         with pd.ExcelWriter(excel_path) as writer:
             sample_dataframe.to_excel(writer, sheet_name="Data", index=False)
 
-        is_valid = engine._validate_export(
-            excel_path, sample_dataframe, ExportFormat.EXCEL
-        )
+        is_valid = engine._validate_export(excel_path, sample_dataframe, ExportFormat.EXCEL)
 
         assert is_valid == True
 
@@ -703,9 +683,7 @@ class TestExportEngine:
 
         fake_path = temp_dir / "test.unsupported"
 
-        is_valid = engine._validate_export(
-            fake_path, sample_dataframe, UnsupportedFormat()
-        )
+        is_valid = engine._validate_export(fake_path, sample_dataframe, UnsupportedFormat())
 
         assert is_valid == True  # Should skip validation for unsupported formats
 
@@ -817,9 +795,7 @@ class TestExportEngine:
         engine = ExportEngine(config=config)
 
         # Export some data
-        exported_files = engine.export_analysis_results(
-            sample_dataframe, "old_analysis"
-        )
+        exported_files = engine.export_analysis_results(sample_dataframe, "old_analysis")
 
         # Manually set old timestamp
         old_time = datetime.now() - timedelta(days=31)
@@ -898,9 +874,7 @@ class TestErrorHandling:
         config = ExportConfig(base_output_dir=temp_dir)
         engine = ExportEngine(config=config)
 
-        with patch(
-            "pandas.DataFrame.to_csv", side_effect=PermissionError("Access denied")
-        ):
+        with patch("pandas.DataFrame.to_csv", side_effect=PermissionError("Access denied")):
             with pytest.raises(PermissionError):
                 engine._export_dataframe(sample_dataframe, "test", ExportFormat.CSV)
 
@@ -926,9 +900,7 @@ class TestErrorHandling:
 
         missing_file = temp_dir / "missing.csv"
 
-        is_valid = engine._validate_export(
-            missing_file, sample_dataframe, ExportFormat.CSV
-        )
+        is_valid = engine._validate_export(missing_file, sample_dataframe, ExportFormat.CSV)
 
         assert is_valid == False
 

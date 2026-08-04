@@ -70,9 +70,7 @@ class TestScoreCalculator:
         """Test with only positive genes."""
         filter_obj = {"posGeneNames": ["GENE0", "GENE1"]}
 
-        scores = ScoreCalculator.calculate_score(
-            filter_obj, sample_dataset, suppress_messages=True
-        )
+        scores = ScoreCalculator.calculate_score(filter_obj, sample_dataset, suppress_messages=True)
 
         assert len(scores) == sample_dataset["expr"].shape[1]
         assert abs(np.mean(scores)) < 1e-10
@@ -81,9 +79,7 @@ class TestScoreCalculator:
         """Test with only negative genes."""
         filter_obj = {"negGeneNames": ["GENE8", "GENE9"]}
 
-        scores = ScoreCalculator.calculate_score(
-            filter_obj, sample_dataset, suppress_messages=True
-        )
+        scores = ScoreCalculator.calculate_score(filter_obj, sample_dataset, suppress_messages=True)
 
         assert len(scores) == sample_dataset["expr"].shape[1]
         assert abs(np.mean(scores)) < 1e-10
@@ -95,9 +91,7 @@ class TestScoreCalculator:
             "negGeneNames": ["NONEXISTENT2"],
         }
 
-        scores = ScoreCalculator.calculate_score(
-            filter_obj, sample_dataset, suppress_messages=True
-        )
+        scores = ScoreCalculator.calculate_score(filter_obj, sample_dataset, suppress_messages=True)
 
         # Should return zeros when no genes match
         assert np.all(scores == 0)
@@ -115,9 +109,7 @@ class TestScoreCalculator:
         filter_obj = {"posGeneNames": ["GENE0", "GENE1"]}
 
         # Should handle negative values by shifting
-        scores = ScoreCalculator.calculate_score(
-            filter_obj, dataset, suppress_messages=True
-        )
+        scores = ScoreCalculator.calculate_score(filter_obj, dataset, suppress_messages=True)
 
         assert len(scores) == 20
         assert abs(np.mean(scores)) < 1e-10
@@ -236,14 +228,10 @@ class TestScoreCalculatorIntegration:
 
         filter_obj = {
             "posGeneNames": [f"GENE{i:03d}" for i in range(5)],  # Upregulated genes
-            "negGeneNames": [
-                f"GENE{i:03d}" for i in range(6, 10)
-            ],  # Some downregulated
+            "negGeneNames": [f"GENE{i:03d}" for i in range(6, 10)],  # Some downregulated
         }
 
-        scores = ScoreCalculator.calculate_score(
-            filter_obj, dataset, suppress_messages=False
-        )
+        scores = ScoreCalculator.calculate_score(filter_obj, dataset, suppress_messages=False)
 
         # Check scores differentiate between controls and cases
         control_scores = scores[:20]
@@ -261,9 +249,7 @@ class TestScoreCalculatorIntegration:
         np.random.seed(42)
 
         # Create dataset with some NaN values
-        expr_data = pd.DataFrame(
-            np.random.rand(15, 25), columns=[f"S{i}" for i in range(25)]
-        )
+        expr_data = pd.DataFrame(np.random.rand(15, 25), columns=[f"S{i}" for i in range(25)])
 
         # Add some NaN values
         expr_data.iloc[0, 5:8] = np.nan
@@ -277,9 +263,7 @@ class TestScoreCalculatorIntegration:
         }
 
         # Should handle NaN values
-        scores = ScoreCalculator.calculate_score(
-            filter_obj, dataset, suppress_messages=True
-        )
+        scores = ScoreCalculator.calculate_score(filter_obj, dataset, suppress_messages=True)
 
         assert len(scores) == 25
         # Scores should be valid (no NaN in output)

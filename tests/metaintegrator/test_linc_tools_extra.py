@@ -176,9 +176,7 @@ class TestLincsAnalyzerEnhancements:
             ),
         }
 
-    def create_mock_dataset_data(
-        self, n_genes: int = 100, n_compounds: int = 50
-    ) -> pd.DataFrame:
+    def create_mock_dataset_data(self, n_genes: int = 100, n_compounds: int = 50) -> pd.DataFrame:
         """Create mock dataset data."""
         genes = [f"GENE_{i}" for i in range(n_genes)]
         compounds = [f"COMPOUND_{i}" for i in range(n_compounds)]
@@ -233,9 +231,7 @@ class TestLincsAnalyzerEnhancements:
         # Test with missing hit_list
         invalid_output = {"some_other_key": "value"}
 
-        with pytest.raises(
-            ValueError, match="correlate_output must contain 'hit_list'"
-        ):
+        with pytest.raises(ValueError, match="correlate_output must contain 'hit_list'"):
             self.analyzer.lincs_interactors(invalid_output, signature, "SH")
 
         # Test with invalid dataset
@@ -252,9 +248,7 @@ class TestLincsAnalyzerEnhancements:
         self.analyzer._get_dataset_data = Mock(return_value=mock_dataset_data)
 
         # Create output with no overlapping gene names
-        correlate_output["hit_list"]["merge"] = [
-            "DIFFERENT_GENE_" + str(i) for i in range(10)
-        ]
+        correlate_output["hit_list"]["merge"] = ["DIFFERENT_GENE_" + str(i) for i in range(10)]
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -262,10 +256,7 @@ class TestLincsAnalyzerEnhancements:
 
             # Should return empty dataframes and raise warning
             assert len(w) >= 1
-            assert (
-                "No gene overlap" in str(w[0].message)
-                or result["interactor_score"].empty
-            )
+            assert "No gene overlap" in str(w[0].message) or result["interactor_score"].empty
 
 
 class TestLincsReporter:
@@ -410,9 +401,7 @@ class TestLincsReporter:
         signature = self.create_test_signature()
 
         # Should return None and not crash
-        result = self.reporter._create_summary_correlation_plot(
-            empty_results, signature
-        )
+        result = self.reporter._create_summary_correlation_plot(empty_results, signature)
         assert result is None
 
     def test_prepare_correlation_matrix_with_valid_data(self):
@@ -478,14 +467,10 @@ class TestHighLevelInterfaces:
         )
 
         # Test interface
-        result = lincs_qc_access(
-            dataset="CP", perturbagens=["COMPOUND_A"], just_gold=True
-        )
+        result = lincs_qc_access(dataset="CP", perturbagens=["COMPOUND_A"], just_gold=True)
 
         assert isinstance(result, pd.DataFrame)
-        mock_instance.lincs_qc_access.assert_called_once_with(
-            "CP", ["COMPOUND_A"], True
-        )
+        mock_instance.lincs_qc_access.assert_called_once_with("CP", ["COMPOUND_A"], True)
 
     @patch("metaintegrator.linc_tools.LincsAnalyzer")
     @patch("metaintegrator.linc_tools.LincsDataManager")
@@ -497,9 +482,7 @@ class TestHighLevelInterfaces:
 
         mock_analyzer_instance = Mock()
         mock_analyzer.return_value = mock_analyzer_instance
-        mock_analyzer_instance.lincs_correlate.return_value = {
-            "hit_list": pd.DataFrame()
-        }
+        mock_analyzer_instance.lincs_correlate.return_value = {"hit_list": pd.DataFrame()}
         mock_analyzer_instance.lincs_interactors.return_value = {
             "interactor_score": pd.DataFrame(),
             "interactor_expression": pd.DataFrame(),
@@ -578,12 +561,8 @@ class TestIntegration:
         genes = [f"GENE_{i}" for i in range(100)]
         compounds = [f"COMPOUND_{i}" for i in range(50)]
         mock_agg_data = {
-            "CP": pd.DataFrame(
-                np.random.normal(0, 1, (100, 50)), index=genes, columns=compounds
-            ),
-            "SH": pd.DataFrame(
-                np.random.normal(0, 1, (100, 30)), index=genes, columns=genes[:30]
-            ),
+            "CP": pd.DataFrame(np.random.normal(0, 1, (100, 50)), index=genes, columns=compounds),
+            "SH": pd.DataFrame(np.random.normal(0, 1, (100, 30)), index=genes, columns=genes[:30]),
         }
 
         mock_instance.get_data.side_effect = lambda key: {
@@ -593,9 +572,7 @@ class TestIntegration:
         }.get(key)
 
         # Create test signature
-        signature = pd.DataFrame(
-            np.random.normal(0, 2, 20), index=genes[:20], columns=["summary"]
-        )
+        signature = pd.DataFrame(np.random.normal(0, 2, 20), index=genes[:20], columns=["summary"])
 
         # Test end-to-end workflow
         with patch("matplotlib.pyplot.savefig"):  # Mock plotting
@@ -616,9 +593,7 @@ class TestIntegration:
             assert isinstance(qc_result, pd.DataFrame)
 
             # Test interactor analysis
-            interactor_results = analyzer.lincs_interactors(
-                corr_results, signature, "SH"
-            )
+            interactor_results = analyzer.lincs_interactors(corr_results, signature, "SH")
             assert "interactor_score" in interactor_results
             assert "interactor_expression" in interactor_results
 
@@ -677,9 +652,7 @@ class TestIntegration:
             if "hit_list" in result:
                 assert isinstance(result["hit_list"], pd.DataFrame)
                 # Should limit results appropriately
-                assert (
-                    len(result["hit_expression"].columns) <= 12
-                )  # 10 hits + sig/anti_sig
+                assert len(result["hit_expression"].columns) <= 12  # 10 hits + sig/anti_sig
 
 
 class TestEdgeCases:

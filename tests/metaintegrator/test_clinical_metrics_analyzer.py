@@ -66,9 +66,7 @@ class TestYoudenJAnalyzer:
 
         # Test with uppercase column names
         roc_df_upper = pd.DataFrame({"FPR": self.sample_fpr, "TPR": self.sample_tpr})
-        result_upper = self.analyzer.calculate_optimal_cutoff(
-            roc_df_upper, return_details=True
-        )
+        result_upper = self.analyzer.calculate_optimal_cutoff(roc_df_upper, return_details=True)
         assert result["youden_j"] == result_upper["youden_j"]
 
     def test_calculate_optimal_cutoff_dict_input(self):
@@ -81,9 +79,7 @@ class TestYoudenJAnalyzer:
 
         # Test with uppercase keys
         roc_dict_upper = {"FPR": self.sample_fpr, "TPR": self.sample_tpr}
-        result_upper = self.analyzer.calculate_optimal_cutoff(
-            roc_dict_upper, return_details=True
-        )
+        result_upper = self.analyzer.calculate_optimal_cutoff(roc_dict_upper, return_details=True)
         assert result["youden_j"] == result_upper["youden_j"]
 
     def test_calculate_optimal_cutoff_tuple_input(self):
@@ -230,9 +226,7 @@ class TestClinicalParametersAnalyzer:
             {
                 "name": "Study2",
                 "score": np.array([0.2, 0.5, 0.7, 0.9, 0.1, 0.6, 0.8, 0.3]),
-                "class": np.array(
-                    [0, 1, 1, 1, 0, 1, 1, 0]
-                ),  # Test 'class' instead of 'group'
+                "class": np.array([0, 1, 1, 1, 0, 1, 1, 0]),  # Test 'class' instead of 'group'
             },
         ]
 
@@ -390,9 +384,7 @@ class TestClinicalParametersAnalyzer:
             # Should warn about small sample size
             assert len(w) > 0
             warning_messages = [str(warning.message) for warning in w]
-            assert any(
-                "may produce unreliable results" in msg for msg in warning_messages
-            )
+            assert any("may produce unreliable results" in msg for msg in warning_messages)
 
             # Should still produce some result
             assert isinstance(result, pd.DataFrame)
@@ -490,9 +482,7 @@ class TestClinicalParametersAnalyzer:
 
     def test_precision_rounding(self):
         """Test significant digits precision rounding."""
-        result = self.analyzer.calculate_multi_study_parameters(
-            self.sample_studies, precision=2
-        )
+        result = self.analyzer.calculate_multi_study_parameters(self.sample_studies, precision=2)
 
         # Check that values have appropriate precision
         # (Difficult to test exact rounding without knowing exact values)
@@ -533,9 +523,7 @@ class TestClinicalParametersAnalyzer:
 
         # Test specific rounding cases
         assert abs(result[0, 0] - 0.123) < 1e-10  # 0.123456 -> 0.123
-        assert (
-            abs(result[0, 1] - 0.000123) < 1e-10
-        )  # 0.000123 -> 0.000123 (already 3 sig figs)
+        assert abs(result[0, 1] - 0.000123) < 1e-10  # 0.000123 -> 0.000123 (already 3 sig figs)
         assert abs(result[1, 0] - 123) < 1e-10  # 123.456 -> 123
         assert result[1, 1] == 0.0  # 0.0 stays 0.0
 
@@ -621,12 +609,8 @@ class TestIntegration:
         for i in range(3):
             n_samples = 50 + i * 25
             # Create realistic scores with some separation
-            scores_neg = np.random.beta(
-                2, 5, n_samples // 2
-            )  # Lower scores for negative class
-            scores_pos = np.random.beta(
-                5, 2, n_samples // 2
-            )  # Higher scores for positive class
+            scores_neg = np.random.beta(2, 5, n_samples // 2)  # Lower scores for negative class
+            scores_pos = np.random.beta(5, 2, n_samples // 2)  # Higher scores for positive class
 
             scores = np.concatenate([scores_neg, scores_pos])
             groups = np.concatenate([np.zeros(n_samples // 2), np.ones(n_samples // 2)])
@@ -650,9 +634,7 @@ class TestIntegration:
             fpr, tpr, _ = roc_curve(study["group"], study["score"])
             roc_data = pd.DataFrame({"fpr": fpr, "tpr": tpr})
 
-            cutoff_result = youden_analyzer.calculate_optimal_cutoff(
-                roc_data, return_details=True
-            )
+            cutoff_result = youden_analyzer.calculate_optimal_cutoff(roc_data, return_details=True)
             optimal_cutoffs.append(cutoff_result)
 
         # Verify results

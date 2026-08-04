@@ -140,18 +140,14 @@ class TestMetaAnalysisCore:
 
     def test_create_annotation_table_missing_expr_key(self, sample_gem_data):
         """Test annotation table creation with missing 'expr' key."""
-        invalid_data = {
-            key: val for key, val in sample_gem_data.items() if key != "expr"
-        }
+        invalid_data = {key: val for key, val in sample_gem_data.items() if key != "expr"}
 
         with pytest.raises(KeyError):
             MetaAnalysisCore.create_annotation_table(invalid_data)
 
     def test_create_annotation_table_missing_keys_key(self, sample_gem_data):
         """Test annotation table creation with missing 'keys' key."""
-        invalid_data = {
-            key: val for key, val in sample_gem_data.items() if key != "keys"
-        }
+        invalid_data = {key: val for key, val in sample_gem_data.items() if key != "keys"}
 
         with pytest.raises(KeyError):
             MetaAnalysisCore.create_annotation_table(invalid_data)
@@ -168,9 +164,7 @@ class TestMetaAnalysisCore:
     @pytest.mark.parametrize("missing_key", ["expr", "class", "keys"])
     def test_check_metagem_study_missing_keys(self, sample_study, missing_key):
         """Test validation with missing required keys."""
-        invalid_study = {
-            key: val for key, val in sample_study.items() if key != missing_key
-        }
+        invalid_study = {key: val for key, val in sample_study.items() if key != missing_key}
 
         with pytest.raises(ValueError, match="Missing required keys"):
             MetaAnalysisCore.check_metagem_study(invalid_study)
@@ -183,9 +177,7 @@ class TestMetaAnalysisCore:
             np.array([0.5, 1.5]),  # Non-integer
         ],
     )
-    def test_check_metagem_study_invalid_class_coding(
-        self, sample_study, invalid_classes
-    ):
+    def test_check_metagem_study_invalid_class_coding(self, sample_study, invalid_classes):
         """Test validation with invalid class coding."""
         invalid_study = sample_study.copy()
         invalid_study["class"] = invalid_classes
@@ -545,13 +537,9 @@ class TestMetaAnalysisCore:
 
     def test_pool_inverse_variance_no_valid_data(self):
         """Test pooling with no valid data."""
-        effect_sizes = pd.DataFrame(
-            {"study1": [np.nan, np.nan]}, index=["gene1", "gene2"]
-        )
+        effect_sizes = pd.DataFrame({"study1": [np.nan, np.nan]}, index=["gene1", "gene2"])
 
-        standard_errors = pd.DataFrame(
-            {"study1": [np.nan, np.nan]}, index=["gene1", "gene2"]
-        )
+        standard_errors = pd.DataFrame({"study1": [np.nan, np.nan]}, index=["gene1", "gene2"])
 
         result = MetaAnalysisCore.pool_inverse_variance(effect_sizes, standard_errors)
 
@@ -581,9 +569,7 @@ class TestMetaAnalysisCore:
 
     def test_get_ttest_pvalues(self, sample_study):
         """Test t-test p-value calculation."""
-        result = MetaAnalysisCore.get_ttest_pvalues(
-            sample_study["expr"], sample_study["class"]
-        )
+        result = MetaAnalysisCore.get_ttest_pvalues(sample_study["expr"], sample_study["class"])
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 4  # Four genes
@@ -747,13 +733,9 @@ class TestFisherCombination:
             ([0.01, 0.05], True),  # Moderately significant
         ],
     )
-    def test_apply_fisher_vectorized_significance_levels(
-        self, p_values, expected_significant
-    ):
+    def test_apply_fisher_vectorized_significance_levels(self, p_values, expected_significant):
         """Test Fisher method with different significance levels."""
-        p_matrix = pd.DataFrame(
-            {"study1": [p_values[0]], "study2": [p_values[1]]}, index=["gene1"]
-        )
+        p_matrix = pd.DataFrame({"study1": [p_values[0]], "study2": [p_values[1]]}, index=["gene1"])
 
         result = FisherCombination._apply_fisher_vectorized(p_matrix, "test")
 
@@ -875,11 +857,12 @@ class TestFisherCombination:
     @pytest.mark.slow
     def test_sum_of_logs_processing_pipeline(self, sample_significance_data):
         """Test the complete processing pipeline in sum_of_logs."""
-        with patch.object(
-            MetaAnalysisCore, "expand_dataframe"
-        ) as mock_expand, patch.object(
-            FisherCombination, "summarize_significance_within_study"
-        ) as mock_summarize:
+        with (
+            patch.object(MetaAnalysisCore, "expand_dataframe") as mock_expand,
+            patch.object(
+                FisherCombination, "summarize_significance_within_study"
+            ) as mock_summarize,
+        ):
             # Set up mocks to return valid data with DOT notation
             mock_expand.side_effect = lambda x: x  # Identity function
             mock_summarize.side_effect = lambda x: x[["P.up", "P.down"]]  # Use dots!
@@ -906,9 +889,7 @@ class TestIntegration:
     def test_full_pipeline_effect_sizes(self, differential_expression_data):
         """Test the full pipeline for effect size calculation."""
         # Calculate effect sizes
-        effect_sizes = MetaAnalysisCore.calculate_effect_sizes(
-            differential_expression_data
-        )
+        effect_sizes = MetaAnalysisCore.calculate_effect_sizes(differential_expression_data)
 
         # Should have results for all genes
         assert len(effect_sizes) == len(differential_expression_data["keys"])
@@ -930,9 +911,7 @@ class TestIntegration:
         • Genes 3-5: NO differential expression (will have p ≈ 0.3-0.5) 
         """
         # Calculate p-values
-        pvalues = FisherCombination.calculate_study_pvalues(
-            differential_expression_data
-        )
+        pvalues = FisherCombination.calculate_study_pvalues(differential_expression_data)
 
         # Should have results for all genes
         assert len(pvalues) == len(differential_expression_data["keys"])
@@ -1061,16 +1040,12 @@ class TestIntegration:
             if i == 0:
                 expr_data.iloc[:2, n_samples // 2 :] += 1.5  # Strong effect in study 0
             elif i == 1:
-                expr_data.iloc[
-                    :2, n_samples // 2 :
-                ] += 0.8  # Moderate effect in study 1
+                expr_data.iloc[:2, n_samples // 2 :] += 0.8  # Moderate effect in study 1
             # Study 2 has no differential expression (null study)
 
             study = {
                 "expr": expr_data,
-                "class": np.array(
-                    [0] * (n_samples // 2) + [1] * (n_samples - n_samples // 2)
-                ),
+                "class": np.array([0] * (n_samples // 2) + [1] * (n_samples - n_samples // 2)),
                 "keys": [f"symbol_{j}" for j in range(5)],
             }
 
@@ -1096,9 +1071,7 @@ class TestIntegration:
 
         # Genes with consistent effects across studies should have smaller p-values
         # (This is a general expectation, though specific values depend on simulation)
-        assert any(fisher_result["F.pval.up"] < 0.05) or any(
-            fisher_result["F.pval.down"] < 0.05
-        )
+        assert any(fisher_result["F.pval.up"] < 0.05) or any(fisher_result["F.pval.down"] < 0.05)
 
 
 # =============================================================================

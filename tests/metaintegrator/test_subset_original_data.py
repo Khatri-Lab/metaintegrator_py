@@ -124,9 +124,7 @@ class TestBasicSubsetting:
 
     def test_subset_by_boolean_array(self, basic_dataset):
         """Test subsetting using boolean mask."""
-        keep_mask = np.array(
-            [True, False, True, False, True, False, False, False, False, False]
-        )
+        keep_mask = np.array([True, False, True, False, True, False, False, False, False, False])
         result = DataProcessor.subset_original_data(basic_dataset, keep_mask)
 
         # Check dimensions
@@ -343,9 +341,7 @@ class TestSpecialCases:
         # Test 3: Partial case mismatch - should warn and return only valid samples
         keep_samples_partial = ["sample_1", "Sample_1", "Sample_3"]  # 2 valid, 1 wrong
         with pytest.warns(UserWarning, match="not present"):
-            result_partial = DataProcessor.subset_original_data(
-                dataset, keep_samples_partial
-            )
+            result_partial = DataProcessor.subset_original_data(dataset, keep_samples_partial)
             # Should only keep the 2 valid samples (sample_1 and Sample_3)
             assert result_partial["expr"].shape[1] == 2
             assert list(result_partial["expr"].columns) == ["sample_1", "Sample_3"]
@@ -463,9 +459,7 @@ class TestIntegrationScenarios:
         # Take 2 from each
         stratified_samples = class_0_samples[:2] + class_1_samples[:2]
 
-        result = DataProcessor.subset_original_data(
-            dataset_with_pheno, stratified_samples
-        )
+        result = DataProcessor.subset_original_data(dataset_with_pheno, stratified_samples)
 
         # Should have 2 cases and 2 controls
         assert result["expr"].shape[1] == 4

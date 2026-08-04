@@ -283,9 +283,7 @@ def create_realistic_immunostates_matrix(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Generate realistic immunoStates reference matrix"
-    )
+    parser = argparse.ArgumentParser(description="Generate realistic immunoStates reference matrix")
     parser.add_argument(
         "--output",
         "-o",
@@ -302,9 +300,7 @@ if __name__ == "__main__":
     print("Generating Realistic ImmunoStates Reference Matrix")
     print("=" * 70)
 
-    matrix = create_realistic_immunostates_matrix(
-        output_path=args.output, random_seed=args.seed
-    )
+    matrix = create_realistic_immunostates_matrix(output_path=args.output, random_seed=args.seed)
 
     print("\n" + "=" * 70)
     print("SUCCESS!")

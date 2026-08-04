@@ -284,9 +284,7 @@ def test_compute_effect_sizes(monkeypatch):
 
     assert "p_fdr" in result.pooled_estimates.columns
     assert "effect_size" in result.pooled_estimates.columns
-    assert all(
-        result.pooled_estimates["effect_size"] == result.pooled_estimates["summary"]
-    )
+    assert all(result.pooled_estimates["effect_size"] == result.pooled_estimates["summary"])
 
     sorted_indices = result.pooled_estimates["p_fdr"].argsort()
     assert list(sorted_indices) == sorted([1, 0, 2])
@@ -454,9 +452,7 @@ def test_run_leave_one_out_sequential(monkeypatch):
     )
 
     datasets = [{"index": 0}, {"index": 1}, {"index": 2}]
-    results = analyzer.run_leave_one_out_analysis(
-        datasets, use_old_method=is_use_old_method
-    )
+    results = analyzer.run_leave_one_out_analysis(datasets, use_old_method=is_use_old_method)
 
     assert isinstance(results, list)
     assert len(results) == 3
@@ -511,12 +507,8 @@ def test_run_meta_analysis_validation_fail():
 def test_run_meta_analysis_leave_one_out(monkeypatch):
     """When run_leave_one_out is True, LOO results are attached."""
     analyzer = _make_test_analyzer()
-    meta_obj = {
-        "originalData": {"ds1": {"dummy": 1}, "ds2": {"dummy": 2}, "ds3": {"dummy": 3}}
-    }
-    monkeypatch.setattr(
-        analyzer, "run_meta_analysis_core", lambda data, use_old: {"meta": "core"}
-    )
+    meta_obj = {"originalData": {"ds1": {"dummy": 1}, "ds2": {"dummy": 2}, "ds3": {"dummy": 3}}}
+    monkeypatch.setattr(analyzer, "run_meta_analysis_core", lambda data, use_old: {"meta": "core"})
     monkeypatch.setattr(
         analyzer,
         "run_leave_one_out_analysis",
@@ -581,17 +573,12 @@ def test_meta_analysis_complete_output_structure():
     mock_dataset_1 = {"expr": pd.DataFrame([[1, 2, 3]]), "class": np.array([0, 0, 1])}
     mock_dataset_2 = {"expr": pd.DataFrame([[4, 5, 6]]), "class": np.array([0, 1, 1])}
 
-    result = analyzer.run_meta_analysis_core(
-        [mock_dataset_1, mock_dataset_2], use_old_method=False
-    )
+    result = analyzer.run_meta_analysis_core([mock_dataset_1, mock_dataset_2], use_old_method=False)
 
     assert "pooled_estimates" in result
     assert isinstance(result["pooled_estimates"], pd.DataFrame)
     assert "effect_size" in result["pooled_estimates"].columns
-    assert all(
-        result["pooled_estimates"]["effect_size"]
-        == result["pooled_estimates"]["summary"]
-    )
+    assert all(result["pooled_estimates"]["effect_size"] == result["pooled_estimates"]["summary"])
 
     for col in ["p_value", "p_fdr", "summary", "se_summary"]:
         assert col in result["pooled_estimates"].columns
@@ -739,9 +726,7 @@ class TestRandomEffectsEngine:
         df2 = pd.DataFrame({"g": [2.0], "se_g": [0.2]}, index=["geneB"])
         df3 = pd.DataFrame({"g": [3.0], "se_g": [0.3]}, index=["geneA"])
 
-        merged = RandomEffectsEngine._multimerge_effect_sizes(
-            [df1, df2, df3], ["s0", "s1", "s2"]
-        )
+        merged = RandomEffectsEngine._multimerge_effect_sizes([df1, df2, df3], ["s0", "s1", "s2"])
         assert merged.shape == (2, 6)
         assert merged.loc["geneA", "s0_g"] == 1.0
         assert merged.loc["geneA", "s2_g"] == 3.0
@@ -817,9 +802,7 @@ class TestMetaAnalyzerEngineIntegration:
         def fake_compute(original_data):
             called["hit"] = True
             return make_es_result(
-                pooled=pd.DataFrame(
-                    {"p_value": [0.05], "summary": [1.0]}, index=["g0"]
-                ),
+                pooled=pd.DataFrame({"p_value": [0.05], "summary": [1.0]}, index=["g0"]),
             )
 
         monkeypatch.setattr(analyzer._engine, "compute_effect_sizes", fake_compute)
@@ -1181,9 +1164,7 @@ class TestEffectSizeResult:
     def test_dict_getitem_compat(self):
         """Dict-style key access works for backward compat."""
         pooled = pd.DataFrame({"x": [1]})
-        r = EffectSizeResult(
-            g=pd.DataFrame(), se_g=pd.DataFrame(), pooled_estimates=pooled
-        )
+        r = EffectSizeResult(g=pd.DataFrame(), se_g=pd.DataFrame(), pooled_estimates=pooled)
         pd.testing.assert_frame_equal(r["pooled_estimates"], pooled)
 
     def test_dict_getitem_bad_key_raises_key_error(self):
@@ -1276,10 +1257,7 @@ class TestInverseVarianceEngine:
 
     def test_separate_matrices_shared_across_engines(self):
         """_separate_matrices is the same static method on both engines."""
-        assert (
-            RandomEffectsEngine._separate_matrices
-            is FixedEffectsEngine._separate_matrices
-        )
+        assert RandomEffectsEngine._separate_matrices is FixedEffectsEngine._separate_matrices
 
     def test_multimerge_shared_across_engines(self):
         """_multimerge_effect_sizes is the same static method on both engines."""
@@ -1370,8 +1348,7 @@ class TestEngineHierarchy:
     def test_random_and_fixed_share_compute_fisher(self):
         """Both engines inherit the same compute_fisher_results implementation."""
         assert (
-            RandomEffectsEngine.compute_fisher_results
-            is FixedEffectsEngine.compute_fisher_results
+            RandomEffectsEngine.compute_fisher_results is FixedEffectsEngine.compute_fisher_results
         )
 
     def test_random_and_fixed_differ_only_in_between_method(self):

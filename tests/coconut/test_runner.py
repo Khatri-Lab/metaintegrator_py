@@ -106,9 +106,7 @@ def basic_coverage_debug():
     if not found_modules:
         print("❌ No COCONUT module files found!")
         print("Expected files: " + ", ".join(module_files))
-        print(
-            "💡 Since you mentioned having coconut.py, make sure it's in the current directory"
-        )
+        print("💡 Since you mentioned having coconut.py, make sure it's in the current directory")
         return
 
     print(f"✅ Found modules: {found_modules}")
@@ -141,9 +139,7 @@ def basic_coverage_debug():
     if found_modules:
         # Prioritize coconut.py if it exists
         best_module = (
-            "coconut"
-            if "coconut.py" in found_modules
-            else found_modules[0].replace(".py", "")
+            "coconut" if "coconut.py" in found_modules else found_modules[0].replace(".py", "")
         )
         print(f"\nTesting coverage with {best_module}...")
 
@@ -156,9 +152,7 @@ def basic_coverage_debug():
         ]
 
         try:
-            result = subprocess.run(
-                coverage_cmd, capture_output=True, text=True, timeout=15
-            )
+            result = subprocess.run(coverage_cmd, capture_output=True, text=True, timeout=15)
             if result.returncode == 0:
                 print("✅ Basic coverage test successful")
                 # Show coverage report
@@ -186,9 +180,7 @@ def run_with_coverage():
 
             # Special note for coconut.py
             if module_name == "coconut":
-                print(
-                    "📌 Using coconut.py - this appears to be your main implementation!"
-                )
+                print("📌 Using coconut.py - this appears to be your main implementation!")
             break
 
     if not target_module:
@@ -255,9 +247,7 @@ def run_with_coverage():
 
     print("\n💡 Coverage debugging suggestions:")
     print("1. Run: python coverage_debug.py")
-    print(
-        "2. Verify module imports: python -c 'import coconut_improved; print(\"Success\")'"
-    )
+    print("2. Verify module imports: python -c 'import coconut_improved; print(\"Success\")'")
     print("3. Check for mock vs real functions")
 
     return False
@@ -334,9 +324,7 @@ def main():
 
     parser.add_argument("--verbose", action="store_true", help="Extra verbose output")
 
-    parser.add_argument(
-        "--debug", action="store_true", help="Run with debug output and no capture"
-    )
+    parser.add_argument("--debug", action="store_true", help="Run with debug output and no capture")
 
     parser.add_argument(
         "--debug-coverage",

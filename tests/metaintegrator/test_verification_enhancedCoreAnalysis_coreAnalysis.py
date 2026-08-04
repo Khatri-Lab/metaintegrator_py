@@ -169,9 +169,7 @@ def test_3_mixed_separator_handling():
         non_nan_count = gene1_up.notna().sum()
 
         print_info(f"GENE1 found in {non_nan_count} studies")
-        assert (
-            non_nan_count == 3
-        ), f"GENE1 should appear in all 3 studies, found in {non_nan_count}"
+        assert non_nan_count == 3, f"GENE1 should appear in all 3 studies, found in {non_nan_count}"
 
         print_success(
             f"All 3 studies included: {result['sigs_up'].shape[1]} up columns, {result['sigs_down'].shape[1]} down columns"
@@ -215,9 +213,7 @@ def test_4_fisher_combination():
         combined = EnhancedMetaAnalysis.combine_significances([matrix1, matrix2])
 
         # Apply Fisher's method
-        fisher_result = FisherCombination._apply_fisher_vectorized(
-            combined["sigs_up"], "up"
-        )
+        fisher_result = FisherCombination._apply_fisher_vectorized(combined["sigs_up"], "up")
 
         print_info(f"Fisher result shape: {fisher_result.shape}")
         print_info(f"Fisher result columns: {list(fisher_result.columns)}")
@@ -236,12 +232,8 @@ def test_4_fisher_combination():
             valid_pvals <= 1
         ).all(), "P-values should be between 0 and 1"
 
-        print_success(
-            f"Fisher combination successful: {len(valid_stats)} valid statistics"
-        )
-        print_success(
-            f"P-values valid: min={valid_pvals.min():.4f}, max={valid_pvals.max():.4f}"
-        )
+        print_success(f"Fisher combination successful: {len(valid_stats)} valid statistics")
+        print_success(f"P-values valid: min={valid_pvals.min():.4f}, max={valid_pvals.max():.4f}")
         return True
 
     except Exception as e:
@@ -276,9 +268,7 @@ def test_5_extreme_pvalues():
 
         assert finite_count > 0, "Should have finite values"
 
-        print_success(
-            f"Extreme p-values handled correctly: {finite_count} finite values"
-        )
+        print_success(f"Extreme p-values handled correctly: {finite_count} finite values")
         return True
 
     except Exception as e:
@@ -335,9 +325,7 @@ def main():
         print()
         print_info("Please review the errors above and check:")
         print_info("  1. All files have been updated correctly")
-        print_info(
-            "  2. The enhanced filter in enhanced_core_analysis.py accepts both separators"
-        )
+        print_info("  2. The enhanced filter in enhanced_core_analysis.py accepts both separators")
         print_info("  3. Test fixtures use consistent column naming")
         return 1
 

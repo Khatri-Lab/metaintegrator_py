@@ -154,25 +154,19 @@ class TestExtractDatasetName:
     def test_extract_basic_name(self):
         """Test extraction of basic dataset name."""
         filename = "GSEs.test_GSE12345_genes.csv"
-        result = _extract_dataset_name(
-            filename, "GSEs.test_", "_genes.csv", "_pheno.csv"
-        )
+        result = _extract_dataset_name(filename, "GSEs.test_", "_genes.csv", "_pheno.csv")
         assert result == "GSE12345"
 
     def test_extract_with_pheno_suffix(self):
         """Test extraction when filename has pheno suffix."""
         filename = "GSEs.test_GSE54321_pheno.csv"
-        result = _extract_dataset_name(
-            filename, "GSEs.test_", "_genes.csv", "_pheno.csv"
-        )
+        result = _extract_dataset_name(filename, "GSEs.test_", "_genes.csv", "_pheno.csv")
         assert result == "GSE54321"
 
     def test_extract_without_prefix(self):
         """Test extraction when filename doesn't have prefix."""
         filename = "GSE12345_genes.csv"
-        result = _extract_dataset_name(
-            filename, "GSEs.test_", "_genes.csv", "_pheno.csv"
-        )
+        result = _extract_dataset_name(filename, "GSEs.test_", "_genes.csv", "_pheno.csv")
         assert result == "GSE12345"
 
     def test_extract_with_empty_prefix(self):
@@ -184,9 +178,7 @@ class TestExtractDatasetName:
     def test_extract_complex_name(self):
         """Test extraction with complex dataset name."""
         filename = "GSEs.test_GSE12345_batch2_genes.csv"
-        result = _extract_dataset_name(
-            filename, "GSEs.test_", "_genes.csv", "_pheno.csv"
-        )
+        result = _extract_dataset_name(filename, "GSEs.test_", "_genes.csv", "_pheno.csv")
         assert result == "GSE12345_batch2"
 
 
@@ -207,9 +199,7 @@ class TestGroupFilesByDataset:
         pheno_file.touch()
 
         csv_files = [genes_file, pheno_file]
-        result = _group_files_by_dataset(
-            csv_files, "_genes.csv", "_pheno.csv", "GSEs.test_"
-        )
+        result = _group_files_by_dataset(csv_files, "_genes.csv", "_pheno.csv", "GSEs.test_")
 
         assert len(result) == 1
         assert "DS1" in result
@@ -226,9 +216,7 @@ class TestGroupFilesByDataset:
             pheno_file.touch()
             files.extend([genes_file, pheno_file])
 
-        result = _group_files_by_dataset(
-            files, "_genes.csv", "_pheno.csv", "GSEs.test_"
-        )
+        result = _group_files_by_dataset(files, "_genes.csv", "_pheno.csv", "GSEs.test_")
 
         assert len(result) == 3
         for i in range(3):
@@ -253,9 +241,7 @@ class TestGroupFilesByDataset:
         wrong_file.touch()
 
         with pytest.raises(ValueError, match="No complete datasets found"):
-            _group_files_by_dataset(
-                [wrong_file], "_genes.csv", "_pheno.csv", "GSEs.test_"
-            )
+            _group_files_by_dataset([wrong_file], "_genes.csv", "_pheno.csv", "GSEs.test_")
 
     def test_group_skip_unrecognized_files(self, temp_csv_directory):
         """Test that unrecognized files are skipped."""
@@ -269,9 +255,7 @@ class TestGroupFilesByDataset:
         random_file.touch()
 
         csv_files = [genes_file, pheno_file, random_file]
-        result = _group_files_by_dataset(
-            csv_files, "_genes.csv", "_pheno.csv", "GSEs.test_"
-        )
+        result = _group_files_by_dataset(csv_files, "_genes.csv", "_pheno.csv", "GSEs.test_")
 
         assert len(result) == 1
         assert "DS1" in result
@@ -285,9 +269,7 @@ class TestGroupFilesByDataset:
 class TestLoadSingleDataset:
     """Tests for the _load_single_dataset function."""
 
-    def test_load_valid_dataset(
-        self, temp_csv_directory, sample_genes_df, sample_pheno_df
-    ):
+    def test_load_valid_dataset(self, temp_csv_directory, sample_genes_df, sample_pheno_df):
         """Test loading a valid dataset with matching samples."""
         genes_file = Path(temp_csv_directory) / "genes.csv"
         pheno_file = Path(temp_csv_directory) / "pheno.csv"
@@ -459,9 +441,7 @@ class TestLoadGseDataFromCsvDirectory:
         with pytest.raises(FileNotFoundError, match="No CSV files found"):
             load_gse_data_from_csv_directory(temp_csv_directory)
 
-    def test_load_with_custom_patterns(
-        self, temp_csv_directory, sample_genes_df, sample_pheno_df
-    ):
+    def test_load_with_custom_patterns(self, temp_csv_directory, sample_genes_df, sample_pheno_df):
         """Test loading with custom file patterns."""
         # Create files with custom patterns
         genes_file = Path(temp_csv_directory) / "dataset1_expression.csv"
@@ -499,9 +479,7 @@ class TestLoadGseDataFromCsvDirectory:
 class TestWriteOutputToCsv:
     """Tests for the _write_output_to_csv function."""
 
-    def test_write_valid_output(
-        self, temp_csv_directory, sample_genes_df, sample_pheno_df
-    ):
+    def test_write_valid_output(self, temp_csv_directory, sample_genes_df, sample_pheno_df):
         """Test writing valid output to CSV files."""
         combined_result = {
             "genes": sample_genes_df,
@@ -537,9 +515,7 @@ class TestWriteOutputToCsv:
         assert "class_label" in class_loaded.columns
         assert len(class_loaded) == 20
 
-    def test_write_transposed_genes(
-        self, temp_csv_directory, sample_genes_df, sample_pheno_df
-    ):
+    def test_write_transposed_genes(self, temp_csv_directory, sample_genes_df, sample_pheno_df):
         """Test that samples × genes file is correctly transposed."""
         combined_result = {
             "genes": sample_genes_df,
@@ -717,9 +693,7 @@ class TestMain:
         }
 
         main(args)
-        mock_runner.assert_called_once_with(
-            csv_dir="/fake/path", output_dir="/fake/output"
-        )
+        mock_runner.assert_called_once_with(csv_dir="/fake/path", output_dir="/fake/output")
 
     @patch("coconut.coconut_runner.runner")
     def test_main_with_debug_mode(self, mock_runner):
@@ -825,9 +799,7 @@ class TestEdgeCases:
             index=[f"Gene_{i}" for i in range(10)],
             columns=[1, 2, 3, 4, 5],  # Numeric column names
         )
-        pheno_df = pd.DataFrame(
-            {"attr": [0, 1, 0, 1, 0]}, index=[1, 2, 3, 4, 5]  # Numeric index
-        )
+        pheno_df = pd.DataFrame({"attr": [0, 1, 0, 1, 0]}, index=[1, 2, 3, 4, 5])  # Numeric index
 
         genes_file = Path(temp_csv_directory) / "numeric_genes.csv"
         pheno_file = Path(temp_csv_directory) / "numeric_pheno.csv"

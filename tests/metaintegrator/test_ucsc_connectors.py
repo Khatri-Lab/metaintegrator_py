@@ -194,9 +194,7 @@ class TestUCSDGenBankConnector(unittest.TestCase):
         with sqlite3.connect(self.connector.local_db) as conn:
             cursor = conn.cursor()
             old_date = datetime.now() - timedelta(days=10)
-            cursor.execute(
-                "UPDATE genbank_mappings SET last_updated = ?", (old_date.isoformat(),)
-            )
+            cursor.execute("UPDATE genbank_mappings SET last_updated = ?", (old_date.isoformat(),))
             conn.commit()
 
         # Should return None for expired data
@@ -210,9 +208,7 @@ class TestUCSDGenBankConnector(unittest.TestCase):
     def test_get_genbank_table_remote_success(self, mock_fetch):
         """Test successful remote fetch."""
         # Mock remote fetch success
-        test_data = pd.DataFrame(
-            {"name": ["GAPDH", "ACTB"], "acc": ["M33197", "NM_001101"]}
-        )
+        test_data = pd.DataFrame({"name": ["GAPDH", "ACTB"], "acc": ["M33197", "NM_001101"]})
         mock_fetch.return_value = test_data
 
         result = self.connector.get_genbank_table(use_cache=False)
@@ -242,9 +238,7 @@ class TestUCSDGenBankConnector(unittest.TestCase):
 
             print(f"\n::: test_get_genbank_table_fallback_to_cache() w={w}")
             # Should issue warning
-            self.assertTrue(
-                any("expired cache data" in str(warning.message) for warning in w)
-            )
+            self.assertTrue(any("expired cache data" in str(warning.message) for warning in w))
 
     def test_map_genbank_to_genes(self):
         """Test GenBank ID to gene symbol mapping."""
@@ -311,9 +305,7 @@ class TestUCSDGenBankConnector(unittest.TestCase):
         mock_get_conn.side_effect = [
             MySQLError("Connection failed"),
             MySQLError("Connection failed"),
-            Mock(
-                __enter__=Mock(return_value=mock_conn), __exit__=Mock(return_value=None)
-            ),
+            Mock(__enter__=Mock(return_value=mock_conn), __exit__=Mock(return_value=None)),
         ]
 
         # Should succeed after retries
@@ -534,9 +526,7 @@ class TestErrorHandling(unittest.TestCase):
             # Should return empty DataFrame and issue warning
             self.assertTrue(result.empty)
             self.assertTrue(
-                any(
-                    "No GenBank data available" in str(warning.message) for warning in w
-                )
+                any("No GenBank data available" in str(warning.message) for warning in w)
             )
 
     def test_invalid_input_data(self):

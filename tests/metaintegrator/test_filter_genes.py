@@ -328,9 +328,7 @@ class TestFilterGenesThresholds:
         pooled.iloc[5:, pooled.columns.get_loc("effectSizeFDR")] = 0.9
         meta = _make_meta_object(pooled)
 
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=0.05, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=0.05, is_leave_one_out=False)
         fr = result["filterResults"]
         # All surviving genes should have FDR <= 0.05
         assert fr.total_genes <= 10
@@ -339,9 +337,7 @@ class TestFilterGenesThresholds:
         """FDR=1.0 should effectively disable the FDR filter."""
         pooled = _make_pooled(10, base_fdr=0.5, include_fisher=False)
         meta = _make_meta_object(pooled)
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=1.0, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=1.0, is_leave_one_out=False)
         fr = result["filterResults"]
         assert fr.total_genes == 10
 
@@ -396,9 +392,7 @@ class TestFilterGenesThresholds:
     # -- Heterogeneity filter --------------------------------------
 
     def test_heterogeneity_filter(self):
-        pooled = _make_pooled(
-            10, base_fdr=0.001, include_fisher=False, include_het=True
-        )
+        pooled = _make_pooled(10, base_fdr=0.001, include_fisher=False, include_het=True)
         pooled["heterogeneityPval"] = [
             0.01,
             0.02,
@@ -466,9 +460,7 @@ class TestFilterGenesFisher:
         )
 
         meta = _make_meta_object(pooled)
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=0.05, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=0.05, is_leave_one_out=False)
         fr = result["filterResults"]
 
         assert fr.pos_gene_names == ["GeneA"]
@@ -479,9 +471,7 @@ class TestFilterGenesFisher:
         pooled = _make_pooled(6, base_fdr=0.001, include_fisher=False)
         meta = _make_meta_object(pooled)
         # Should not raise
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=1.0, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=1.0, is_leave_one_out=False)
         assert result["filterResults"].total_genes == 6
 
 
@@ -544,9 +534,7 @@ class TestFilterGenesLOO:
         loo = _make_loo_results(genes, flip_genes=["GeneFlip"])
         meta = _make_meta_object(pooled, loo=loo)
 
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=1.0, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=1.0, is_leave_one_out=False)
         fr = result["filterResults"]
         assert "GeneFlip" in fr.pos_gene_names
 
@@ -608,9 +596,7 @@ class TestFilterGenesEdgeCases:
             ]
         )
         meta = _make_meta_object(pooled)
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=0.05, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=0.05, is_leave_one_out=False)
         fr = result["filterResults"]
         assert fr.n_pos == 0
         assert fr.n_neg == 0
@@ -620,9 +606,7 @@ class TestFilterGenesEdgeCases:
         """A very strict threshold should filter everything."""
         pooled = _make_pooled(10, base_fdr=0.10, include_fisher=False)
         meta = _make_meta_object(pooled)
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=0.001, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=0.001, is_leave_one_out=False)
         fr = result["filterResults"]
         assert fr.total_genes == 0
         assert fr.pos_gene_names == []
@@ -645,9 +629,7 @@ class TestFilterGenesEdgeCases:
         )
 
         meta = _make_meta_object(pooled)
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=1.0, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=1.0, is_leave_one_out=False)
         fr = result["filterResults"]
         assert "Zero" not in fr.pos_gene_names
         assert "Zero" not in fr.neg_gene_names
@@ -656,9 +638,7 @@ class TestFilterGenesEdgeCases:
         """filter_genes() must store the result under 'filterResults'."""
         pooled = _make_pooled(5, base_fdr=0.001, include_fisher=False)
         meta = _make_meta_object(pooled)
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=1.0, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=1.0, is_leave_one_out=False)
         assert "filterResults" in result
         assert isinstance(result["filterResults"], FilterResult)
 
@@ -704,9 +684,7 @@ class TestFilterGenesEdgeCases:
         )
 
         meta = _make_meta_object(pooled)
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=0.05, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=0.05, is_leave_one_out=False)
         assert result["filterResults"].pos_gene_names == ["OnlyGene"]
 
     def test_nan_fdr_treated_as_failing(self):
@@ -726,9 +704,7 @@ class TestFilterGenesEdgeCases:
         )
 
         meta = _make_meta_object(pooled)
-        result = self.analyzer.filter_genes(
-            meta, fdr_thresh=0.05, is_leave_one_out=False
-        )
+        result = self.analyzer.filter_genes(meta, fdr_thresh=0.05, is_leave_one_out=False)
         fr = result["filterResults"]
         assert "NaNGene" not in fr.pos_gene_names
         assert "GoodGene" in fr.neg_gene_names
@@ -789,9 +765,7 @@ class TestLOOConsistentGenesHelper:
     def test_gene_missing_from_loo_pooled_passes(self):
         """A gene absent from a LOO sub-analysis should still pass."""
         loo = {
-            "r1": {
-                "pooledResults": pd.DataFrame({"effectSize": [0.5]}, index=["Other"])
-            },
+            "r1": {"pooledResults": pd.DataFrame({"effectSize": [0.5]}, index=["Other"])},
         }
         result = MetaAnalyzer._loo_consistent_genes(["G1"], loo, "pos")
         assert result == ["G1"]
@@ -824,9 +798,7 @@ class TestStandaloneFilterGenes:
     def test_convenience_function_passes_thresholds(self):
         pooled = _make_pooled(10, base_fdr=0.001, include_fisher=False)
         meta = _make_meta_object(pooled)
-        result = filter_genes(
-            meta, effect_size_thresh=5.0, fdr_thresh=1.0, is_leave_one_out=False
-        )
+        result = filter_genes(meta, effect_size_thresh=5.0, fdr_thresh=1.0, is_leave_one_out=False)
         # Very high effect_size_thresh should filter most genes
         assert result["filterResults"].total_genes < 10
 

@@ -192,16 +192,12 @@ class TestFilterConfig:
 
     def test_invalid_fdr_thresh(self):
         """Test invalid FDR threshold."""
-        with pytest.raises(
-            ConfigurationError, match="FDR threshold must be between 0 and 1"
-        ):
+        with pytest.raises(ConfigurationError, match="FDR threshold must be between 0 and 1"):
             FilterConfig(fdr_thresh=1.5)
 
     def test_negative_fdr_thresh(self):
         """Test negative FDR threshold."""
-        with pytest.raises(
-            ConfigurationError, match="FDR threshold must be between 0 and 1"
-        ):
+        with pytest.raises(ConfigurationError, match="FDR threshold must be between 0 and 1"):
             FilterConfig(fdr_thresh=-0.1)
 
     def test_invalid_number_studies_thresh(self):
@@ -258,9 +254,7 @@ class TestScoringConfig:
     def test_invalid_weight_values(self):
         """Test invalid weight values."""
         weights = {"effect_size": 1.5, "effect_fdr": -0.2}
-        with pytest.raises(
-            ConfigurationError, match="All weights must be between 0 and 1"
-        ):
+        with pytest.raises(ConfigurationError, match="All weights must be between 0 and 1"):
             ScoringConfig(weights=weights)
 
     def test_invalid_normalization_method(self):
@@ -270,16 +264,12 @@ class TestScoringConfig:
 
     def test_invalid_handle_missing(self):
         """Test invalid missing value handling method."""
-        with pytest.raises(
-            ConfigurationError, match="Invalid missing value handling method"
-        ):
+        with pytest.raises(ConfigurationError, match="Invalid missing value handling method"):
             ScoringConfig(handle_missing="invalid")
 
     def test_invalid_min_valid_genes(self):
         """Test invalid min_valid_genes."""
-        with pytest.raises(
-            ConfigurationError, match="min_valid_genes must be at least 1"
-        ):
+        with pytest.raises(ConfigurationError, match="min_valid_genes must be at least 1"):
             ScoringConfig(min_valid_genes=0)
 
 
@@ -311,9 +301,7 @@ class TestPathwayConfig:
 
     def test_invalid_min_genes_per_pathway(self):
         """Test invalid min_genes_per_pathway."""
-        with pytest.raises(
-            ConfigurationError, match="min_genes_per_pathway must be at least 1"
-        ):
+        with pytest.raises(ConfigurationError, match="min_genes_per_pathway must be at least 1"):
             PathwayConfig(min_genes_per_pathway=0)
 
     def test_invalid_max_genes_per_pathway(self):
@@ -505,12 +493,8 @@ class TestScoringResults:
 
     def create_sample_scoring_results(self):
         """Create sample ScoringResults for testing."""
-        scores = pd.Series(
-            [1.0, 2.0, 3.0, 0.5], index=["gene1", "gene2", "gene3", "gene4"]
-        )
-        return ScoringResults(
-            scores=scores, method="test_method", metadata={"param": "value"}
-        )
+        scores = pd.Series([1.0, 2.0, 3.0, 0.5], index=["gene1", "gene2", "gene3", "gene4"])
+        return ScoringResults(scores=scores, method="test_method", metadata={"param": "value"})
 
     def test_scoring_results_creation(self):
         """Test ScoringResults creation."""
@@ -592,9 +576,7 @@ class TestMetaAnalysisValidator:
     def test_missing_pooled_results(self):
         """Test validation with missing pooledResults."""
         data = {"otherField": "value"}
-        with pytest.raises(
-            ValidationError, match="Meta-analysis must contain 'pooledResults'"
-        ):
+        with pytest.raises(ValidationError, match="Meta-analysis must contain 'pooledResults'"):
             MetaAnalysisValidator.validate_and_extract(data)
 
     def test_missing_required_columns(self):
@@ -612,11 +594,7 @@ class TestMetaAnalysisValidator:
 
     def test_empty_results(self):
         """Test validation with empty results."""
-        data = {
-            "pooledResults": pd.DataFrame(
-                columns=["effectSize", "effectSizeStandardError"]
-            )
-        }
+        data = {"pooledResults": pd.DataFrame(columns=["effectSize", "effectSizeStandardError"])}
         with pytest.raises(ValidationError, match="Meta-analysis results are empty"):
             MetaAnalysisValidator.validate_and_extract(data)
 
@@ -650,9 +628,7 @@ class TestFilterResultsValidator:
 
     def test_invalid_filter_results_type(self):
         """Test validation with invalid data type."""
-        with pytest.raises(
-            ValidationError, match="Filter results must be a dictionary"
-        ):
+        with pytest.raises(ValidationError, match="Filter results must be a dictionary"):
             FilterResultsValidator.validate_and_extract("invalid")
 
     def test_missing_required_fields(self):
@@ -679,9 +655,7 @@ class TestMetaObjectValidator:
     def test_missing_meta_analysis(self):
         """Test validation with missing metaAnalysis."""
         data = {"otherField": "value"}
-        with pytest.raises(
-            ValidationError, match="Meta object must contain 'metaAnalysis' field"
-        ):
+        with pytest.raises(ValidationError, match="Meta object must contain 'metaAnalysis' field"):
             MetaObjectValidator.validate_and_extract(data)
 
     def test_invalid_meta_analysis_type(self):
@@ -760,9 +734,7 @@ class TestDataFrameUtils:
         """Test column validation with all required columns present."""
         df = pd.DataFrame({"req1": [1], "req2": [2], "opt1": [3]})
         # Should not raise exception
-        DataFrameUtils.validate_columns(
-            df, required=["req1", "req2"], optional=["opt1"]
-        )
+        DataFrameUtils.validate_columns(df, required=["req1", "req2"], optional=["opt1"])
 
     def test_validate_columns_missing_required(self):
         """Test column validation with missing required columns."""
@@ -964,15 +936,9 @@ class TestIntegration:
         config_dict = original_config.to_dict()
         reconstructed_config = FilterConfig.from_dict(config_dict)
 
-        assert (
-            reconstructed_config.effect_size_thresh
-            == original_config.effect_size_thresh
-        )
+        assert reconstructed_config.effect_size_thresh == original_config.effect_size_thresh
         assert reconstructed_config.fdr_thresh == original_config.fdr_thresh
-        assert (
-            reconstructed_config.number_studies_thresh
-            == original_config.number_studies_thresh
-        )
+        assert reconstructed_config.number_studies_thresh == original_config.number_studies_thresh
 
     def test_scoring_results_with_normalization(self):
         """Test ScoringResults with normalization utilities."""

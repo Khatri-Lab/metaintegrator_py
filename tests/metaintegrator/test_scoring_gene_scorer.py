@@ -137,14 +137,10 @@ class TestEnhancedScoringConfig:
 
     def test_enhanced_config_invalid_bootstrap_confidence(self):
         """Test validation of bootstrap confidence parameter."""
-        with pytest.raises(
-            ValueError, match="bootstrap_confidence must be between 0 and 1"
-        ):
+        with pytest.raises(ValueError, match="bootstrap_confidence must be between 0 and 1"):
             EnhancedScoringConfig(bootstrap_confidence=1.5)
 
-        with pytest.raises(
-            ValueError, match="bootstrap_confidence must be between 0 and 1"
-        ):
+        with pytest.raises(ValueError, match="bootstrap_confidence must be between 0 and 1"):
             EnhancedScoringConfig(bootstrap_confidence=0.0)
 
     def test_enhanced_config_invalid_cv_folds(self):
@@ -232,9 +228,7 @@ class TestZScoreStrategy:
         """Test computation with missing effect_size column."""
         data = pd.DataFrame({"other_column": [1.0, 2.0, 3.0]})
 
-        with pytest.raises(
-            ValueError, match="Z-score strategy requires 'effect_size' column"
-        ):
+        with pytest.raises(ValueError, match="Z-score strategy requires 'effect_size' column"):
             self.strategy.compute_scores(data, self.config)
 
     def test_compute_scores_with_missing_values(self):
@@ -408,9 +402,7 @@ class TestCombinedStrategy:
     def test_normalize_component_with_missing_values(self):
         """Test component normalization with missing values."""
         component = pd.Series([1.0, np.nan, 3.0, 4.0, 5.0])
-        config = EnhancedScoringConfig(
-            handle_missing="median", normalization_method="min_max"
-        )
+        config = EnhancedScoringConfig(handle_missing="median", normalization_method="min_max")
 
         normalized = self.strategy._normalize_component(component, config)
 
@@ -462,9 +454,7 @@ class TestEffectSizeStrategy:
         """Test computation with missing effect_size column."""
         data = pd.DataFrame({"other_column": [1.0, 2.0, 3.0]})
 
-        with pytest.raises(
-            ValueError, match="Effect size strategy requires 'effect_size' column"
-        ):
+        with pytest.raises(ValueError, match="Effect size strategy requires 'effect_size' column"):
             self.strategy.compute_scores(data, self.config)
 
     def test_compute_scores_with_missing_values(self):
@@ -484,9 +474,7 @@ class TestEffectSizeStrategy:
 
     def test_compute_scores_zero_values(self):
         """Test computation with zero effect sizes."""
-        data = pd.DataFrame(
-            {"effect_size": [0.0, 0.0, 0.0]}, index=["GENE1", "GENE2", "GENE3"]
-        )
+        data = pd.DataFrame({"effect_size": [0.0, 0.0, 0.0]}, index=["GENE1", "GENE2", "GENE3"])
 
         scores = self.strategy.compute_scores(data, self.config)
 
@@ -522,9 +510,7 @@ class TestFDRInverseStrategy:
 
     def test_compute_scores_fdr_column(self):
         """Test FDR inverse scoring with fdr column."""
-        data = pd.DataFrame(
-            {"fdr": [0.05, 0.01, 0.001]}, index=["GENE1", "GENE2", "GENE3"]
-        )
+        data = pd.DataFrame({"fdr": [0.05, 0.01, 0.001]}, index=["GENE1", "GENE2", "GENE3"])
 
         scores = self.strategy.compute_scores(data, self.config)
 
@@ -533,9 +519,7 @@ class TestFDRInverseStrategy:
 
     def test_compute_scores_adj_pvalue(self):
         """Test FDR inverse scoring with adj_pvalue column."""
-        data = pd.DataFrame(
-            {"adj_pvalue": [0.05, 0.01, 0.001]}, index=["GENE1", "GENE2", "GENE3"]
-        )
+        data = pd.DataFrame({"adj_pvalue": [0.05, 0.01, 0.001]}, index=["GENE1", "GENE2", "GENE3"])
 
         scores = self.strategy.compute_scores(data, self.config)
 
@@ -563,9 +547,7 @@ class TestFDRInverseStrategy:
         """Test FDR inverse scoring with no FDR columns."""
         data = pd.DataFrame({"other_column": [1.0, 2.0, 3.0]})
 
-        with pytest.raises(
-            ValueError, match="FDR inverse strategy requires FDR column"
-        ):
+        with pytest.raises(ValueError, match="FDR inverse strategy requires FDR column"):
             self.strategy.compute_scores(data, self.config)
 
     def test_compute_scores_extreme_values(self):
@@ -606,18 +588,14 @@ class TestFisherMinStrategy:
         assert len(scores) == 4
         assert isinstance(scores, pd.Series)
         # Should return the fisher_score column as-is
-        expected = pd.Series(
-            [1.0, 2.0, 3.0, 4.0], index=["GENE1", "GENE2", "GENE3", "GENE4"]
-        )
+        expected = pd.Series([1.0, 2.0, 3.0, 4.0], index=["GENE1", "GENE2", "GENE3", "GENE4"])
         pd.testing.assert_series_equal(scores, expected)
 
     def test_compute_scores_missing_column(self):
         """Test computation with missing fisher_score column."""
         data = pd.DataFrame({"other_column": [1.0, 2.0, 3.0]})
 
-        with pytest.raises(
-            ValueError, match="Fisher min strategy requires 'fisher_score' column"
-        ):
+        with pytest.raises(ValueError, match="Fisher min strategy requires 'fisher_score' column"):
             self.strategy.compute_scores(data, self.config)
 
     def test_compute_scores_with_missing_values(self):
@@ -859,9 +837,7 @@ class TestEnhancedGeneScorer:
     @patch("metaintegrator.scoring_gene_scorer.MetaObjectValidator")
     def test_score_genes_validation_error(self, mock_validator):
         """Test gene scoring with validation error."""
-        mock_validator.validate_and_extract.side_effect = ValidationError(
-            "Invalid meta object"
-        )
+        mock_validator.validate_and_extract.side_effect = ValidationError("Invalid meta object")
 
         with pytest.raises(ScoringCalculationError):
             self.scorer.score_genes(self.meta_object)
@@ -929,9 +905,7 @@ class TestEnhancedGeneScorer:
 
     def test_score_pathways(self):
         """Test pathway scoring functionality."""
-        gene_scores = pd.Series(
-            {"GENE1": 1.0, "GENE2": 2.0, "GENE3": 3.0, "GENE4": 4.0}
-        )
+        gene_scores = pd.Series({"GENE1": 1.0, "GENE2": 2.0, "GENE3": 3.0, "GENE4": 4.0})
 
         # Mock pathway config
         pathway_config = Mock()
@@ -970,9 +944,7 @@ class TestEnhancedGeneScorer:
         }
         pathway_config.gene_weights = None
 
-        pathway_scores = scorer.score_pathways(
-            gene_scores, pathway_config, AggregationMethod.MEAN
-        )
+        pathway_scores = scorer.score_pathways(gene_scores, pathway_config, AggregationMethod.MEAN)
 
         assert pathway_scores["PATHWAY1"] == 0.0
 
@@ -1090,9 +1062,7 @@ class TestEnhancedGeneScorer:
             index=["GENE1", "GENE2", "GENE3", "GENE4", "GENE5"],
         )
 
-        config = EnhancedScoringConfig(
-            bootstrap_iterations=10, bootstrap_confidence=0.95
-        )
+        config = EnhancedScoringConfig(bootstrap_iterations=10, bootstrap_confidence=0.95)
         scorer = EnhancedGeneScorer(config)
 
         confidence_intervals = scorer._compute_bootstrap_confidence(
@@ -1121,34 +1091,24 @@ class TestEnhancedGeneScorer:
         config = EnhancedScoringConfig(cv_folds=2)
         scorer = EnhancedGeneScorer(config)
 
-        reliability = scorer._assess_scoring_reliability(
-            data, ScoringMethod.EFFECT_SIZE
-        )
+        reliability = scorer._assess_scoring_reliability(data, ScoringMethod.EFFECT_SIZE)
 
         assert isinstance(reliability, float)
-        assert (
-            0.0 <= reliability <= 1.0 or reliability == 0.0
-        )  # Could be 0 if correlation failed
+        assert 0.0 <= reliability <= 1.0 or reliability == 0.0  # Could be 0 if correlation failed
 
     def test_generate_cache_key(self):
         """Test cache key generation."""
         data = pd.DataFrame({"col1": [1, 2, 3]})
         config = EnhancedScoringConfig()
 
-        cache_key1 = self.scorer._generate_cache_key(
-            data, ScoringMethod.EFFECT_SIZE, config
-        )
-        cache_key2 = self.scorer._generate_cache_key(
-            data, ScoringMethod.EFFECT_SIZE, config
-        )
+        cache_key1 = self.scorer._generate_cache_key(data, ScoringMethod.EFFECT_SIZE, config)
+        cache_key2 = self.scorer._generate_cache_key(data, ScoringMethod.EFFECT_SIZE, config)
 
         # Same inputs should generate same key
         assert cache_key1 == cache_key2
 
         # Different method should generate different key
-        cache_key3 = self.scorer._generate_cache_key(
-            data, ScoringMethod.Z_SCORE, config
-        )
+        cache_key3 = self.scorer._generate_cache_key(data, ScoringMethod.Z_SCORE, config)
         assert cache_key1 != cache_key3
 
     def test_get_last_confidence_intervals(self):
@@ -1219,9 +1179,7 @@ class TestGeneScorer:
         """Test legacy score method for backward compatibility."""
         mock_validator.validate.return_value = None
 
-        meta_object = {
-            "original_result": pd.DataFrame({"effect_size": [1.0, 2.0, 3.0]})
-        }
+        meta_object = {"original_result": pd.DataFrame({"effect_size": [1.0, 2.0, 3.0]})}
 
         scorer = GeneScorer()
         scores = scorer.score(meta_object, ScoringMethod.EFFECT_SIZE)
@@ -1323,14 +1281,11 @@ class TestIntegration:
             AggregationMethod.WEIGHTED_MEAN,
         ]:
             try:
-                pathway_scores = scorer.score_pathways(
-                    gene_scores, pathway_config, agg_method
-                )
+                pathway_scores = scorer.score_pathways(gene_scores, pathway_config, agg_method)
                 assert isinstance(pathway_scores, dict)
                 assert len(pathway_scores) == 3
                 assert all(
-                    pathway in pathway_scores
-                    for pathway in ["PATHWAY_A", "PATHWAY_B", "PATHWAY_C"]
+                    pathway in pathway_scores for pathway in ["PATHWAY_A", "PATHWAY_B", "PATHWAY_C"]
                 )
             except Exception as e:
                 pytest.fail(f"Pathway scoring with method {agg_method} failed: {e}")
@@ -1411,9 +1366,7 @@ class TestIntegration:
         """Test configuration validation in integrated scenarios."""
         # Test invalid configuration should fail early
         with pytest.raises(ValueError):
-            EnhancedScoringConfig(
-                outlier_handling="invalid", bootstrap_confidence=1.5, cv_folds=1
-            )
+            EnhancedScoringConfig(outlier_handling="invalid", bootstrap_confidence=1.5, cv_folds=1)
 
         # Test that valid edge case configurations work
         edge_config = EnhancedScoringConfig(

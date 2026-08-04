@@ -103,14 +103,11 @@ class TestCalculateTtestQvalues:
         valid_down = ~(pvals["P.down"].isna() | result["Q_down"].isna())
 
         if valid_up.any():
-            assert (
-                result.loc[valid_up, "Q_up"] >= pvals.loc[valid_up, "P.up"] - 1e-10
-            ).all()
+            assert (result.loc[valid_up, "Q_up"] >= pvals.loc[valid_up, "P.up"] - 1e-10).all()
 
         if valid_down.any():
             assert (
-                result.loc[valid_down, "Q_down"]
-                >= pvals.loc[valid_down, "P.down"] - 1e-10
+                result.loc[valid_down, "Q_down"] >= pvals.loc[valid_down, "P.down"] - 1e-10
             ).all()
 
     def test_missing_value_handling(self):
@@ -255,9 +252,7 @@ class TestCombineSignificances:
 
     def test_basic_combination(self):
         """Test basic functionality with valid input."""
-        result = EnhancedMetaAnalysis.combine_significances(
-            [self.study1_sigs, self.study2_sigs]
-        )
+        result = EnhancedMetaAnalysis.combine_significances([self.study1_sigs, self.study2_sigs])
 
         # Check output structure
         assert isinstance(result, dict)
@@ -277,9 +272,7 @@ class TestCombineSignificances:
 
     def test_column_naming_convention(self):
         """Test that output columns follow expected naming convention."""
-        result = EnhancedMetaAnalysis.combine_significances(
-            [self.study1_sigs, self.study2_sigs]
-        )
+        result = EnhancedMetaAnalysis.combine_significances([self.study1_sigs, self.study2_sigs])
 
         # Check column naming for up regulation
         up_cols = result["sigs_up"].columns.tolist()
@@ -339,9 +332,7 @@ class TestCombineSignificances:
             }
         )
 
-        with pytest.raises(
-            ValueError, match="DataFrame 0 missing required 'keys' column"
-        ):
+        with pytest.raises(ValueError, match="DataFrame 0 missing required 'keys' column"):
             EnhancedMetaAnalysis.combine_significances([invalid_df])
 
     def test_different_significance_column_names(self):
@@ -456,9 +447,7 @@ class TestEnhancedTtestPvalues:
             self.standard_study, include_qvalues=True
         )
 
-        result_separate = EnhancedMetaAnalysis.calculate_ttest_qvalues(
-            self.standard_study
-        )
+        result_separate = EnhancedMetaAnalysis.calculate_ttest_qvalues(self.standard_study)
 
         # Q-values should be identical
         pd.testing.assert_series_equal(
@@ -501,9 +490,7 @@ class TestEnhancedFisherCombination:
         assert isinstance(result, pd.DataFrame)
 
         # Check that Fisher statistics are computed
-        fisher_cols = [
-            col for col in result.columns if "F.stat" in col or "F.pval" in col
-        ]
+        fisher_cols = [col for col in result.columns if "F.stat" in col or "F.pval" in col]
         assert len(fisher_cols) >= 4  # At least up and down stats and pvals
 
         # Check that study counts are included
@@ -679,9 +666,7 @@ class TestRegressionValidation:
         # Q-values should generally be >= P-values
         from metaintegrator.core_analysis import MetaAnalysisCore
 
-        pvals = MetaAnalysisCore.get_ttest_pvalues(
-            standard_study["expr"], standard_study["class"]
-        )
+        pvals = MetaAnalysisCore.get_ttest_pvalues(standard_study["expr"], standard_study["class"])
 
         # Allow small numerical differences
         tolerance = 1e-10
@@ -700,9 +685,7 @@ class TestRegressionValidation:
         combined = EnhancedMetaAnalysis.combine_significances(significance_matrices)
 
         # Apply Fisher's method
-        fisher_result = FisherCombination._apply_fisher_vectorized(
-            combined["sigs_up"], "up"
-        )
+        fisher_result = FisherCombination._apply_fisher_vectorized(combined["sigs_up"], "up")
 
         # Fisher statistics should be non-negative
         valid_stats = fisher_result["F.stat.up"].dropna()
@@ -748,9 +731,7 @@ class TestEdgeCasesAndRobustness:
         """Test behavior when a study has all missing values for some genes."""
         from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 
-        study = TestDataGenerator.create_synthetic_study(
-            n_genes=10, n_samples=8, seed=111
-        )
+        study = TestDataGenerator.create_synthetic_study(n_genes=10, n_samples=8, seed=111)
 
         # Set first 3 genes to all missing
         study["expr"].iloc[0:3, :] = np.nan
@@ -831,9 +812,7 @@ class TestPerformanceAndScalability:
         """Test performance with larger datasets."""
         from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 
-        large_study = TestDataGenerator.create_synthetic_study(
-            n_genes=1000, n_samples=50, seed=888
-        )
+        large_study = TestDataGenerator.create_synthetic_study(n_genes=1000, n_samples=50, seed=888)
 
         import time
 

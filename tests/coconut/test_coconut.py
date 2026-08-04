@@ -126,9 +126,7 @@ except ImportError:
 
     # Create mock functions for testing the test structure
     def coconut(*args, **kwargs):
-        raise NotImplementedError(
-            "COCONUT functions coconut() not imported. Please fix imports."
-        )
+        raise NotImplementedError("COCONUT functions coconut() not imported. Please fix imports.")
 
     def combine_coco_output(*args, **kwargs):
         raise NotImplementedError(
@@ -153,9 +151,7 @@ class TestDataFixtures:
         sample_names = [f"Sample_{batch_id}_{i:03d}" for i in range(n_samples)]
 
         # Create gene expression data
-        genes_data = (
-            np.random.randn(n_genes, n_samples) + batch_id * 0.5
-        )  # Add batch effect
+        genes_data = np.random.randn(n_genes, n_samples) + batch_id * 0.5  # Add batch effect
         genes_df = pd.DataFrame(genes_data, index=gene_names, columns=sample_names)
 
         # Create phenotype data with matching sample names
@@ -199,9 +195,7 @@ class TestDataFixtures:
                 np.random.randn(len(common_gene_names), n_samples) + i * 0.3
             )  # Small batch effect
 
-            genes_df = pd.DataFrame(
-                gene_data, index=common_gene_names, columns=sample_names
-            )
+            genes_df = pd.DataFrame(gene_data, index=common_gene_names, columns=sample_names)
 
             pheno_data = {
                 "control_disease": [0] * n_controls + [1] * (n_samples - n_controls),
@@ -344,9 +338,7 @@ class TestCoconutMainFunction:
         ), f"G1 row is wrong: {df.loc['G1']}"
 
         expected_S3 = np.array([3.0, 6.0])
-        assert np.allclose(
-            df["S3"].values, expected_S3
-        ), f"Last‑column values wrong: {df['S3']}"
+        assert np.allclose(df["S3"].values, expected_S3), f"Last‑column values wrong: {df['S3']}"
 
     def test_data_structure_validation(self, multiple_gse_data):
         """Test that test data is properly structured."""
@@ -358,12 +350,8 @@ class TestCoconutMainFunction:
             assert "pheno" in gse, f"Dataset {i} missing 'pheno' key"
 
             # Check data types
-            assert isinstance(
-                gse["genes"], pd.DataFrame
-            ), f"Dataset {i} 'genes' not DataFrame"
-            assert isinstance(
-                gse["pheno"], pd.DataFrame
-            ), f"Dataset {i} 'pheno' not DataFrame"
+            assert isinstance(gse["genes"], pd.DataFrame), f"Dataset {i} 'genes' not DataFrame"
+            assert isinstance(gse["pheno"], pd.DataFrame), f"Dataset {i} 'pheno' not DataFrame"
 
             # Check dimensions
             assert gse["genes"].shape[0] > 0, f"Dataset {i} has no genes"
@@ -373,9 +361,7 @@ class TestCoconutMainFunction:
             # Check that sample names match
             gene_samples = set(gse["genes"].columns)
             pheno_samples = set(gse["pheno"].index)
-            assert (
-                gene_samples == pheno_samples
-            ), f"Dataset {i} sample names don't match"
+            assert gene_samples == pheno_samples, f"Dataset {i} sample names don't match"
 
             # Check required phenotype columns
             assert (
@@ -417,8 +403,7 @@ class TestCoconutMainFunction:
             # Phenotype data
             pheno_data = pd.DataFrame(
                 {
-                    "control_disease": [0] * n_controls
-                    + [1] * (n_samples - n_controls),
+                    "control_disease": [0] * n_controls + [1] * (n_samples - n_controls),
                     "platform": [f"Platform_{batch_id}"] * n_samples,
                 },
                 index=sample_names,
@@ -472,9 +457,7 @@ class TestCoconutMainFunction:
 
     def test_coconut_nonparametric_priors(self, multiple_gse_data):
         """Test COCONUT with non-parametric priors."""
-        result = coconut(
-            gses=multiple_gse_data, control_0_col="control_disease", par_prior=False
-        )
+        result = coconut(gses=multiple_gse_data, control_0_col="control_disease", par_prior=False)
 
         assert "COCONUTList" in result
 
@@ -523,18 +506,14 @@ class TestCoconutMainFunction:
         """Test error when one of multiple datasets has insufficient batches after filtering."""
         # Dataset 0 has controls
         gse0 = {
-            "genes": pd.DataFrame(
-                np.random.randn(10, 4), columns=[f"S0_{i}" for i in range(4)]
-            ),
+            "genes": pd.DataFrame(np.random.randn(10, 4), columns=[f"S0_{i}" for i in range(4)]),
             "pheno": pd.DataFrame(
                 {"control_disease": [0, 0, 1, 1]}, index=[f"S0_{i}" for i in range(4)]
             ),
         }
         # Dataset 1 has NO controls (all disease)
         gse1 = {
-            "genes": pd.DataFrame(
-                np.random.randn(10, 4), columns=[f"S1_{i}" for i in range(4)]
-            ),
+            "genes": pd.DataFrame(np.random.randn(10, 4), columns=[f"S1_{i}" for i in range(4)]),
             "pheno": pd.DataFrame(
                 {"control_disease": [1, 1, 1, 1]}, index=[f"S1_{i}" for i in range(4)]
             ),
@@ -727,22 +706,16 @@ class TestCombatFunctions:
         with pytest.raises(ValueError, match="At least 2 batches are required"):
             _combat_get_params_no_cov(data_subset, labels_subset)
 
-    def test_combat_apply_params_basic(
-        self, standardized_data, batch_labels, bayes_params
-    ):
+    def test_combat_apply_params_basic(self, standardized_data, batch_labels, bayes_params):
         """Test applying pre-calculated ComBat parameters."""
-        result = _combat_apply_params_no_cov(
-            standardized_data, batch_labels, bayes_params
-        )
+        result = _combat_apply_params_no_cov(standardized_data, batch_labels, bayes_params)
 
         assert isinstance(result, pd.DataFrame)
         assert result.shape == standardized_data.shape
 
     def test_combat_apply_params_batch_mismatch(self, standardized_data, bayes_params):
         """Test error when batch indices don't match."""
-        wrong_batch_labels = np.array(
-            ["Wrong_0"] * 10 + ["Wrong_1"] * 20 + ["Wrong_2"] * 10
-        )
+        wrong_batch_labels = np.array(["Wrong_0"] * 10 + ["Wrong_1"] * 20 + ["Wrong_2"] * 10)
 
         # Setup: bayes_params for more batches than parameters
         n_genes = standardized_data.shape[0]
@@ -753,12 +726,8 @@ class TestCombatFunctions:
             "var_pooled": np.abs(np.random.randn(n_genes, 1)),
         }
 
-        with pytest.raises(
-            ValueError, match="Batch index .* exceeds available parameters"
-        ):
-            _combat_apply_params_no_cov(
-                standardized_data, wrong_batch_labels, bayes_params
-            )
+        with pytest.raises(ValueError, match="Batch index .* exceeds available parameters"):
+            _combat_apply_params_no_cov(standardized_data, wrong_batch_labels, bayes_params)
 
     def test_combat_apply_params_batch_index_exceeds(self, standardized_data):
         """Test ValueError when batch index exceeds available parameters in bayes_params."""
@@ -774,9 +743,7 @@ class TestCombatFunctions:
         # input data has 3 batches
         batch_labels = np.array(["B0"] * 10 + ["B1"] * 10 + ["B2"] * 10)
 
-        with pytest.raises(
-            ValueError, match="Batch index 2 exceeds available parameters"
-        ):
+        with pytest.raises(ValueError, match="Batch index 2 exceeds available parameters"):
             _combat_apply_params_no_cov(standardized_data, batch_labels, bayes_params)
 
     def test_combat_custom_get_mode_single_batch(self):
@@ -819,9 +786,7 @@ class TestCombatFunctions:
             },
         ]
 
-        result = _combat_custom(
-            gse_list, common_genes, "get", by_platform=False, platform_col=None
-        )
+        result = _combat_custom(gse_list, common_genes, "get", by_platform=False, platform_col=None)
 
         assert "GSEs" in result
         assert len(result["GSEs"]) == 2
@@ -933,9 +898,7 @@ class TestIterativeSolver:
         d_hat = np.array([0.5, 1.0, 1.5, 2.0, 2.5])
 
         # Test with tight convergence
-        g_new, d_new = _it_sol(
-            sdat, g_hat, d_hat, 0.0, 1.0, 2.0, 1.0, convergence_threshold=1e-8
-        )
+        g_new, d_new = _it_sol(sdat, g_hat, d_hat, 0.0, 1.0, 2.0, 1.0, convergence_threshold=1e-8)
 
         # Results should be different from initial estimates
         assert not np.allclose(g_new, g_hat)
@@ -952,9 +915,7 @@ class TestIterativeSolver:
             _it_sol(np.random.randn(5), g_hat, d_hat, 0.0, 1.0, 1.0, 1.0)
 
         # Test mismatched array lengths
-        with pytest.raises(
-            ValueError, match="g_hat and d_hat must match number of genes"
-        ):
+        with pytest.raises(ValueError, match="g_hat and d_hat must match number of genes"):
             _it_sol(sdat, np.random.randn(3), d_hat, 0.0, 1.0, 1.0, 1.0)
 
         # Test negative convergence threshold
@@ -984,9 +945,7 @@ class TestIterativeSolver:
         d_hat = np.abs(np.random.randn(5)) * 1000
 
         with patch("warnings.warn") as mock_warn:
-            with patch.object(
-                _it_sol, "__defaults__", (1e-10,)
-            ):  # Very tight convergence
+            with patch.object(_it_sol, "__defaults__", (1e-10,)):  # Very tight convergence
                 g_new, d_new = _it_sol(
                     sdat, g_hat, d_hat, 0.0, 1.0, 1.0, 1.0, convergence_threshold=1e-10
                 )
@@ -1020,9 +979,7 @@ class TestNonParametricPrior:
             _int_eprior(np.random.randn(5), g_hat, d_hat),
 
         # Test mismatched array lengths
-        with pytest.raises(
-            ValueError, match="Input batch means, g_hat, and batch variance"
-        ):
+        with pytest.raises(ValueError, match="Input batch means, g_hat, and batch variance"):
             _int_eprior(sdat, np.random.randn(3), d_hat)
 
     def test_int_eprior_edge_cases(self):
@@ -1096,9 +1053,7 @@ class TestIntegrationTests:
     def test_full_coconut_workflow_parametric(self, multiple_gse_data):
         """Test complete COCONUT workflow with parametric priors."""
         # Run COCONUT
-        result = coconut(
-            gses=multiple_gse_data, control_0_col="control_disease", par_prior=True
-        )
+        result = coconut(gses=multiple_gse_data, control_0_col="control_disease", par_prior=True)
 
         # Combine results
         combined = combine_coco_output(result)
@@ -1116,9 +1071,7 @@ class TestIntegrationTests:
 
     def test_full_coconut_workflow_nonparametric(self, multiple_gse_data):
         """Test complete COCONUT workflow with non-parametric priors."""
-        result = coconut(
-            gses=multiple_gse_data, control_0_col="control_disease", par_prior=False
-        )
+        result = coconut(gses=multiple_gse_data, control_0_col="control_disease", par_prior=False)
 
         combined = combine_coco_output(result)
 
@@ -1144,13 +1097,9 @@ class TestIntegrationTests:
     def test_reproducibility(self, multiple_gse_data):
         """Test that COCONUT produces reproducible results."""
         # Run COCONUT twice with same parameters
-        result1 = coconut(
-            gses=multiple_gse_data, control_0_col="control_disease", par_prior=True
-        )
+        result1 = coconut(gses=multiple_gse_data, control_0_col="control_disease", par_prior=True)
 
-        result2 = coconut(
-            gses=multiple_gse_data, control_0_col="control_disease", par_prior=True
-        )
+        result2 = coconut(gses=multiple_gse_data, control_0_col="control_disease", par_prior=True)
 
         # Results should be identical
         combined1 = combine_coco_output(result1)
