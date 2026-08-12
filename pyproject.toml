@@ -49,6 +49,19 @@ dependencies = [
     "openpyxl>=3.0.0",
     "xlrd>=2.0.0",
     "GEOparse>=2.0.3",
+    # Used by src/metaintegrator/scoring_export_engine.py and
+    # src/metaintegrator/linc_tools.py (module-level `from jinja2 import
+    # Template`) for HTML report generation. Previously undeclared here —
+    # only listed in the now-retired tests/metaintegrator/
+    # test_requirements_OBSOLETE.txt, which nothing actually installed.
+    "jinja2>=3.0.0",
+    # Required engine for pandas' DataFrame.to_parquet(), used by
+    # src/metaintegrator/scoring_export_engine.py's ExportFormat.PARQUET
+    # branch. pandas raises ImportError at call time (not import time)
+    # without pyarrow or fastparquet installed — undeclared here, only
+    # listed in the now-retired tests/metaintegrator/
+    # test_requirements_OBSOLETE.txt.
+    "pyarrow>=14.0.0",
 ]
 
 [project.optional-dependencies]
@@ -63,6 +76,12 @@ test = [
     "pytest>=6.0.0",
     "pytest-cov>=2.12.0",
     "psutil>=5.7.0",
+    # Required by tests/metaintegrator/test_enhanced_core_analysis.py's
+    # `benchmark` fixture and by test_data_generators_with_enhanced_core_
+    # analysis.py's `pytest_plugins = ["pytest_benchmark"]` declaration —
+    # the latter makes this a hard collection-time dependency, not an
+    # optional one: pytest fails to collect that whole module without it.
+    "pytest-benchmark>=4.0.0",
 ]
 docs = [
     "mkdocs>=1.6.0",
@@ -133,12 +152,20 @@ addopts = [
 ]
 
 # Markers
+# `performance` and `regression` are used (@pytest.mark.performance in
+# tests/metaintegrator/test_scoring_statistical_analysis.py and
+# tests/visualization/test_plotting.py; pytest.mark.regression referenced
+# in tests/metaintegrator/test_data_generators_with_enhanced_core_analysis.py)
+# but were never registered here, so --strict-markers failed collection of
+# those modules the first time anything ran the full `tests/` tree.
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "parametric: tests using parametric priors",
     "nonparametric: tests using non-parametric priors",
+    "performance: marks performance-sensitive tests",
+    "regression: marks regression tests",
 ]
 
 # Minimum version

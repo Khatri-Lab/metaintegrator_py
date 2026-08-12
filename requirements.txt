@@ -35,3 +35,10 @@ xlrd>=2.0.0
 
 # GEO data access
 GEOparse>=2.0.3
+
+# HTML report generation (scoring_export_engine.py, linc_tools.py)
+jinja2>=3.0.0
+
+# Parquet engine for DataFrame.to_parquet() (scoring_export_engine.py's
+# ExportFormat.PARQUET)
+pyarrow>=14.0.0

@@ -11,6 +11,11 @@ isort>=5.10.0
 # --- Testing ---
 pytest>=6.0.0
 pytest-cov>=2.12.0
+# Required at collection time by tests/metaintegrator/
+# test_data_generators_with_enhanced_core_analysis.py (pytest_plugins =
+# ["pytest_benchmark"]) and used by the `benchmark` fixture in
+# tests/metaintegrator/test_enhanced_core_analysis.py.
+pytest-benchmark>=4.0.0
 
 # --- Memory / performance profiling ---
 psutil>=5.7.0
