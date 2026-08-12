@@ -71,8 +71,7 @@ def test_debug_coconut_steps(multiple_gse_data):
         import traceback
 
         traceback.print_exc()
-        raiseimport
-        pytest
+        raise
 
 
 import os
