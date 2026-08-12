@@ -366,9 +366,17 @@ class OverlapAnalysis:
         """
         jaccard_matrix = self.get_jaccard_matrix()
 
-        # Set diagonal to 0 to avoid self‑similarity
-        jaccard_no_diag = jaccard_matrix.copy()
-        np.fill_diagonal(jaccard_no_diag.values, 0)
+        # Set diagonal to 0 to avoid self‑similarity. Goes through an
+        # explicit to_numpy(copy=True) + rebuild rather than mutating
+        # jaccard_matrix.copy().values in place: under pandas' copy-on-write
+        # mode, .values on a DataFrame (even a freshly-.copy()'d one) can
+        # return a read-only array, and np.fill_diagonal raises
+        # "ValueError: underlying array is read-only" on it.
+        values = jaccard_matrix.to_numpy(copy=True)
+        np.fill_diagonal(values, 0)
+        jaccard_no_diag = pd.DataFrame(
+            values, index=jaccard_matrix.index, columns=jaccard_matrix.columns
+        )
 
         similarities = []
         for i in range(len(jaccard_no_diag)):

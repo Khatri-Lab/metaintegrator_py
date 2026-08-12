@@ -136,9 +136,19 @@ class SampleLevelGeneDataProcessor:
 
         if len(expanded_df) == 0:
             warnings.warn(f"No matching genes found for {gene_names}")
-            # Return empty DataFrame with correct structure
+            # Return empty DataFrame with correct structure. dtype=float is
+            # required here (matching the "some genes missing" fill-in a
+            # few lines below) — without it, an index/columns-only
+            # DataFrame with no data defaults to dtype=object, which then
+            # survives the fillna(1) calls in get_sample_level_gene_data
+            # as Python `int` objects rather than floats. That silently
+            # produces an object-dtype gene matrix downstream, and the
+            # first thing that calls np.log() on it (e.g. a geometric-mean
+            # score) fails with "loop of ufunc does not support argument 0
+            # of type int which has no callable log method" instead of
+            # this simply evaluating to log(1)=0 as intended.
             sample_cols = dataset_object["expr"].columns
-            return pd.DataFrame(index=unique_gene_names, columns=sample_cols)
+            return pd.DataFrame(index=unique_gene_names, columns=sample_cols, dtype=float)
 
         # Group by gene and summarize
         gene_groups = expanded_df.groupby("keys")

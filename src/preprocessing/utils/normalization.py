@@ -340,7 +340,14 @@ def remove_infinite_values(
         expr_data = expr_data.copy()
 
     if is_dataframe:
-        values = expr_data.values
+        # to_numpy(copy=True), not .values: under pandas' copy-on-write
+        # mode, .values can return a read-only array even on an
+        # expr_data.copy() a few lines up, and the in-place assignments
+        # below (values[bad_mask] = ...) raise "ValueError: assignment
+        # destination is read-only" on it. The write-back into expr_data
+        # a few lines down (`expr_data.loc[:, :] = values`) is unaffected
+        # either way since it goes through expr_data, not shared memory.
+        values = expr_data.to_numpy(copy=True)
     else:
         values = expr_data
 

@@ -311,8 +311,15 @@ class ReferenceDataManager:
             nan_count = matrix.isna().sum().sum()
             warnings.warn(f"Matrix contains {nan_count} NaN values")
 
-        # Check that values are numeric
-        if not matrix.dtypes.apply(lambda x: np.issubdtype(x, np.number)).all():
+        # Check that values are numeric. pd.api.types.is_numeric_dtype (not
+        # np.issubdtype) is required here: matrix.dtypes can contain pandas
+        # extension dtypes (e.g. the modern default string dtype for
+        # object/string columns), and np.issubdtype raises TypeError
+        # ("Cannot interpret '<StringDtype...>' as a data type") rather
+        # than returning False for those — is_numeric_dtype is pandas' own
+        # dtype-checking utility and handles both numpy and extension
+        # dtypes correctly.
+        if not matrix.dtypes.apply(pd.api.types.is_numeric_dtype).all():
             raise ValueError("All matrix values must be numeric")
 
     def _generate_mock_immunostates_matrix(self) -> pd.DataFrame:

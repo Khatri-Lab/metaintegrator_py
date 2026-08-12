@@ -496,7 +496,12 @@ class DatasetValidator(BaseValidator):
         expr_data = dataset.get("expr")
         if expr_data is not None:
             if isinstance(expr_data, pd.DataFrame):
-                if not np.issubdtype(expr_data.dtypes.iloc[0], np.number):
+                # pd.api.types.is_numeric_dtype, not np.issubdtype: a
+                # DataFrame column's dtype can be a pandas extension dtype
+                # (e.g. the modern default string dtype), which
+                # np.issubdtype can't interpret and raises TypeError on
+                # instead of returning False.
+                if not pd.api.types.is_numeric_dtype(expr_data.dtypes.iloc[0]):
                     result.add_issue("error", "expr must contain numeric data", "expr")
             elif isinstance(expr_data, np.ndarray):
                 if not np.issubdtype(expr_data.dtype, np.number):
