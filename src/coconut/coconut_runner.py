@@ -2,7 +2,7 @@ import os
 import pprint
 import sys
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 # Cross-package import — resolved via src/ on sys.path (see src/__init__.py bootstrap)
 from utils.convert_floats_to_ints import run_convert_floats_to_int64
 
-from .coconut import coconut, combine_coco_output, CombatControlOutput
+from .coconut import CombatControlOutput, coconut, combine_coco_output
 
 # ------------------------------------------------------------------
 # Global debug flag & helper
@@ -19,7 +19,7 @@ from .coconut import coconut, combine_coco_output, CombatControlOutput
 debug_mode = False
 
 
-def debug_msg(msg: str):
+def debug_msg(msg: str) -> None:
     """Print a debug message only when `debug_mode` is True."""
     if debug_mode:
         sys.stderr.write(f"{msg}\n")
@@ -376,14 +376,46 @@ def _print_dataset_summary(gse_list: List[Dict[str, pd.DataFrame]]) -> None:
     print(f"    Datasets: {len(gse_list)}")
 
 
-def load_and_run_coconut_example(csv_directory: str) -> Dict:
+def load_and_run_coconut_example(
+    csv_directory: str,
+    control_0_col: str = "Healthy0.Sepsis1",
+    disease_col: str | None = None,
+    by_platform: bool = False,
+    platform_col: str | None = "Platform_id",
+    par_prior: bool = True,
+    it_conv: float = 1e-04,
+) -> Dict:
     """
     Executes the COCONUT pipeline on data loaded from a directory containing CSV files. The function processes
     phenotype data, identifies control columns, and runs the COCONUT algorithm to normalize datasets.
 
+    Despite the "_example" name, this is the function the CLI actually calls
+    (via `runner()` below) — it is not just a demo. The column-name arguments
+    below (`control_0_col`, `disease_col`, `platform_col`) tell COCONUT which
+    phenotype columns identify controls, disease samples, and platform; their
+    defaults match the column names used by this project's own sample data
+    (`"Healthy0.Sepsis1"`, `"Platform_id"`). Data with different column names
+    should pass the matching names explicitly — either as keyword arguments here,
+    or via the `coconut_batch_effect_removal` CLI flags / config file (see
+    `src/__main__.py`), rather than editing this function.
+
     Args:
         csv_directory: str
             The path to the directory containing the CSV files for loading GSE data.
+        control_0_col: str
+            Phenotype column indicating control samples (0 = control). Default: "Healthy0.Sepsis1".
+        disease_col: str | None
+            Phenotype column indicating disease samples. If None, all non-control samples
+            are treated as disease.
+        by_platform: bool
+            Whether to normalize per platform. Requires `platform_col` when True.
+        platform_col: str | None
+            Phenotype column containing platform information, used when `by_platform` is True.
+            Default: "Platform_id".
+        par_prior: bool
+            Whether to use parametric priors in the Bayesian batch-effect adjustment.
+        it_conv: float
+            Convergence threshold for the iterative COCONUT solution.
 
     Returns:
         Dict
@@ -408,19 +440,18 @@ def load_and_run_coconut_example(csv_directory: str) -> Dict:
             unique_vals = gse["pheno"][col].unique()
             print(f"  {col}: {unique_vals[:5]}{'...' if len(unique_vals) > 5 else ''}")
 
-    # Step 3: Run COCONUT (you'll need to specify the correct column names)
+    # Step 3: Run COCONUT using the caller-supplied (or default) column names
     print(f"\n🥥 Running COCONUT algorithm...")
 
-    # Example - adjust these column names based on your data structure
     try:
         coconut_result = coconut(
             gses=gse_data,
-            control_0_col="Healthy0.Sepsis1",  # Adjust this based on your data
-            disease_col=None,  # Adjust if needed
-            by_platform=False,  # True,  # Set based on whether you want platform-specific normalization
-            platform_col="Platform_id",  # Adjust based on your data
-            par_prior=True,
-            it_conv=1e-04,
+            control_0_col=control_0_col,
+            disease_col=disease_col,
+            by_platform=by_platform,
+            platform_col=platform_col,
+            par_prior=par_prior,
+            it_conv=it_conv,
         )
 
         print(f"✅ COCONUT completed successfully!")
@@ -438,7 +469,7 @@ def _write_output_to_csv(
     samples_genes_file: str,
     pheno_file: str,
     class_file: str,
-):
+) -> None:
     """
     Writes the processed output data to CSV files.
 
@@ -510,9 +541,24 @@ def _write_output_to_csv(
 # -------------------------------------------------------------
 # Main routine to run COCONUT and combine the results
 # -------------------------------------------------------------
-def runner(csv_dir: str, output_dir: str | None = None):
+def runner(
+    csv_dir: str,
+    output_dir: str | None = None,
+    control_0_col: str = "Healthy0.Sepsis1",
+    disease_col: str | None = None,
+    by_platform: bool = False,
+    platform_col: str | None = "Platform_id",
+    par_prior: bool = True,
+    it_conv: float = 1e-04,
+) -> None:
     """
     Run the full COCONUT pipeline and optionally write the resulting matrices to files.
+
+    The `control_0_col` / `disease_col` / `by_platform` / `platform_col` / `par_prior` /
+    `it_conv` arguments are forwarded to `load_and_run_coconut_example()` (and from there
+    to `coconut()`); their defaults match the column names used by this project's own
+    sample data. Pass the matching values for phenotype data that uses different column
+    names — see `load_and_run_coconut_example()`'s docstring for details.
 
     Args:
         csv_dir : str
@@ -520,12 +566,17 @@ def runner(csv_dir: str, output_dir: str | None = None):
             load_gse_data_from_csv_directory expects).
 
         output_dir : str | None
-            If provided, three files will be written:
-                - genes.csv
-                - pheno.csv
-                - class_labels.csv
+            If provided, four files will be written:
+                - mcoco_combined_genes_samples.csv (genes × samples)
+                - mcoco_combined_genes.csv (samples × genes, transposed)
+                - mcoco_combined_pheno.csv
+                - mcoco_combined_class_labels.csv
             The directory will be created automatically if it does not exist. If omitted, the result is only
             printed to stdout.
+
+        control_0_col, disease_col, by_platform, platform_col, par_prior, it_conv:
+            Forwarded to `load_and_run_coconut_example()` / `coconut()`. See that function's
+            docstring for what each one controls and its default value.
     """
     try:
         # Load the data from your CSV directory
@@ -534,7 +585,15 @@ def runner(csv_dir: str, output_dir: str | None = None):
 
         # Run COCONUT
         print("\n🚀 Running COCONUT …")
-        coconut_result = load_and_run_coconut_example(csv_dir)
+        coconut_result = load_and_run_coconut_example(
+            csv_dir,
+            control_0_col=control_0_col,
+            disease_col=disease_col,
+            by_platform=by_platform,
+            platform_col=platform_col,
+            par_prior=par_prior,
+            it_conv=it_conv,
+        )
 
         # Combine results
         print("\n🔗 Combining the COCONUT output …")
@@ -575,7 +634,29 @@ def runner(csv_dir: str, output_dir: str | None = None):
 # -------------------------------------------------------------
 # entrypoint function
 # -------------------------------------------------------------
-def main(args: dict):
+def main(args: dict) -> None:
+    """CLI entry point for the `coconut_batch_effect_removal` subcommand.
+
+    Called by `src/__main__.py` after argparse dispatch. Sets the module's
+    `debug_mode` flag from `args["debug"]`, then delegates to `runner()`.
+
+    Column-name keys (`control_0_col`, `disease_col`, `platform_col`) and the
+    `it_conv` key fall back to the same defaults as `load_and_run_coconut_example()`
+    when absent from `args`, so config files and CLI invocations that don't set them
+    keep working unchanged. `by_platform` and `par_prior` fall back to their CLI
+    defaults (see `src/__main__.py`) since argparse always supplies a value for them.
+
+    Args:
+        args: dict
+            Merged CLI + config-file arguments. Expected keys: `csv_dir`,
+            `output_dir` (optional), `debug` (optional, default False),
+            `control_0_col` (optional, default "Healthy0.Sepsis1"),
+            `disease_col` (optional, default None), `by_platform` (optional,
+            default False), `platform_col` (optional, default "Platform_id"),
+            `par_prior` (optional, default True), `it_conv` (optional, default 1e-04).
+    """
+    global debug_mode
+
     print(f"Running coconut_runner.py with args:")
     pprint.pprint(args)
 
@@ -583,7 +664,16 @@ def main(args: dict):
     debug_mode = args.get("debug", False)
 
     try:
-        runner(csv_dir=args.get("csv_dir"), output_dir=args.get("output_dir"))
+        runner(
+            csv_dir=args.get("csv_dir"),
+            output_dir=args.get("output_dir"),
+            control_0_col=args.get("control_0_col") or "Healthy0.Sepsis1",
+            disease_col=args.get("disease_col"),
+            by_platform=args.get("by_platform", False),
+            platform_col=args.get("platform_col") or "Platform_id",
+            par_prior=args.get("par_prior", True),
+            it_conv=args.get("it_conv") or 1e-04,
+        )
     except Exception as exc:
         sys.stderr.write(f"❌ Error: {exc}\n")
         sys.exit(1)
