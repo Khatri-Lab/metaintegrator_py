@@ -4,8 +4,9 @@ This module provides comprehensive visualization capabilities including
 forest plots, heatmaps, Manhattan plots, and all plotting functions from the R version.
 """
 
+import logging
 import warnings
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
@@ -15,11 +16,27 @@ import seaborn as sns
 from matplotlib.patches import Polygon
 from scipy import stats
 from sklearn.metrics import (
-    roc_curve,
     auc,
-    precision_recall_curve,
     average_precision_score,
+    precision_recall_curve,
+    roc_curve,
 )
+
+logger = logging.getLogger(__name__)
+
+# Default cap on the number of genes rendered as heatmap rows. With no
+# upper bound, `_calculate_heatmap_figsize` scales figure height linearly
+# with gene count (`n_genes * 0.3` inches); on an unfiltered/raw gene set
+# (thousands of genes, as opposed to a gene-search-optimized panel of a few
+# dozen) that produces a figure well over 1,000 inches tall. Rendering that
+# at `savefig(dpi=300)` requires a multi-hundred-thousand-pixel-tall canvas,
+# which reliably OOM-kills the process (SIGKILL, exit code 137 — not a
+# catchable Python exception) partway through `heatmap_plot()`, before the
+# violin/ROC/PRC plots that are supposed to run afterward ever get a chance
+# to. Capping to the top genes by |effect size| keeps the heatmap both
+# renderable and actually readable (a 5,000-row heatmap is illegible either
+# way); see `_prepare_heatmap_data`'s `max_genes` parameter.
+DEFAULT_HEATMAP_MAX_GENES = 100
 
 
 # ------------------------------------------------------------------
@@ -30,21 +47,57 @@ class EnhancedMetaAnalysisPlotter:
 
     CI_95_MULTIPLIER = 1.96
 
-    def __init__(self, style: str = "default", figsize: Tuple[int, int] = (10, 6)):
-        """
-        Initializes the visualization configuration with a specified style and figure size.
+    # Hard upper bound (inches) on any heatmap figure dimension. Backstop
+    # for `_calculate_heatmap_figsize` — see that method's docstring.
+    _MAX_HEATMAP_DIMENSION_INCHES = 100.0
 
-        This class sets up the style and dimensions for a visual plot representation using
-        a given style configuration. The style applies the corresponding visual appearance
-        to the plot if it is not set to "default".
+    @staticmethod
+    def _apply_equal_unit_axes(ax: plt.Axes, step: float = 0.1) -> None:
+        """Force equal-scaled, evenly-gridded 0-1 axes on a 0-1 ROC/PRC plot.
+
+        A ROC or precision-recall curve plotted with independently
+        scaled x/y axes can visually mislead an "at-a-glance" reader --
+        the same underlying curve can look steeper or shallower purely
+        because Matplotlib chose different pixel-per-unit scales for
+        each axis, not because of any real difference in performance.
+        ``ax.set_aspect("equal", adjustable="box")`` makes one data unit
+        on x equal one data unit on y in on-screen size, so a 0-1 axis
+        range renders as a true square regardless of the figure's
+        overall width/height; ``set_xticks``/``set_yticks`` at a fixed
+        ``step`` additionally keeps the two axes' gridlines at the same
+        spacing, so equal-sized visual steps always represent equal
+        changes in rate.
+
+        Callers must set ``ax.set_xlim([0, 1])``/``ax.set_ylim([0, 1])``
+        *before* calling this -- ``adjustable="box"`` reshapes the axes
+        box to fit those limits equally rather than changing the data
+        range itself.
 
         Args:
-            style: str
-                The style configuration for the plot, such as a specific visualization theme
-                (default is "default").
-            figsize: Tuple[int, int]
-                Dimensions of the figure in inches, given as a tuple (width, height)
-                (default is (10, 6)).
+            ax: A Matplotlib ``Axes`` already limited to ``[0, 1]`` on
+                both axes.
+            step: Gridline/tick spacing on both axes (default ``0.1``,
+                i.e. 11 evenly-spaced ticks from 0.0 to 1.0).
+        """
+        ax.set_aspect("equal", adjustable="box")
+        # `linspace` + a rounding pass (not a bare `arange`/`linspace`)
+        # deliberately: raw floating-point arithmetic on a 0-1 range
+        # lands on values like 0.30000000000000004 instead of 0.3, which
+        # would otherwise leak into tick labels. Rounding to 10 decimal
+        # places is far finer than any `step` this helper is realistically
+        # called with, so it only ever cleans up binary-float noise, never
+        # the intended spacing itself.
+        n_steps = int(round(1.0 / step))
+        ticks = np.round(np.linspace(0.0, 1.0, n_steps + 1), decimals=10)
+        ax.set_xticks(ticks)
+        ax.set_yticks(ticks)
+
+    def __init__(self, style: str = "default", figsize: Tuple[int, int] = (10, 6)) -> None:
+        """Initialize the plotter with a matplotlib style and default figure size.
+
+        Args:
+            style: Matplotlib style name to apply. Defaults to "default" (no change).
+            figsize: Default figure size (width, height) in inches.
         """
         self.style = style
         self.figsize = figsize
@@ -52,24 +105,16 @@ class EnhancedMetaAnalysisPlotter:
             plt.style.use(style)
 
     def _get_meta_data(self, meta_object: Dict) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        """
-        Extract meta-analysis data from the provided meta-analysis object.
-
-        This method retrieves specific meta-analysis results from the input dictionary.
-        If the required meta-analysis data is not present, it raises a ValueError.
+        """Extract (effect sizes, standard errors, pooled results) from a meta-analysis object.
 
         Args:
-            meta_object: Dict
-                A dictionary containing meta-analysis data.
+            meta_object: Meta-analysis data with a "metaAnalysis" key.
 
         Raises:
-            ValueError:
-                Raised if the "metaAnalysis" key is not found in the input dictionary.
+            ValueError: If "metaAnalysis" is missing from meta_object.
 
         Returns:
-            Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
-                A tuple containing the dataset effect sizes, dataset effect size
-                standard errors, and pooled results in the form of pandas DataFrames.
+            Dataset effect sizes, dataset effect size standard errors, and pooled results.
         """
         if "metaAnalysis" not in meta_object:
             raise ValueError("Meta-analysis results not found")
@@ -82,56 +127,36 @@ class EnhancedMetaAnalysisPlotter:
         )
 
     def _get_study_names(self, meta_object: Dict, studies: List[str]) -> List[str]:
-        """
-        Retrieves study names from a given metadata object.
-
-        This method extracts study names from the provided metadata object. It uses
-        the originalData key to look up formatted names for each study in the
-        input list. If a formatted name is unavailable for a study, the study's
-        original name from the input list will be returned as a fallback.
+        """Look up each study's formatted display name, falling back to its raw name.
 
         Args:
-            meta_object (Dict): A dictionary containing metadata information,
-                                with an "originalData" key holding the relevant data.
-            studies (List[str]): A list of study identifiers for which formatted
-                                 names need to be retrieved.
+            meta_object: Meta-analysis data with an "originalData" dict.
+            studies: Study identifiers to resolve.
 
         Returns:
-            List[str]: A list of formatted study names corresponding to the
-                       input study identifiers.
+            The formatted (or raw, if unavailable) name for each study.
         """
         original_data = meta_object.get("originalData", {})
         return [original_data.get(s, {}).get("formattedName", s) for s in studies]
 
     def _draw_pooled_diamond(
         self,
-        ax,
+        ax: plt.Axes,
         effect: float,
         se: float,
         y_pos: float,
         color: str,
         ci_multiplier: float = 1.96,
-    ):
-        """
-        Draws a diamond-shaped graphical representation of an effect with confidence intervals on a specified axis.
-
-        The method visualizes the effect size by plotting a diamond shape, where the horizontal width
-        of the diamond represents the confidence interval range, and the vertical height of the diamond
-        is a fixed value. The color and other parameters of the diamond are customizable.
+    ) -> None:
+        """Draw a diamond marker for a pooled effect, its width spanning the confidence interval.
 
         Args:
-            ax (matplotlib.axes.Axes): The Axes object where the diamond will be drawn.
-            effect (float): The central value of the effect size.
-            se (float): The standard error of the effect size.
-            y_pos (float): The vertical position of the diamond on the axis.
-            color (str): The fill color of the diamond.
-            ci_multiplier (float): A multiplier for the confidence interval, with a default value of 1.96.
-
-        Raises:
-            None
-
-        Returns:
-            None
+            ax: Axes to draw on.
+            effect: Pooled effect size (diamond center).
+            se: Standard error of the pooled effect.
+            y_pos: Vertical position of the diamond.
+            color: Diamond fill color.
+            ci_multiplier: Z-multiplier for the confidence interval width (default 1.96, ~95%).
         """
         ci_half_width = ci_multiplier * se
         diamond_height = 0.2
@@ -185,40 +210,25 @@ class EnhancedMetaAnalysisPlotter:
         figsize: Optional[Tuple] = None,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Generates a forest plot to visualize effect sizes and confidence intervals for a specific gene across
-        multiple studies.
-
-        The forest plot includes individual studies and their respective confidence intervals, represented as
-        box-and-whisker plots. The pooled result is visualized as a diamond, summarizing the combined effect size
-        and confidence interval across studies. This function is designed for meta-analysis visualization.
-
-        Attributes:
-            None
+        """Plot per-study effect sizes (as boxes, sized by inverse variance) and the pooled
+        effect (as a diamond) for one gene.
 
         Args:
-            meta_object (Dict): A dictionary containing meta-analysis data including effect sizes and
-                standard errors for multiple studies.
-            gene_name (str): Name of the gene for which the forest plot is generated.
-            box_color (str, optional): Color of the boxes representing individual studies' effect sizes.
-                Defaults to "blue".
-            whisker_color (str, optional): Color of the whiskers (confidence intervals) for individual studies.
-                Defaults to "lightblue".
-            zero_line_color (str, optional): Color of the vertical line at zero marking no effect. Defaults
-                to "black".
-            summary_color (str, optional): Color of the diamond representing the pooled effect. Defaults
-                to "orange".
-            text_color (str, optional): Color of the text labels for study names. Defaults to "red".
-            figsize (Optional[Tuple], optional): Tuple specifying the figure size. If None, the default
-                figure size is used. Defaults to None.
-            save_path (Optional[str], optional): File path to save the generated plot. If None, the plot
-                is not saved. Defaults to None.
+            meta_object: Meta-analysis data with effect sizes and standard errors per study.
+            gene_name: Gene to plot.
+            box_color: Color of individual-study effect boxes.
+            whisker_color: Color of individual-study confidence-interval whiskers.
+            zero_line_color: Color of the vertical zero-effect reference line.
+            summary_color: Color of the pooled-effect diamond.
+            text_color: Color of study-name labels.
+            figsize: Figure size in inches. Defaults to self.figsize.
+            save_path: If given, save the figure to this path.
 
         Returns:
-            plt.Figure: A Matplotlib Figure object containing the forest plot.
+            The generated matplotlib Figure.
 
         Raises:
-            ValueError: If the specified gene_name is not found in the metaObject dataset.
+            ValueError: If gene_name is not found in meta_object.
         """
         figsize = figsize or self.figsize
         effect_sizes, std_errors, pooled_results = self._get_meta_data(meta_object)
@@ -301,44 +311,21 @@ class EnhancedMetaAnalysisPlotter:
         figsize: Optional[Tuple] = None,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Generates a forest plot for meta-analytic results of specified genes.
-
-        This method creates a forest plot for the provided list of genes based
-        on meta-analytic data. The forest plot will include individual dataset
-        effects with confidence intervals as well as pooled results summary.
-        The generated figure can either be displayed or saved to a file.
+        """Plot a grid of forest plots (one facet per gene), each showing per-dataset
+        effects and the pooled summary.
 
         Args:
-            meta_object: Dict
-                A dictionary containing meta-analytic data. The specific format of
-                the dictionary is expected to include necessary effect sizes and other
-                meta-analysis related data.
-
-            genes: List[str]
-                A list of gene names for which forest plots are to be generated.
-
-            conf_level: float, default 0.95
-                The confidence level to determine the width of the confidence intervals.
-
-            facet_cols: Optional[int], optional
-                The number of columns in the facet grid layout for the visualizations.
-                Defaults to a value based on the number of genes.
-
-            box_scales: Tuple
-                A tuple specifying scaling factors for the boxes and text formatting.
-
-            figsize: Optional[Tuple], optional
-                Tuple representing the width and height of the figure in inches. If not
-                provided, it defaults to a value based on the number of genes.
-
-            save_path: Optional[str], optional
-                Path to save the generated forest plot image. If not provided, the plot
-                will only be displayed and not saved.
+            meta_object: Meta-analytic data with effect sizes and pooled results.
+            genes: Genes to plot, one facet each.
+            conf_level: Confidence level for the interval widths.
+            facet_cols: Columns in the facet grid. Defaults based on gene count.
+            box_scales: Scaling factors for box/text sizing (currently unused directly
+                by this method's own drawing code; reserved for style tuning).
+            figsize: Figure size in inches. Defaults based on gene count.
+            save_path: If given, save the figure to this path.
 
         Returns:
-            matplotlib.figure.Figure
-                A matplotlib Figure object representing the forest plot.
+            The generated matplotlib Figure.
         """
         figsize = figsize or ((15, 8) if len(genes) > 1 else self.figsize)
         facet_cols = facet_cols or (1 if len(genes) == 1 else min(4, len(genes)))
@@ -393,13 +380,10 @@ class EnhancedMetaAnalysisPlotter:
         filter_object: Dict,
         display_pooled: bool,
         gene_order: Union[bool, List],
+        max_genes: Optional[int] = DEFAULT_HEATMAP_MAX_GENES,
     ) -> pd.DataFrame:
-        """
-        Processes and prepares heatmap data based on metadata, a filter object, and display options.
-
-        The function filters gene effect sizes from the provided metadata using the genes specified in
-        the filter object. If necessary, it adds pooled results to the dataset and applies an ordering
-        to the genes based on the display and sorting options provided.
+        """Filter effect sizes to the filter object's genes, optionally prepend pooled results,
+        and order rows for the heatmap.
 
         Args:
             meta_data: Dict
@@ -410,7 +394,19 @@ class EnhancedMetaAnalysisPlotter:
                 Flag indicating whether to include pooled results in the heatmap data.
             gene_order: Union[bool, List]
                 List specifying the order of genes, or a boolean indicating if default ordering
-                should be applied.
+                should be applied. Ignored for genes dropped by ``max_genes``.
+            max_genes: Optional[int]
+                Maximum number of genes to include, ranked by descending
+                |effect size| (using the pooled effect size when available,
+                otherwise the mean |effect size| across datasets). ``None``
+                disables the cap. Defaults to
+                :data:`DEFAULT_HEATMAP_MAX_GENES` — an unbounded gene count
+                makes ``_calculate_heatmap_figsize``'s figure height grow
+                linearly without limit, which can OOM-kill the process at
+                ``savefig()`` for a raw (un-filtered-to-a-panel) gene set of
+                several thousand genes. An explicit gene list passed via
+                ``gene_order`` is *not* capped, since the caller asked for
+                those specific genes.
 
         Returns:
             pd.DataFrame
@@ -425,6 +421,30 @@ class EnhancedMetaAnalysisPlotter:
         gene_names = [g for g in gene_names if g in effect_sizes.index]
         if len(gene_names) <= 1:
             return pd.DataFrame()
+
+        # Cap to the top genes by |effect size| *before* building heat_data,
+        # so the (potentially very large) effect_sizes/pooled_results slices
+        # below never exceed max_genes rows. An explicit gene_order list is
+        # honored as-is — the caller chose those genes deliberately.
+        if (
+            max_genes is not None
+            and not isinstance(gene_order, list)
+            and len(gene_names) > max_genes
+        ):
+            if "effectSize" in pooled_results.columns:
+                ranking = pooled_results.loc[gene_names, "effectSize"].abs()
+            else:
+                ranking = effect_sizes.loc[gene_names].abs().mean(axis=1)
+            n_dropped = len(gene_names) - max_genes
+            gene_names = ranking.sort_values(ascending=False).index[:max_genes].tolist()
+            msg = (
+                f"Heatmap: {n_dropped} gene(s) beyond the top {max_genes} "
+                f"(ranked by |effect size|) were dropped to keep the figure "
+                f"renderable and legible. Pass max_genes=None (or a larger "
+                f"value) to heatmap_plot() to override."
+            )
+            logger.warning(msg)
+            warnings.warn(msg)
 
         heat_data = effect_sizes.loc[gene_names].copy()
 
@@ -443,21 +463,41 @@ class EnhancedMetaAnalysisPlotter:
         return heat_data.loc[gene_order]
 
     def _calculate_heatmap_figsize(self, data: pd.DataFrame) -> Tuple[float, float]:
-        """
-        Calculates the figure size for a heatmap based on the dimensions of the provided
-        data. The function computes dimensions ensuring a minimum size while adjusting
-        proportions dynamically according to the number of genes and datasets.
+        """Scale heatmap figure size to the gene/dataset count, clamped to a safe maximum.
 
         Args:
-            data (pd.DataFrame): A pandas DataFrame where the rows correspond to genes
-            and the columns to datasets.
+            data: Heatmap data, genes x datasets.
 
         Returns:
-            Tuple[float, float]: A tuple containing the width and height of the heatmap
-            figure in inches.
+            (width, height) in inches, each clamped to `_MAX_HEATMAP_DIMENSION_INCHES`.
         """
         n_genes, n_datasets = data.shape
-        return (max(8, n_datasets * 0.6), max(6, n_genes * 0.3))
+        width = max(8, n_datasets * 0.6)
+        height = max(6, n_genes * 0.3)
+
+        # Defense-in-depth backstop: `_prepare_heatmap_data`'s `max_genes`
+        # cap is the primary fix for the unbounded-figure-size OOM crash
+        # (SIGKILL at savefig() time for a ~1,500-inch-tall figure on a raw,
+        # multi-thousand-gene set), but it can be bypassed by an explicit
+        # `gene_order` list or `max_genes=None`. Clamp here too so this
+        # method can never itself hand back a figure size large enough to
+        # OOM the process, regardless of how `data` was produced.
+        if (
+            width > self._MAX_HEATMAP_DIMENSION_INCHES
+            or height > self._MAX_HEATMAP_DIMENSION_INCHES
+        ):
+            clamp_msg = (
+                f"Heatmap figure size ({width:.1f} x {height:.1f} in) exceeds the "
+                f"{self._MAX_HEATMAP_DIMENSION_INCHES:.0f}-inch safety cap and was "
+                f"clamped; genes/datasets may render at reduced legibility. Pass an "
+                f"explicit figsize to override."
+            )
+            logger.warning(clamp_msg)
+            warnings.warn(clamp_msg)
+            width = min(width, self._MAX_HEATMAP_DIMENSION_INCHES)
+            height = min(height, self._MAX_HEATMAP_DIMENSION_INCHES)
+
+        return (width, height)
 
     def heatmap_plot(
         self,
@@ -470,12 +510,10 @@ class EnhancedMetaAnalysisPlotter:
         use_formatted_names: bool = True,
         figsize: Optional[Tuple] = None,
         save_path: Optional[str] = None,
+        max_genes: Optional[int] = DEFAULT_HEATMAP_MAX_GENES,
     ) -> Optional[plt.Figure]:
-        """
-        Plots a heatmap based on the provided meta data and filtering criteria. The heatmap
-        visualizes the effect size values for genes across datasets and can be customized in terms
-        of color range, figure size, gene/dataset order, and more. If the heatmap data is empty
-        or has less than two genes, the method will return None.
+        """Plot a heatmap of effect sizes (genes x datasets), or return None if fewer
+        than 2 genes are available to plot.
 
         Args:
             meta_data (Dict): Contains metadata relevant for generating the heatmap.
@@ -492,6 +530,11 @@ class EnhancedMetaAnalysisPlotter:
                 Automatically calculated if not provided. Defaults to None.
             save_path (Optional[str], optional): File path to save the heatmap plot. If None, the plot is not saved.
                 Defaults to None.
+            max_genes (Optional[int], optional): Maximum number of genes to render, ranked by
+                descending |effect size|. Protects against unbounded figure sizes (and the OOM
+                crash they cause at save time) for large, un-optimized gene sets. Defaults to
+                :data:`DEFAULT_HEATMAP_MAX_GENES` (100). Pass ``None`` to disable the cap, or
+                pass an explicit gene list via ``gene_order`` to bypass it for those genes.
 
         Returns:
             Optional[plt.Figure]: The resulting heatmap figure object if successfully created, or None if the
@@ -500,7 +543,9 @@ class EnhancedMetaAnalysisPlotter:
         Raises:
             None
         """
-        heat_data = self._prepare_heatmap_data(meta_data, filter_object, display_pooled, gene_order)
+        heat_data = self._prepare_heatmap_data(
+            meta_data, filter_object, display_pooled, gene_order, max_genes=max_genes
+        )
 
         if heat_data.empty:
             warnings.warn("Must have at least 2 genes for heatmap")
@@ -548,12 +593,7 @@ class EnhancedMetaAnalysisPlotter:
         figsize: Optional[Tuple] = None,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Generates a Manhattan plot to visualize -log10(FDR) values for
-        pooled results from a meta-analysis. The x-axis represents gene
-        indices, and the y-axis denotes -log10(FDR) values. Points are
-        colored by significance, with a horizontal line indicating the
-        threshold for FDR significance at 0.05.
+        """Plot -log10(FDR) per gene index, colored by significance at FDR < 0.05.
 
         Args:
             meta_object (Dict): The input dictionary containing meta-analysis
@@ -607,21 +647,15 @@ class EnhancedMetaAnalysisPlotter:
     def _get_predictive_plot_title(
         self, sensitivity: float, specificity: float, rounding: int
     ) -> str:
-        """
-        Generates a title for a predictive plot based on sensitivity and specificity values.
-
-        This function computes sensitivity and specificity percentages and combines them
-        to create a descriptive title for a predictive value plot.
+        """Build a title showing sensitivity/specificity as rounded percentages.
 
         Args:
-            sensitivity: The sensitivity value as a float, typically between 0 and 1.
-            specificity: The specificity value as a float, typically between 0 and 1.
-            rounding: The number of decimal places to round the sensitivity and specificity
-                      percentages.
+            sensitivity: Sensitivity, typically between 0 and 1.
+            specificity: Specificity, typically between 0 and 1.
+            rounding: Decimal places to round the displayed percentages to.
 
         Returns:
-            A string representing the predictive plot's title, including formatted sensitivity
-            and specificity percentages.
+            The formatted title string.
         """
         sens_pct = round(sensitivity * 100, rounding)
         spec_pct = round(specificity * 100, rounding)
@@ -633,24 +667,15 @@ class EnhancedMetaAnalysisPlotter:
     def _calculate_predictive_values(
         self, sensitivity: float, specificity: float, n_steps: int
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Calculates predictive values such as Positive Predictive Value (PPV) and Negative Predictive Value (NPV)
-        based on given sensitivity, specificity, and steps for prevalence.
+        """Compute PPV and NPV across a range of prevalence values, given sensitivity/specificity.
 
         Args:
-            sensitivity: float
-                Test sensitivity, representing the true positive rate.
-            specificity: float
-                Test specificity, representing the true negative rate.
-            n_steps: int
-                Number of steps to generate prevalence values in the range of 0.001 to 0.999.
+            sensitivity: Test sensitivity (true positive rate).
+            specificity: Test specificity (true negative rate).
+            n_steps: Number of prevalence values to sample over [0.001, 0.999].
 
         Returns:
-            Tuple[np.ndarray, np.ndarray, np.ndarray]
-                A tuple containing three numpy arrays:
-                - prevalence: The prevalence values calculated using the given number of steps.
-                - ppv: The positive predictive values corresponding to the prevalence values.
-                - npv: The negative predictive values corresponding to the prevalence values.
+            (prevalence, ppv, npv) arrays, one value per step.
         """
         prevalence = np.linspace(0.001, 0.999, n_steps)
 
@@ -676,13 +701,7 @@ class EnhancedMetaAnalysisPlotter:
         figsize: Optional[Tuple] = None,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Generates and returns a predictive value plot based on sensitivity, specificity, and prevalence.
-
-        This method calculates predictive values (Positive Predictive Value and Negative Predictive Value)
-        for a range of prevalence values and generates a plot. The plot displays the relationship between
-        prevalence and predictive values as percentages. The graph can be customized through various optional parameters,
-        such as the figure size or the addition of a title. The plot can also be saved to a specified path.
+        """Plot PPV and NPV as a function of disease prevalence.
 
         Args:
             sensitivity (float): Sensitivity value of the test.
@@ -743,84 +762,17 @@ class EnhancedMetaAnalysisPlotter:
             plt.savefig(save_path, dpi=300, bbox_inches="tight")
         return fig
 
-    def _calculate_auc_confidence_interval(
-        self, y_true: np.ndarray, roc_auc: float
-    ) -> Tuple[float, float]:
-        """
-        Calculates the confidence interval for the Area Under the Curve (AUC) value. This method estimates the standard error
-        of the AUC, computes the confidence interval boundaries, and ensures that the lower and upper bounds are within
-        the valid range of [0, 1].
-
-        Args:
-            y_true: np.ndarray
-                Array of true binary labels, where 1 represents the positive class and 0 represents the negative class.
-            roc_auc: float
-                The calculated AUC value for which the confidence interval will be determined.
-
-        Returns:
-            Tuple[float, float]
-                The lower and upper bounds of the 95% confidence interval for the given AUC value.
-        """
-        n_pos = np.sum(y_true == 1)
-        n_neg = np.sum(y_true == 0)
-
-        if n_pos == 0 or n_neg == 0:
-            return 0.0, 0.0
-
-        se_auc = np.sqrt((roc_auc * (1 - roc_auc)) / (n_pos * n_neg))
-        ci_lower = max(0, roc_auc - self.CI_95_MULTIPLIER * se_auc)
-        ci_upper = min(1, roc_auc + self.CI_95_MULTIPLIER * se_auc)
-        return ci_lower, ci_upper
-
-    def _calculate_roc_stats(
-        self, y_true: np.ndarray, y_scores: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, float]:
-        """
-        Calculates Receiver Operating Characteristic (ROC) statistics including false positive rate (FPR),
-        true positive rate (TPR), and the area under the ROC curve (AUC).
-
-        This function is useful for evaluating the performance of a binary classification model by
-        assessing its ability to distinguish between two classes. It computes the false positive rate and
-        true positive rate across different thresholds and calculates the area under the ROC curve.
-
-        Args:
-            y_true: np.ndarray
-                Ground truth binary labels where each entry corresponds to the true class of the sample.
-            y_scores: np.ndarray
-                Predicted scores or probabilities for the positive class of the classification model.
-
-        Returns:
-            Tuple[np.ndarray, np.ndarray, float]
-                A tuple containing:
-                - fpr: False positive rates at various thresholds
-                - tpr: True positive rates at various thresholds
-                - roc_auc: The area under the ROC curve
-        """
-        fpr, tpr, _ = roc_curve(y_true, y_scores)
-        roc_auc = auc(fpr, tpr)
-        return fpr, tpr, roc_auc
-
     def _calculate_auc_ci(self, y_true: np.ndarray, auc_value: float) -> Tuple[float, float]:
-        """
-        Calculates the confidence interval for the Area Under the Curve (AUC) score.
+        """Estimate the 95% CI for an AUC score via its standard-error formula.
 
-        This method estimates the confidence interval for a given AUC score using the
-        standard error formula derived from the AUC distribution. It requires the
-        ground truth labels to determine the number of positive and negative samples.
-        If either positive or negative samples are absent, the method returns a confidence
-        interval of (0.0, 0.0).
+        Returns (0.0, 0.0) if either class has zero samples.
 
         Args:
-            y_true: np.ndarray
-                The ground truth binary labels, where positive samples are denoted
-                by 1 and negative samples by 0.
-            auc_value: float
-                The Area Under the Curve score for the binary classification.
+            y_true: Binary ground-truth labels.
+            auc_value: The AUC score to build a CI around.
 
         Returns:
-            Tuple[float, float]
-                A tuple containing the lower and upper bounds of the confidence interval
-                for the AUC score.
+            (lower, upper) bounds of the confidence interval.
         """
         n_pos = np.sum(y_true == 1)
         n_neg = np.sum(y_true == 0)
@@ -829,31 +781,21 @@ class EnhancedMetaAnalysisPlotter:
             return 0.0, 0.0
 
         se_auc = np.sqrt((auc_value * (1 - auc_value)) / (n_pos * n_neg))
-        ci_lower = max(0, auc_value - 1.96 * se_auc)
-        ci_upper = min(1, auc_value + 1.96 * se_auc)
+        ci_lower = max(0, auc_value - self.CI_95_MULTIPLIER * se_auc)
+        ci_upper = min(1, auc_value + self.CI_95_MULTIPLIER * se_auc)
         return ci_lower, ci_upper
 
     def _calculate_roc_data(
         self, y_true: np.ndarray, y_scores: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, float]:
-        """
-        Calculates the Receiver Operating Characteristic (ROC) data including False Positive Rate (FPR),
-        True Positive Rate (TPR), and Area Under the Curve (AUC) for given true labels and predicted scores.
+        """Compute the ROC curve (FPR, TPR) and AUC for binary labels and scores.
 
         Args:
-            y_true: np.ndarray
-                True binary labels where 1 represents the positive class and 0 represents the negative class.
-
-            y_scores: np.ndarray
-                Target scores or probabilities for the positive class. These values are expected
-                to reflect the likelihood of the positive class.
+            y_true: Binary ground-truth labels.
+            y_scores: Predicted scores or probabilities for the positive class.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray, float]
-                A tuple containing:
-                - False Positive Rates (FPR) as a NumPy array
-                - True Positive Rates (TPR) as a NumPy array
-                - AUC value as a float
+            (fpr, tpr, auc_value).
         """
         fpr, tpr, _ = roc_curve(y_true, y_scores)
         auc_value = auc(fpr, tpr)
@@ -869,9 +811,7 @@ class EnhancedMetaAnalysisPlotter:
         figsize: Optional[Tuple] = None,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Generates a Receiver Operating Characteristic (ROC) curve plot with optional AUC confidence
-        intervals and customization options.
+        """Plot the ROC curve with an AUC-and-95%-CI label.
 
         Args:
             y_true (np.ndarray): Array of true binary labels. Expected to contain 0s and 1s.
@@ -911,6 +851,7 @@ class EnhancedMetaAnalysisPlotter:
         ax.grid(True, alpha=0.3)
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1])
+        self._apply_equal_unit_axes(ax)
 
         plt.tight_layout()
         if save_path:
@@ -920,19 +861,17 @@ class EnhancedMetaAnalysisPlotter:
     def _calculate_auprc_confidence_interval(
         self, y_true: np.ndarray, auprc: float
     ) -> Tuple[float, float]:
-        """
-        Calculates the 95% confidence interval for Area Under the Precision-Recall Curve (AUPRC).
+        """Estimate the 95% CI for an AUPRC score via its standard-error formula.
 
-        This function computes the confidence interval for a given AUPRC value based on the
-        standard error derived from the number of positive samples within the true labels.
+        Returns a wide (0.0, 1.0) interval when there are no positive samples, since the
+        standard-error formula is undefined in that case.
 
         Args:
-            y_true (np.ndarray): Array of true labels. 1 represents positive samples.
-            auprc (float): The Area Under the Precision-Recall Curve value.
+            y_true: Binary ground-truth labels. 1 represents positive samples.
+            auprc: The AUPRC value to build a CI around.
 
         Returns:
-            Tuple[float, float]: A tuple containing the lower and upper bounds of the
-                                 95% confidence interval for the AUPRC.
+            (lower, upper) bounds of the confidence interval.
         """
         n_pos = np.sum(y_true == 1)
 
@@ -946,45 +885,27 @@ class EnhancedMetaAnalysisPlotter:
         return ci_lower, ci_upper
 
     def _get_prc_baseline(self, y_true: np.ndarray) -> float:
-        """
-        Calculates the precision-recall curve baseline.
-
-        This method computes the ratio of the sum of true labels to the total
-        number of labels. If the input array y_true is empty, it returns 0.0.
+        """Return the no-skill PRC baseline: the positive-class fraction of y_true.
 
         Args:
-            y_true: np.ndarray
-                The array of true labels, typically binary values.
+            y_true: Binary ground-truth labels.
 
         Returns:
-            float
-                The calculated precision-recall baseline value.
+            The baseline precision (0.0 if y_true is empty).
         """
         return np.sum(y_true) / len(y_true) if len(y_true) > 0 else 0.0
 
     def _calculate_prc_stats(
         self, y_true: np.ndarray, y_scores: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, float]:
-        """
-        Calculates precision-recall statistics and Average Precision (AP) score.
-
-        This utility function computes the precision-recall curve, including
-        precision and recall values for different thresholds, and calculates
-        the average precision score (AUPRC) metric.
+        """Compute the precision-recall curve and AUPRC for binary labels and scores.
 
         Args:
-            y_true: np.ndarray
-                Ground truth binary labels. Each value should be either 0 or 1.
-            y_scores: np.ndarray
-                Predicted scores or probabilities, typically between 0 and 1, that
-                correspond to each label in y_true.
+            y_true: Binary ground-truth labels.
+            y_scores: Predicted scores or probabilities for the positive class.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray, float]
-                A tuple containing:
-                - precision: ndarray of precision values for each threshold
-                - recall: ndarray of recall values for each threshold
-                - auprc: float representing the average precision score
+            (precision, recall, auprc).
         """
         precision, recall, _ = precision_recall_curve(y_true, y_scores)
         auprc = average_precision_score(y_true, y_scores)
@@ -1000,48 +921,20 @@ class EnhancedMetaAnalysisPlotter:
         figsize: Optional[Tuple] = None,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Plots the Precision-Recall Curve (PRC) along with relevant metrics and confidence
-        intervals to evaluate the performance of classification models. The function supports
-        customization of the plot's appearance and the ability to save the resulting figure.
+        """Plot the precision-recall curve with an AUPRC-and-95%-CI label, alongside the
+        no-skill baseline.
 
         Args:
-            y_true : np.ndarray
-                Ground truth binary labels.
-            y_scores : np.ndarray
-                Model-predicted probability scores or decision function values corresponding to
-                the positive class.
-            title : Optional[str]
-                Title of the precision-recall plot (default is "Precision-Recall Curve").
-            label : Optional[str], optional
-                Custom label for the precision-recall curve. If not provided, a default label
-                including AUPRC and its confidence interval values will be used.
-            color : str, optional
-                Color of the precision-recall line (default is "red").
-            figsize : Optional[Tuple], optional
-                Dimensions of the figure in inches. If not specified, default dimensions defined
-                in the class attribute will be used.
-            save_path : Optional[str], optional
-                File path to save the generated figure as an image file. If not provided, the
-                figure will not be saved.
+            y_true: Binary ground-truth labels.
+            y_scores: Predicted scores or probabilities for the positive class.
+            title: Plot title.
+            label: Custom curve label. Defaults to "AUPRC = ... (95% CI: ...)".
+            color: Curve line color.
+            figsize: Figure size in inches. Defaults to self.figsize.
+            save_path: If given, save the figure to this path.
 
         Returns:
-            plt.Figure
-                Matplotlib figure object representing the precision-recall curve.
-
-        Raises:
-            ValueError
-                If the inputs are invalid, such as mismatched shapes of y_true and y_scores.
-
-        Note:
-        The function includes display of the area under the precision-recall curve (AUPRC)
-        and its associated 95% confidence interval, along with the performance of a random
-        baseline classifier for comparison.
-
-        Example:
-        This function generates a visual assessment but does not print or write to console
-        about performance metrics. For saving output plots, the save_path parameter must
-        be provided.
+            The generated matplotlib Figure.
         """
         figsize = figsize or self.figsize
         precision, recall, auprc = self._calculate_prc_stats(y_true, y_scores)
@@ -1069,6 +962,7 @@ class EnhancedMetaAnalysisPlotter:
         ax.grid(True, alpha=0.3)
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1])
+        self._apply_equal_unit_axes(ax)
 
         plt.tight_layout()
         if save_path:
@@ -1078,31 +972,15 @@ class EnhancedMetaAnalysisPlotter:
     def _get_dataset_roc_info(
         self, i: int, dataset: Dict, filter_object: Dict
     ) -> Tuple[np.ndarray, np.ndarray, float, str]:
-        """
-        Calculates Receiver Operating Characteristic (ROC) information for a given dataset.
-
-        This method processes a dataset to generate information relevant for plotting the ROC curve.
-        It incorporates calculated scores and true class labels from the dataset, derives the
-        false positive rate (FPR), true positive rate (TPR), and the area under the curve (AUC) value
-        using ROC evaluation, and formats a label for the dataset.
-
-        It is intended for internal use within the context of generating ROC-related data.
+        """Compute one dataset's ROC curve, AUC, and a "name: AUC=..." label for the legend.
 
         Args:
-            i: int
-                The index of the dataset being processed, used for formatting fallback names.
-            dataset: Dict
-                A dataset containing data points and their classes.
-            filter_object: Dict
-                A filter configuration object used to calculate relevant dataset scores.
+            i: Dataset index, used to build a fallback name ("Dataset {i+1}").
+            dataset: Dataset dict with scores (or inputs to compute them) and class labels.
+            filter_object: Filter used to compute signature scores.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray, float, str]
-                A tuple containing the following elements:
-                    - fpr: False positive rates as a NumPy array.
-                    - tpr: True positive rates as a NumPy array.
-                    - auc_value: The calculated AUC value as a float.
-                    - label: A formatted label string for the dataset.
+            (fpr, tpr, auc_value, label).
         """
         scores = self._calculate_scores(filter_object, dataset)
         y_true = np.array(dataset["class"])
@@ -1122,25 +1000,17 @@ class EnhancedMetaAnalysisPlotter:
         figsize: Optional[Tuple] = None,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Generates a plot with multiple ROC curves for given datasets.
-
-        This method creates a ROC (Receiver Operating Characteristic) plot for multiple datasets
-        using their false positive rates and true positive rates. It allows customization of figure
-        size, title, and an optional save path for the generated figure.
+        """Plot one ROC curve per dataset, overlaid on shared axes.
 
         Args:
-            datasets (List[Dict]): A list of dataset dictionaries containing relevant data for
-                generating ROC curves.
-            filter_object (Dict): A dictionary used to filter or process the datasets.
-            title (str): The title of the plot. Defaults to "Multiple ROC Curves".
-            figsize (Optional[Tuple]): The size of the figure in inches as width and height.
-                Defaults to (10, 8).
-            save_path (Optional[str]): The file path to save the resulting plot image. If not
-                provided, the plot is not saved.
+            datasets: Datasets to plot, one curve each.
+            filter_object: Filter used to compute each dataset's signature scores.
+            title: Plot title.
+            figsize: Figure size in inches. Defaults to (10, 8).
+            save_path: If given, save the figure to this path.
 
         Returns:
-            plt.Figure: The generated matplotlib figure containing the ROC plot.
+            The generated matplotlib Figure.
         """
         figsize = figsize or (10, 8)
         fig, ax = plt.subplots(figsize=figsize)
@@ -1158,6 +1028,7 @@ class EnhancedMetaAnalysisPlotter:
         ax.grid(True, alpha=0.3)
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1])
+        self._apply_equal_unit_axes(ax)
 
         plt.tight_layout()
         if save_path:
@@ -1167,28 +1038,15 @@ class EnhancedMetaAnalysisPlotter:
     def _get_dataset_prc_info(
         self, i: int, dataset: Dict, filter_object: Dict
     ) -> Tuple[np.ndarray, np.ndarray, float, str]:
-        """
-        Calculates precision-recall data and AUPRC (Area Under Precision-Recall Curve) for a specific dataset.
-
-        This method takes a dataset, computes the scores using a provided filter object, and then generates
-        precision, recall, and AUPRC statistics. It assigns a formatted label for the dataset to be used in
-        visualizations or reporting.
+        """Compute one dataset's precision-recall curve, AUPRC, and a legend label.
 
         Args:
-            i : int
-                The index of the dataset in a collection of datasets.
-            dataset : Dict
-                A dictionary representing the dataset, which includes class labels under the key "class".
-            filter_object : Dict
-                A dictionary containing the filtering criteria or model parameters used to calculate the scores.
+            i: Dataset index, used to build a fallback name ("Dataset {i+1}").
+            dataset: Dataset dict with a "class" key of binary labels.
+            filter_object: Filter used to compute signature scores.
 
         Returns:
-            Tuple[np.ndarray, np.ndarray, float, str]
-                A tuple containing:
-                - Precision values (numpy array)
-                - Recall values (numpy array)
-                - AUPRC (float)
-                - Label for the dataset (string)
+            (precision, recall, auprc, label).
         """
         scores = self._calculate_scores(filter_object, dataset)
         y_true = np.array(dataset["class"])
@@ -1208,30 +1066,17 @@ class EnhancedMetaAnalysisPlotter:
         figsize: Optional[Tuple] = None,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Plots multiple Precision-Recall Curves (PRC) on the same graph for a list of datasets using
-        custom filters and visualization parameters. Each dataset's PRC is computed, styled, and
-        overlaid with distinct colors for clarity. The final figure can be optionally saved to a specified
-        file path.
+        """Plot one precision-recall curve per dataset, overlaid on shared axes.
 
         Args:
-            datasets: List[Dict]
-                A list of datasets containing precision-recall data to plot. Each dataset should be formatted
-                as a dictionary with keys and values necessary for processing PRC computations.
-            filter_object: Dict
-                A dictionary used for filtering or customizing the datasets during the generation of the
-                Precision-Recall curves.
-            title: str, optional
-                The title of the plot. Defaults to "Multiple PRC Curves".
-            figsize: Optional[Tuple], optional
-                The size of the figure in the format (width, height). Defaults to (10, 8) if not provided.
-            save_path: Optional[str], optional
-                The file path where the generated figure will be saved. If None, the plot is not saved
-                to a file. Defaults to None.
+            datasets: Datasets to plot, one curve each.
+            filter_object: Filter used to compute each dataset's signature scores.
+            title: Plot title.
+            figsize: Figure size in inches. Defaults to (10, 8).
+            save_path: If given, save the figure to this path.
 
         Returns:
-            matplotlib.figure.Figure
-                The generated matplotlib figure containing the multiple PRC plot.
+            The generated matplotlib Figure.
         """
         figsize = figsize or (10, 8)
         fig, ax = plt.subplots(figsize=figsize)
@@ -1248,6 +1093,7 @@ class EnhancedMetaAnalysisPlotter:
         ax.grid(True, alpha=0.3)
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1])
+        self._apply_equal_unit_axes(ax)
 
         plt.tight_layout()
         if save_path:
@@ -1255,21 +1101,14 @@ class EnhancedMetaAnalysisPlotter:
         return fig
 
     def _get_gene_indices(self, dataset_keys: List[str], target_genes: List[str]) -> List[int]:
-        """
-        Gets the indices of target genes from a list of dataset keys.
-
-        This function filters the indices of genes in 'dataset_keys' that match genes
-        in the 'target_genes'. The indices of the matching genes are returned as a list.
+        """Return the positions in dataset_keys that match target_genes.
 
         Args:
-            dataset_keys: List[str]
-                A list representing the keys of datasets.
-            target_genes: List[str]
-                A list of target genes to be searched in the dataset keys.
+            dataset_keys: Gene keys for a dataset, in expression-matrix row order.
+            target_genes: Genes to find.
 
         Returns:
-            List[int]
-                A list containing the indices of the target genes in the dataset keys.
+            Matching indices, in dataset_keys order.
         """
         target_set = set(target_genes)
         return [i for i, key in enumerate(dataset_keys) if key in target_set]
@@ -1277,26 +1116,15 @@ class EnhancedMetaAnalysisPlotter:
     def _get_mean_expression(
         self, expr_matrix: Union[pd.DataFrame, np.ndarray], indices: List[int]
     ) -> Union[pd.Series, np.ndarray, float]:
-        """
-        Calculates the mean expression values for selected indices in an expression matrix.
-
-        This method computes the mean of expression values based on provided indices.
-        It supports two different input types for the expression matrix: pandas DataFrame or NumPy ndarray.
-        If the input is a DataFrame, the method calculates the mean using the provided row indices.
-        If the input is an ndarray, it calculates the mean across the specified rows of the array.
+        """Average expression across the given row indices (genes), per sample.
 
         Args:
-            expr_matrix: Union[pd.DataFrame, np.ndarray]
-                The expression matrix containing the data for computation. Can be a pandas DataFrame or a
-                NumPy ndarray.
-            indices: List[int]
-                A list of integer indices to use for extracting rows from the expression matrix.
+            expr_matrix: Expression data, genes x samples (DataFrame or ndarray).
+            indices: Row indices to average across.
 
         Returns:
-            Union[pd.Series, np.ndarray, float]
-                The mean expression values calculated from the selected rows. If no indices are provided
-                (empty list), a float value of 0.0 is returned. If the input is a DataFrame, the result
-                is a pandas Series. If the input is an ndarray, the result is a NumPy ndarray.
+            Per-sample mean (a Series for a DataFrame input, an ndarray for an ndarray
+            input), or 0.0 if `indices` is empty.
         """
         if not indices:
             return 0.0
@@ -1308,42 +1136,60 @@ class EnhancedMetaAnalysisPlotter:
 
     def _calculate_scores(self, filter_object: Dict, dataset: Dict) -> np.ndarray:
         """
-        Calculates scores based on positive and negative gene expressions.
+        Calculates per-sample signature scores for a dataset.
 
-        This method computes scores for a given dataset by calculating the mean gene
-        expression for both positive and negative genes. The scores are derived as
-        the difference between the mean expressions of positive and negative genes.
+        consolidated onto the single "gold standard" scoring
+        implementation. This method used to compute its own simple
+        mean-difference score (mean of positive genes minus mean of negative
+        genes, no normalization), independently of
+        :func:`metaintegrator.score_calculation.ScoreCalculator.calculate_score`
+        — the R-parity, geometric-mean-based scorer used by the CLI (stage 7,
+        ``_compute_scores_and_roc``) and by ``violin_plot.py``. Having two
+        divergent implementations meant the ROC/PRC AUCs shown on
+        ``roc_multiple.png``/``prc_multiple.png`` could disagree with the AUCs
+        derivable from ``dataset["score"]`` / the exported ``scores_*.csv``
+        files for the *same* run. This method now delegates to
+        ``ScoreCalculator.calculate_score()`` so every code path — CLI,
+        programmatic/Jupyter use, and this plotting module — produces
+        identical scores for the same filter and dataset.
+
+        If ``dataset`` already carries a precomputed ``"score"`` (as it does
+        after CLI stage 7), that cached value is reused instead of
+        recomputing — the same short-circuit already used by
+        ``violin_plot.py``'s ``_get_or_compute_scores()``.
 
         Args:
             filter_object: A dictionary containing filter criteria including
                 'posGeneNames' and 'negGeneNames' keys with lists of gene names as values.
             dataset: A dictionary containing the keys and expression matrix of genes.
                 'keys' is the list of gene names and 'expr' is the expression matrix.
+                If it already has a 'score' key with a non-``None`` value, that
+                value is returned (converted to an array) unchanged.
 
         Returns:
-            np.ndarray: An array of scores calculated as the difference between the
-            mean positive and mean negative gene expressions.
+            np.ndarray: Per-sample signature scores (R-parity Z-scores when
+            freshly computed; whatever ``dataset["score"]`` holds when reused).
         """
-        gene_keys = dataset["keys"]
-        expr_matrix = dataset["expr"]
+        if dataset.get("score") is not None:
+            return np.asarray(dataset["score"], dtype=float)
 
-        # Simple implementation: mean of positive genes - mean of negative genes
-        pos_indices = self._get_gene_indices(gene_keys, filter_object.get("posGeneNames", []))
-        neg_indices = self._get_gene_indices(gene_keys, filter_object.get("negGeneNames", []))
+        from metaintegrator.score_calculation import ScoreCalculator
 
-        mean_pos_expr = self._get_mean_expression(expr_matrix, pos_indices)
-        mean_neg_expr = self._get_mean_expression(expr_matrix, neg_indices)
+        expr_matrix = dataset.get("expr")
+        if isinstance(expr_matrix, np.ndarray):
+            # ScoreCalculator requires dataset['expr'] to be a pandas
+            # DataFrame. Gene lookup inside ScoreCalculator is driven
+            # entirely by the separate 'keys' list, matched positionally
+            # row-by-row against 'expr' — not by the DataFrame's own index —
+            # so wrapping a raw ndarray with a plain default-index DataFrame
+            # is sufficient and preserves the original gene/sample order.
+            dataset = dict(dataset)  # shallow copy: don't mutate the caller's dataset
+            dataset["expr"] = pd.DataFrame(expr_matrix)
 
-        # Ensure we return an array even when both means are scalars
-        scores = mean_pos_expr - mean_neg_expr
-        if isinstance(scores, (int, float)):
-            # If both indices are empty, return array of zeros with correct shape
-            n_samples = (
-                expr_matrix.shape[1] if hasattr(expr_matrix, "shape") else len(expr_matrix.columns)
-            )
-            return np.zeros(n_samples)
-
-        return np.array(scores)
+        return np.asarray(
+            ScoreCalculator.calculate_score(filter_object, dataset, suppress_messages=True),
+            dtype=float,
+        )
 
     def violin_plot(
         self,
@@ -1394,7 +1240,7 @@ class EnhancedMetaAnalysisPlotter:
             ...           'formattedName': 'Study 1'}
             >>> fig = plotter.violin_plot(filter_obj, dataset, label_column="group")
         """
-        # 20260611dev
+
         from metaintegrator.score_calculation import ScoreCalculator
 
         figsize = figsize or self.figsize
@@ -1573,12 +1419,12 @@ class EnhancedMetaAnalysisPlotter:
 
     def _add_statistical_annotations(
         self,
-        ax,
+        ax: plt.Axes,
         plot_data: pd.DataFrame,
         groups: List[str],
         comparison_method: str,
         pairwise: bool,
-    ):
+    ) -> None:
         """Add statistical comparison annotations to violin plot."""
         from scipy.stats import mannwhitneyu, ttest_ind
 
@@ -1616,7 +1462,9 @@ class EnhancedMetaAnalysisPlotter:
                 except Exception as e:
                     warnings.warn(f"Could not perform comparison: {e}")
 
-    def _draw_significance_bracket(self, ax, x1: float, x2: float, y: float, p_value: float):
+    def _draw_significance_bracket(
+        self, ax: plt.Axes, x1: float, x2: float, y: float, p_value: float
+    ) -> None:
         """Draw significance bracket with p-value annotation."""
         # Determine significance stars
         if p_value < 0.001:
@@ -1901,185 +1749,119 @@ def forest_plot(meta_object: Dict, gene_name: str, **kwargs) -> plt.Figure:
 
 
 def gg_forest_plot(meta_object: Dict, genes: List[str], **kwargs) -> plt.Figure:
-    """
-    Generate a forest plot using meta-analysis data and specified genes.
-
-    This function creates a forest plot for visualizing results from a
-    meta-analysis using the provided meta-object and a set of genes.
-    Additional customizations for the plot can be provided through keyword
-    arguments.
+    """Module-level convenience wrapper around EnhancedMetaAnalysisPlotter.gg_forest_plot.
 
     Args:
-        meta_object (Dict): The meta-analysis data structure containing the
-            relevant data for the forest plot.
-        genes (List[str]): A list of gene identifiers for which the forest
-            plot will be generated.
-        **kwargs: Arbitrary keyword arguments for customizing the plot.
+        meta_object: Meta-analytic data with effect sizes and pooled results.
+        genes: Genes to plot, one facet each.
+        **kwargs: Passed through to EnhancedMetaAnalysisPlotter.gg_forest_plot.
 
     Returns:
-        plt.Figure: A matplotlib Figure object containing the generated
-            forest plot.
+        The generated matplotlib Figure.
     """
     plotter = EnhancedMetaAnalysisPlotter()
     return plotter.gg_forest_plot(meta_object, genes, **kwargs)
 
 
 def heatmap_plot(meta_object: Dict, filter_object: Dict, **kwargs) -> plt.Figure:
-    """
-    Generate a heatmap plot based on the provided meta-analysis data and filter criteria.
+    """Module-level convenience wrapper around EnhancedMetaAnalysisPlotter.heatmap_plot.
 
     Args:
-        meta_object : Dict
-            The metadata object containing data required for plotting.
-        filter_object : Dict
-            The filter criteria to refine data used in the heatmap plotting.
-        **kwargs
-            Additional keyword arguments passed to the underlying plotting function.
+        meta_object: Meta-analysis data with effect sizes and pooled results.
+        filter_object: Filter defining which genes to include.
+        **kwargs: Passed through to EnhancedMetaAnalysisPlotter.heatmap_plot.
 
     Returns:
-        plt.Figure
-            A matplotlib Figure object representing the generated heatmap plot.
+        The generated matplotlib Figure.
     """
     plotter = EnhancedMetaAnalysisPlotter()
     return plotter.heatmap_plot(meta_object, filter_object, **kwargs)
 
 
 def manhattan_plot(meta_object: Dict, **kwargs) -> plt.Figure:
-    """
-    Generate a Manhattan plot based on a meta-analysis object and additional keyword arguments.
-
-    This function utilizes the EnhancedMetaAnalysisPlotter class to produce a Manhattan plot
-    for visualizing genetic association study results. The input meta_object contains
-    relevant meta-analysis data, while additional configurations can be provided through
-    keyword arguments.
+    """Module-level convenience wrapper around EnhancedMetaAnalysisPlotter.manhattan_plot.
 
     Args:
-        meta_object (Dict): A dictionary containing meta-analysis data. The structure and
-            contents of this dictionary should be compatible with the requirements of the
-            EnhancedMetaAnalysisPlotter class.
-        kwargs: Additional keyword arguments passed directly to the plotting function of
-            the EnhancedMetaAnalysisPlotter.
+        meta_object: Meta-analysis data with pooled results.
+        **kwargs: Passed through to EnhancedMetaAnalysisPlotter.manhattan_plot.
 
     Returns:
-        plt.Figure: A Matplotlib Figure object containing the generated Manhattan plot.
+        The generated matplotlib Figure.
     """
     plotter = EnhancedMetaAnalysisPlotter()
     return plotter.manhattan_plot(meta_object, **kwargs)
 
 
 def predictive_value_plot(sensitivity: float, specificity: float, **kwargs) -> plt.Figure:
-    """
-    Generates a predictive value plot using given sensitivity and specificity values.
-
-    This function utilizes an EnhancedMetaAnalysisPlotter object to create a plot that
-    visualizes the predictive value based on the provided sensitivity and specificity
-    values. Additional keyword arguments can be passed for further customization
-    of the plot.
+    """Module-level convenience wrapper around EnhancedMetaAnalysisPlotter.predictive_value_plot.
 
     Args:
-        sensitivity (float): The sensitivity value to be used for the plot.
-        specificity (float): The specificity value to be used for the plot.
-        **kwargs: Additional keyword arguments for plot customization.
+        sensitivity: Test sensitivity.
+        specificity: Test specificity.
+        **kwargs: Passed through to EnhancedMetaAnalysisPlotter.predictive_value_plot.
 
     Returns:
-        plt.Figure: The matplotlib Figure object containing the predictive value plot.
+        The generated matplotlib Figure.
     """
     plotter = EnhancedMetaAnalysisPlotter()
     return plotter.predictive_value_plot(sensitivity, specificity, **kwargs)
 
 
 def multiple_roc_plot(datasets: List[Dict], filter_object: Dict, **kwargs) -> plt.Figure:
-    """
-    Generates a single ROC curve plot for multiple datasets using a EnhancedMetaAnalysisPlotter.
-
-    This function uses an EnhancedMetaAnalysisPlotter to create a ROC curve plot for the
-    provided datasets applying a specified filter. Additional customization can
-    be passed via keyword arguments.
+    """Module-level convenience wrapper around EnhancedMetaAnalysisPlotter.multiple_roc_plot.
 
     Args:
-        datasets: List[Dict]
-            A list containing dictionaries, each representing a dataset to be
-            included in the ROC plot.
-        filter_object: Dict
-            A dictionary specifying the filter criteria to be applied to the
-            datasets.
-        **kwargs:
-            Additional keyword arguments passed to the plotting function for
-            customization.
+        datasets: Datasets to plot, one ROC curve each.
+        filter_object: Filter used to compute each dataset's signature scores.
+        **kwargs: Passed through to EnhancedMetaAnalysisPlotter.multiple_roc_plot.
 
     Returns:
-        plt.Figure:
-            The resulting matplotlib Figure containing the ROC curve plot.
+        The generated matplotlib Figure.
     """
     plotter = EnhancedMetaAnalysisPlotter()
     return plotter.multiple_roc_plot(datasets, filter_object, **kwargs)
 
 
 def multiple_prc_plot(datasets: List[Dict], filter_object: Dict, **kwargs) -> plt.Figure:
-    """
-    Generates a precision-recall curve (PRC) plot for multiple datasets.
-
-    This function facilitates the creation of a precision-recall curve
-    (PRC) plot using data from multiple datasets. It utilizes the
-    EnhancedMetaAnalysisPlotter class to handle the actual plotting. Additional
-    filtering or configuration can be applied through the provided filter
-    object and keyword arguments.
+    """Module-level convenience wrapper around EnhancedMetaAnalysisPlotter.multiple_prc_plot.
 
     Args:
-        datasets: List of dictionaries representing the datasets to be
-            visualized on the PRC curve.
-        filter_object: Dictionary containing filtering criteria for
-            processing the datasets.
-        **kwargs: Arbitrary keyword arguments passed to the underlying
-            plotting function for customization.
+        datasets: Datasets to plot, one precision-recall curve each.
+        filter_object: Filter used to compute each dataset's signature scores.
+        **kwargs: Passed through to EnhancedMetaAnalysisPlotter.multiple_prc_plot.
 
     Returns:
-        plt.Figure: A matplotlib figure containing the PRC plot.
+        The generated matplotlib Figure.
     """
     plotter = EnhancedMetaAnalysisPlotter()
     return plotter.multiple_prc_plot(datasets, filter_object, **kwargs)
 
 
 def roc_plot(y_true: np.ndarray, y_scores: np.ndarray, **kwargs) -> plt.Figure:
-    """
-    Plots the Receiver Operating Characteristic (ROC) curve using the given true binary
-    labels and predicted probability scores. This helps visualize the trade-off between
-    the true positive rate and false positive rate at various classification thresholds.
+    """Module-level convenience wrapper around EnhancedMetaAnalysisPlotter.roc_plot.
 
     Args:
-        y_true (np.ndarray): Array of true binary labels (0/1 or False/True) for the dataset.
-        y_scores (np.ndarray): Array of predicted probability scores corresponding to each
-            instance in y_true.
-        **kwargs: Additional keyword arguments to customize the ROC plot.
+        y_true: Binary ground-truth labels.
+        y_scores: Predicted scores or probabilities for the positive class.
+        **kwargs: Passed through to EnhancedMetaAnalysisPlotter.roc_plot.
 
     Returns:
-        plt.Figure: A matplotlib Figure object representing the generated ROC curve plot.
+        The generated matplotlib Figure.
     """
     plotter = EnhancedMetaAnalysisPlotter()
     return plotter.roc_plot(y_true, y_scores, **kwargs)
 
 
 def prc_plot(y_true: np.ndarray, y_scores: np.ndarray, **kwargs) -> plt.Figure:
-    """
-    Generate a Precision-Recall Curve (PRC) plot for the provided true values and
-    predicted scores.
-
-    This function creates a precision-recall curve using the given true binary
-    labels and the predicted scores. It delegates the plotting to an internal
-    utility capable of handling precision-recall visualizations, allowing for
-    additional customization through keyword arguments.
+    """Module-level convenience wrapper around EnhancedMetaAnalysisPlotter.prc_plot.
 
     Args:
-        y_true (np.ndarray): A 1-dimensional NumPy array containing the true binary
-            labels (0 or 1) of the dataset.
-        y_scores (np.ndarray): A 1-dimensional NumPy array containing the predicted
-            scores or probabilities corresponding to each instance in the dataset.
-        **kwargs: Additional keyword arguments that can be passed to customize the
-            underlying plotting mechanism.
+        y_true: Binary ground-truth labels.
+        y_scores: Predicted scores or probabilities for the positive class.
+        **kwargs: Passed through to EnhancedMetaAnalysisPlotter.prc_plot.
 
     Returns:
-        plt.Figure: A Matplotlib figure object representing the generated precision-
-            recall curve.
+        The generated matplotlib Figure.
     """
     plotter = EnhancedMetaAnalysisPlotter()
     return plotter.prc_plot(y_true, y_scores, **kwargs)
@@ -2101,7 +1883,8 @@ def prc_plot(y_true: np.ndarray, y_scores: np.ndarray, **kwargs) -> plt.Figure:
 # import MetaAnalysisPlotter` working for existing callers, with a
 # DeprecationWarning nudging them to the new name. New code should import
 # `EnhancedMetaAnalysisPlotter` directly.
-def __getattr__(name: str):
+def __getattr__(name: str) -> type:
+    """Resolve the deprecated ``MetaAnalysisPlotter`` alias (see comment above) with a warning."""
     if name == "MetaAnalysisPlotter":
         warnings.warn(
             "visualization.enhanced_plotting.MetaAnalysisPlotter has been "
