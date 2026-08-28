@@ -1,4 +1,6 @@
+import argparse
 from pathlib import Path
+
 import yaml
 
 
@@ -26,7 +28,7 @@ def load_config(path: str | None) -> dict:
         return yaml.safe_load(f) or {}
 
 
-def merge_config(cli_args, cfg: dict) -> dict:
+def merge_config(cli_args: argparse.Namespace, cfg: dict) -> dict:
     """
     Merges configuration from a command-line arguments object and a dictionary-based
     configuration file. Ensures that command-line arguments take precedence over

@@ -3,7 +3,7 @@ Plotting functions for MetaIntegrator Python port.
 This module handles visualization of meta-analysis results.
 """
 
-from typing import Dict, List, Optional, Union, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,19 +19,12 @@ from scipy import stats
 class MetaAnalysisPlotter:
     """Class for creating meta-analysis visualizations."""
 
-    def __init__(self, style: str = "default", figsize: Tuple[int, int] = (10, 6)):
-        """
-        Initializes the object with specified plot style and figure size.
+    def __init__(self, style: str = "default", figsize: Tuple[int, int] = (10, 6)) -> None:
+        """Initialize the plotter with a matplotlib style and default figure size.
 
         Args:
-            style (str): The style of the plot. Defaults to "default".
-            figsize (Tuple[int, int]): The size of the figure in inches as a tuple
-                representing (width, height). Defaults to (10, 6).
-
-        Args:
-            style (str): The initial style to apply to the plot. Defaults to "default".
-            figsize (Tuple[int, int]): A tuple specifying the figure size.
-                Defaults to (10, 6).
+            style: Matplotlib style name to apply. Defaults to "default" (no change).
+            figsize: Default figure size (width, height) in inches.
         """
         self.style = style
         self.figsize = figsize
@@ -45,35 +38,19 @@ class MetaAnalysisPlotter:
         overlay_density: bool = True,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Plot the effect size distribution for a meta-analysis dataset.
-
-        This method visualizes the distribution of effect sizes from a meta-analysis
-        dataset contained within the provided meta_object dictionary. The distribution
-        can be displayed as histograms or overlaid with density curves.
-        The generated plot includes labeled axes, a legend, a title, and a grid.
-        Optionally, the plot can be saved to a specified file path.
+        """Plot the effect size distribution for a meta-analysis dataset.
 
         Args:
-            meta_object: Dict
-                A dictionary containing meta-analysis results, including effect sizes
-                stored under the "metaAnalysis" key as a dataframe.
-            bins: int, default=50
-                The number of bins to use for plotting histograms if overlay_density
-                is set to False.
-            overlay_density: bool, default=True
-                If True, overlay density curves on the plot. Otherwise, plot histograms
-                for effect size distribution.
-            save_path: Optional[str], default=None
-                The file path to save the generated plot. If None, the plot is not saved.
+            meta_object: Meta-analysis results, with effect sizes under "metaAnalysis".
+            bins: Number of histogram bins, used only when overlay_density is False.
+            overlay_density: Overlay smoothed density curves instead of histograms.
+            save_path: If given, save the figure to this path.
 
         Returns:
-            plt.Figure
-                The matplotlib Figure object for the generated plot.
+            The generated matplotlib Figure.
 
         Raises:
-            ValueError
-                If the "metaAnalysis" key is not found in the provided meta_object.
+            ValueError: If "metaAnalysis" is missing from meta_object.
         """
         if "metaAnalysis" not in meta_object:
             raise ValueError("Meta-analysis results not found in meta_object")
@@ -100,23 +77,13 @@ class MetaAnalysisPlotter:
 
         return fig
 
-    def _draw_density_curves(self, ax: plt.Axes, df: pd.DataFrame):
-        """
-        Draw density curves for each study group in a given DataFrame.
-
-        This method takes a Matplotlib Axes object and a pandas DataFrame as inputs.
-        It groups the DataFrame by the "Study" column, computes a Gaussian kernel density
-        estimate (KDE) for values in each group, and plots the resulting density curves
-        on the provided Axes object.
+    def _draw_density_curves(self, ax: plt.Axes, df: pd.DataFrame) -> None:
+        """Draw a Gaussian KDE curve per study group (falls back to a vertical line
+        when a group has too little variance to fit a KDE).
 
         Args:
-            ax : plt.Axes
-                Matplotlib Axes object where the density curves will be plotted.
-
-            df : pd.DataFrame
-                Input DataFrame containing the data to be grouped and analyzed. The DataFrame
-                must include a "Study" column to group the data and a "value" column for
-                numerical analysis.
+            ax: Axes to draw on.
+            df: Long-format data with "Study" and "value" columns.
         """
         for study, group in df.groupby("Study"):
             data = group["value"]
@@ -141,25 +108,13 @@ class MetaAnalysisPlotter:
                 y_max = ax.get_ylim()[1] if ax.get_ylim()[1] > 0 else 1
                 ax.axvline(data.iloc[0], label=study, linewidth=2)
 
-    def _draw_histograms(self, ax: plt.Axes, df: pd.DataFrame, bins: int):
-        """
-        Draws histograms for the given data grouped by 'Study'.
-
-        This method iterates through grouped data based on the 'Study' column,
-        and plots histograms of the 'value' column for each group. The histograms
-        are styled with partial transparency, a defined bin width, and outlined
-        borders.
+    def _draw_histograms(self, ax: plt.Axes, df: pd.DataFrame, bins: int) -> None:
+        """Draw a semi-transparent histogram of "value" for each "Study" group.
 
         Args:
-            ax (plt.Axes): The matplotlib Axes object where the histograms will
-                be plotted.
-            df (pd.DataFrame): The DataFrame containing the data to be grouped
-                and plotted. It must include a 'Study' column for grouping and
-                a 'value' column for histogram plotting.
-            bins (int): The number of bins to use for the histogram.
-
-        Raises:
-            None
+            ax: Axes to draw on.
+            df: Long-format data with "Study" and "value" columns.
+            bins: Number of histogram bins.
         """
         for study, group in df.groupby("Study"):
             ax.hist(
@@ -180,40 +135,18 @@ class MetaAnalysisPlotter:
         top_genes: int = 20,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Generates a volcano plot visualizing the relationship between effect size and
-        significance (FDR values) for pooled meta-analysis results.
-
-        This function creates a scatter plot where each point represents a gene or
-        another analyzed element. The x-axis represents the effect size, while the
-        y-axis shows the -log10 transformed FDR values. The plot also includes thresholds
-        for effect size and FDR significance, highlights top genes with effect size and
-        significance, and optionally saves the figure.
+        """Plot effect size vs. -log10(FDR) for pooled meta-analysis results.
 
         Args:
-            meta_object: Dict
-                Dictionary containing meta-analysis results. Expected to contain a key
-                metaAnalysis with a sub-key pooledResults for access to the pooled
-                data.
-            es_threshold: float, optional
-                The effect size threshold used to annotate significant elements. Defaults
-                to 0.5.
-            fdr_threshold: float, optional
-                The FDR threshold used to annotate significant elements. Defaults to 0.05.
-            top_genes: int, optional
-                Number of top genes to label based on effect size and significance. Set this
-                to 0 to skip labeling. Defaults to 20.
-            save_path: Optional[str], optional
-                File path for saving the generated plot. If None, the plot will not be
-                saved. Defaults to None.
+            meta_object: Meta-analysis results, with pooled results under
+                meta_object["metaAnalysis"]["pooledResults"].
+            es_threshold: Effect-size threshold marking significance.
+            fdr_threshold: FDR threshold marking significance.
+            top_genes: Number of top genes to label by significance; 0 skips labeling.
+            save_path: If given, save the figure to this path.
 
         Returns:
-            matplotlib.figure.Figure
-                The generated volcano plot as a Matplotlib Figure instance.
-
-        Raises:
-            Exception
-                Any error encountered during data processing or plotting will be raised.
+            The generated matplotlib Figure.
         """
         pooled_df = meta_object["metaAnalysis"]["pooledResults"]
 
@@ -241,27 +174,24 @@ class MetaAnalysisPlotter:
 
         return fig
 
-    def _draw_volcano_points(self, ax, x, y, fdr, es_thr, fdr_thr):
-        """
-        Draws volcano plot points on the provided matplotlib axis. The method visualizes
-        a scatter plot where different significance levels are emphasized based on FDR
-        values and effect size thresholds. Points not meeting the thresholds are plotted
-        in gray as background, while significant points are colored to indicate direction
-        (up-regulated or down-regulated).
+    def _draw_volcano_points(
+        self,
+        ax: plt.Axes,
+        x: pd.Series,
+        y: np.ndarray,
+        fdr: pd.Series,
+        es_thr: float,
+        fdr_thr: float,
+    ) -> None:
+        """Scatter all points in gray, then overlay significant ones colored by direction.
 
         Args:
-            - ax: matplotlib.axes.Axes
-              The matplotlib Axes object where the points will be plotted.
-            - x: numpy.ndarray
-              The x-axis values (e.g., effect size) for each data point.
-            - y: numpy.ndarray
-              The y-axis values (e.g., -log10(p-value)) for each data point.
-            - fdr: numpy.ndarray
-              The False Discovery Rate (adjusted p-values) for each data point.
-            - es_thr: float
-              The effect size threshold above which data points are considered significant.
-            - fdr_thr: float
-              The FDR threshold below which data points are considered significant.
+            ax: Axes to draw on.
+            x: Effect sizes (x-axis).
+            y: -log10(FDR) values (y-axis).
+            fdr: Raw FDR values used to test significance.
+            es_thr: Effect-size threshold for significance.
+            fdr_thr: FDR threshold for significance.
         """
         # Draw all points in background
         ax.scatter(x, y, alpha=0.4, s=30, c="gray", edgecolors="none", label="Not Significant")
@@ -274,26 +204,13 @@ class MetaAnalysisPlotter:
             ax.scatter(x[up], y[up], c="red", s=40, alpha=0.8, label="Up-regulated")
             ax.scatter(x[down], y[down], c="blue", s=40, alpha=0.8, label="Down-regulated")
 
-    def _add_volcano_thresholds(self, ax, es_thr, fdr_thr):
-        """
-        Adds vertical and horizontal threshold lines to a volcano plot.
-
-        This method modifies the given matplotlib axis ('ax') by adding horizontal and
-        vertical dashed lines that indicate threshold values for effect size ('es_thr')
-        and false discovery rate ('fdr_thr'). These thresholds help in visually distinguishing
-        significant data points in a volcano plot.
+    def _add_volcano_thresholds(self, ax: plt.Axes, es_thr: float, fdr_thr: float) -> None:
+        """Draw dashed threshold lines at +/-es_thr (vertical) and -log10(fdr_thr) (horizontal).
 
         Args:
-            ax : matplotlib.axes.Axes
-                The matplotlib axis object on which the thresholds will be drawn.
-            es_thr : float
-                The threshold for effect size. Vertical lines will be drawn at +es_thr and -es_thr.
-            fdr_thr : float
-                The False Discovery Rate (FDR) threshold. A horizontal line will be drawn
-                at -log10(fdr_thr).
-
-        Returns:
-            None
+            ax: Axes to draw on.
+            es_thr: Effect-size threshold.
+            fdr_thr: FDR threshold.
         """
         ax.axhline(
             -np.log10(fdr_thr),
@@ -305,23 +222,14 @@ class MetaAnalysisPlotter:
         ax.axvline(es_thr, color="gray", linestyle="--", alpha=0.7)
         ax.axvline(-es_thr, color="gray", linestyle="--", alpha=0.7)
 
-    def _label_top_genes(self, ax, x, y, count):
-        """
-        Annotates the top genes on a plot based on their expression values.
-
-        This method selects the top count genes with the highest expression values
-        from the provided Series y and annotates them on the plot represented by
-        ax. Each gene is labeled at its corresponding position in the x and y
-        coordinates, with a small offset for better visibility.
+    def _label_top_genes(self, ax: plt.Axes, x: pd.Series, y: pd.Series, count: int) -> None:
+        """Annotate the top `count` genes (by y value) with their gene names.
 
         Args:
-            x: pandas.Series
-                A Series containing the x-coordinates for the genes.
-            y: pandas.Series
-                A Series containing the gene expression values where the gene names are
-                the index.
-            count: int
-                The number of top genes to annotate on the plot.
+            ax: Axes to draw on.
+            x: X-coordinates, indexed by gene name.
+            y: Y-coordinates, indexed by gene name; used to rank the top genes.
+            count: Number of top genes to label.
         """
         top_indices = y.nlargest(count).index
         for gene in top_indices:
@@ -341,29 +249,19 @@ class MetaAnalysisPlotter:
         max_genes: int = 20,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Generates a forest plot to display effect sizes and pooled results for a set of genes.
-
-        Summary:
-        This function creates a forest plot to visualize the effect sizes and pooled
-        results for a specified set of genes based on meta-analysis data. The function
-        filters for the given genes, limits them to a specified maximum, and plots the
-        results with aesthetic adjustments to enhance readability. If a save path is
-        provided, the plot is saved to a file.
+        """Plot per-study effect sizes and the pooled estimate for each gene.
 
         Args:
-            meta_object (Dict): Meta-analysis data containing effect sizes and pooled results.
-            genes (List[str]): List of genes to include in the forest plot.
-            max_genes (int, optional): Maximum number of genes to display in the plot.
-                Default is 20.
-            save_path (Optional[str], optional): File path to save the plot. If not provided,
-                the plot is not saved.
+            meta_object: Meta-analysis data with dataset and pooled effect sizes.
+            genes: Genes to include in the plot.
+            max_genes: Maximum number of genes to display.
+            save_path: If given, save the figure to this path.
 
         Returns:
-            matplotlib.figure.Figure: A matplotlib Figure object containing the forest plot.
+            The generated matplotlib Figure.
 
         Raises:
-            ValueError: If no matching genes are found in the provided data or gene list.
+            ValueError: If none of `genes` are found in the results.
         """
         es_df = meta_object["metaAnalysis"]["datasetEffectSizes"]
         se_df = meta_object["metaAnalysis"]["datasetEffectSizeStandardErrors"]
@@ -399,35 +297,24 @@ class MetaAnalysisPlotter:
             fig.savefig(save_path, dpi=300, bbox_inches="tight")
         return fig
 
-    def _plot_study_effects(self, ax, gene, y_pos, es_df, se_df, colors):
-        """
-        Plots the effect sizes of a gene across multiple studies.
-
-        This function creates a visualization in which the effect sizes and their
-        corresponding standard errors for a specific gene across studies are displayed.
-        Each effect size is represented as a point on the plot, with horizontal lines
-        indicating the confidence intervals determined by the standard error.
+    def _plot_study_effects(
+        self,
+        ax: plt.Axes,
+        gene: str,
+        y_pos: int,
+        es_df: pd.DataFrame,
+        se_df: pd.DataFrame,
+        colors: List,
+    ) -> None:
+        """Plot one point per study for `gene`, with a 95% CI line from its standard error.
 
         Args:
-            ax : matplotlib.axes.Axes
-                The matplotlib axis object where the plot will be drawn.
-            gene : str
-                The name of the gene whose effects are being plotted.
-            y_pos : int
-                The vertical position at which the gene's effect sizes are plotted.
-            es_df : pandas.DataFrame
-                A DataFrame containing the effect sizes. Each column corresponds to a
-                study, and each row corresponds to a gene.
-            se_df : pandas.DataFrame
-                A DataFrame containing the standard errors. Each column corresponds to a
-                study, and each row corresponds to a gene.
-            colors : list
-                A list of color values used to represent each study in the plot.
-
-        Raises:
-            ValueError
-                If the dimensions of es_df and se_df are inconsistent or if any
-                required data are missing or malformed.
+            ax: Axes to draw on.
+            gene: Gene name (row label into es_df/se_df).
+            y_pos: Y position for this gene's row in the forest plot.
+            es_df: Effect sizes, genes x studies.
+            se_df: Standard errors, genes x studies (same shape as es_df).
+            colors: Per-study colors, in the same order as es_df's columns.
         """
         for j, study in enumerate(es_df.columns):
             es, se = es_df.loc[gene, study], se_df.loc[gene, study]
@@ -450,22 +337,16 @@ class MetaAnalysisPlotter:
                     linewidth=2,
                 )
 
-    def _plot_pooled_effect(self, ax, gene, y_pos, pooled_df):
-        """
-        Plots the pooled effect of a specific gene on the given axis.
-
-        This method visualizes the pooled effect size and its confidence interval for a
-        specified gene on a matplotlib axis. It utilizes data from the pooled_df
-        DataFrame to extract the effect size and its standard error if they exist and
-        are not missing. The plotted effect is represented with a scatter marker, and
-        the confidence interval is denoted with horizontal lines.
+    def _plot_pooled_effect(
+        self, ax: plt.Axes, gene: str, y_pos: int, pooled_df: pd.DataFrame
+    ) -> None:
+        """Plot the pooled effect size and its 95% CI for `gene`, marked in black.
 
         Args:
-            ax: The matplotlib axis on which to plot the pooled effect.
-            gene: The gene for which the pooled effect is to be plotted.
-            y_pos: The y-axis position where the pooled effect will be drawn.
-            pooled_df: The DataFrame containing 'effectSize' and 'effectSizeStandardError' for
-                each gene.
+            ax: Axes to draw on.
+            gene: Gene name (row label into pooled_df).
+            y_pos: Y position for this gene's row in the forest plot.
+            pooled_df: Pooled results with "effectSize" and "effectSizeStandardError" columns.
         """
         if gene in pooled_df.index:
             es, se = (
@@ -499,30 +380,20 @@ class MetaAnalysisPlotter:
         cluster: bool = True,
         save_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Generates a heatmap visualizing effect sizes across studies for selected genes.
-
-        This method processes the meta-analysis data provided as input and plots a heatmap
-        to illustrate the effect sizes of selected genes across various studies. It provides
-        the option to cluster the data and export the resulting heatmap image to a specified
-        file path.
+        """Plot a heatmap of effect sizes (genes x studies) for the selected genes.
 
         Args:
-            meta_object (Dict): The meta-analysis object containing effect size data and
-                pooled results required for generating the heatmap.
-            genes (Optional[List[str]]): A list of genes to include in the heatmap. If None,
-                genes are selected based on the top effect sizes.
-            n_top_genes (int): The maximum number of top-ranked genes to include if 'genes'
-                is None. Defaults to 50.
-            cluster (bool): Whether to cluster the data before plotting. Defaults to True.
-            save_path (Optional[str]): Full path to save the heatmap figure. If None, the
-                figure is not saved locally.
+            meta_object: Meta-analysis data with dataset effect sizes and pooled results.
+            genes: Genes to include. If None, the top `n_top_genes` by FDR are used.
+            n_top_genes: Number of top genes to select when `genes` is None.
+            cluster: Currently unused; reserved for hierarchical clustering of rows.
+            save_path: If given, save the figure to this path.
 
         Returns:
-            plt.Figure: The matplotlib Figure object containing the heatmap.
+            The generated matplotlib Figure.
 
         Raises:
-            ValueError: If no valid genes are found for the heatmap.
+            ValueError: If no valid genes remain to plot.
         """
         es_df = meta_object["metaAnalysis"]["datasetEffectSizes"]
         pooled_df = meta_object["metaAnalysis"]["pooledResults"]
@@ -574,26 +445,16 @@ class MetaAnalysisPlotter:
         pooled_df: pd.DataFrame,
         n_top: int,
     ) -> List[str]:
-        """
-        Selects a subset of genes for creating a heatmap based on given parameters.
-
-        The method either filters the provided list of genes to retain only those present
-        in a reference DataFrame or selects the top-ranked genes based on a specified
-        statistical metric from another DataFrame.
+        """Return `genes` filtered to those present in es_df, or the top `n_top` by FDR.
 
         Args:
-            genes: List of gene names. Optional; if provided, only genes present in
-                the reference index will be retained. If None, top-ranked genes will
-                be selected instead.
-            es_df: DataFrame containing reference gene information, where the index
-                corresponds to gene names.
-            pooled_df: DataFrame containing statistical metrics for genes, including
-                a column "effectSizeFDR" used for ranking.
-            n_top: Integer indicating the number of top-ranked genes to select when
-                'genes' is not provided.
+            genes: Requested gene list, or None to select by FDR ranking instead.
+            es_df: Effect sizes, indexed by gene name.
+            pooled_df: Pooled results with an "effectSizeFDR" column, used for ranking.
+            n_top: Number of top-ranked genes to select when `genes` is None.
 
         Returns:
-            List of selected gene names.
+            The selected gene names.
         """
         if genes is not None:
             return [g for g in genes if g in es_df.index]
@@ -606,20 +467,15 @@ class MetaAnalysisPlotter:
         return pooled_df.sort_values("effectSizeFDR").head(n_top).index.tolist()
 
     def plot_study_overview(self, meta_object: Dict, save_path: Optional[str] = None) -> plt.Figure:
-        """
-        Plots an overview of studies, visualizing various statistics such as sample distribution,
-        total sample size, gene count, and case/control balance in a grid of subplots.
+        """Plot a 2x2 grid of per-study statistics: sample distribution, total samples,
+        gene count, and case/control ratio.
 
         Args:
-            meta_object (Dict): A dictionary containing metadata needed for generating the overview
-                plot. The metadata is expected to include "originalData" as a key for extracting
-                study statistics.
-            save_path (Optional[str]): Path where the figure will be saved. If None, the figure is
-                not saved.
+            meta_object: Meta-analysis data with an "originalData" dict of per-study data.
+            save_path: If given, save the figure to this path.
 
         Returns:
-            matplotlib.pyplot.Figure: The generated figure object containing the statistical
-            visualizations.
+            The generated matplotlib Figure.
         """
         # 1. Data Preparation
         stats_df = self._extract_study_stats(meta_object["originalData"])
@@ -690,23 +546,14 @@ class MetaAnalysisPlotter:
         return fig
 
     def _extract_study_stats(self, original_data: Dict) -> pd.DataFrame:
-        """
-        Extracts statistical data from the provided study information.
-
-        This method processes the input dictionary containing study data to compute
-        various statistical metrics for each study. It calculates the number of
-        cases, controls, total samples, and the number of genes, organizing this
-        information into a structured pandas DataFrame.
+        """Compute case/control counts, sample totals, and gene counts per study.
 
         Args:
-            original_data (Dict): A dictionary where keys are study identifiers
-            and values are dictionaries containing study details. Sub-dictionaries
-            must include 'class', 'keys', and optionally 'formattedName'.
+            original_data: Per-study data keyed by study name; each value must have
+                "class" and "keys", and may have "formattedName".
 
         Returns:
-            pd.DataFrame: A DataFrame containing summarized statistical information
-            for each study, including the number of cases, controls, total samples,
-            and genes.
+            One row per study with Study, Cases, Controls, Total_Samples, and Genes.
         """
         rows = []
         for name, study in original_data.items():
@@ -734,29 +581,16 @@ class MetaAnalysisPlotter:
         title: str,
         color: Union[str, List[str]],
     ) -> None:
-        """
-        Plots a bar chart on the provided axes using the given data and formats the axes.
-
-        This function creates a bar plot on the passed in matplotlib axes object, using the provided
-        x-coordinates, values, and labels. The bar chart is styled with the specified color and opacity.
-        The method also applies formatting to the axes, including setting titles, labels, and other
-        customizations.
+        """Draw a bar chart and apply standard axis formatting.
 
         Args:
-            ax: matplotlib.axes.Axes
-                The matplotlib axes object where the bar chart will be plotted.
-            x: Sequence
-                The x-coordinates of the bars.
-            values: Sequence
-                The height or value of each bar in the bar chart.
-            labels: Sequence
-                The sequence of labels to be applied to the x-axis ticks corresponding to the bars.
-            ylabel: str
-                The label for the y-axis of the bar chart.
-            title: str
-                The title of the bar chart.
-            color: str or list
-                The color or list of colors used to fill the bars in the bar chart.
+            ax: Axes to draw on.
+            x: Bar x-coordinates.
+            values: Bar heights.
+            labels: X-tick labels, one per bar.
+            ylabel: Y-axis label.
+            title: Chart title.
+            color: Bar color, or one color per bar.
         """
         ax.bar(x, values, alpha=0.7, color=color)
         self._format_bar_ax(ax, labels, ylabel, title)
@@ -768,22 +602,15 @@ class MetaAnalysisPlotter:
         ylabel: str,
         title: str,
         legend: bool = False,
-    ):
-        """
-        Formats the appearance of a bar chart axis with given labels, title, and other
-        styling options like rotation and grid visibility.
+    ) -> None:
+        """Apply standard x-tick labels, y-label, title, and grid to a bar chart axis.
 
         Args:
-            ax : matplotlib.axes.Axes
-                The axis object to format.
-            labels : list[str]
-                A list of labels for the x-axis ticks.
-            ylabel : str
-                The label for the y-axis.
-            title : str
-                The title of the chart.
-            legend : bool, optional
-                A flag indicating whether to display the legend on the axis. Defaults to False.
+            ax: Axes to format.
+            labels: X-tick labels.
+            ylabel: Y-axis label.
+            title: Chart title.
+            legend: Whether to show the legend.
         """
         ax.set_xticks(range(len(labels)))
         ax.set_xticklabels(labels, rotation=45, ha="right")
@@ -796,28 +623,16 @@ class MetaAnalysisPlotter:
     def plot_ma_summary(
         self, meta_object: Dict[str, Any], save_path: Optional[str] = None
     ) -> plt.Figure:
-        """
-        Generates a summary plot for meta-analysis results.
-
-        This method visualizes meta-analysis outcome data by creating a 2x2 subplot figure
-        composed of four types of visualizations:
-        1. Effect size distribution
-        2. A volcano-lite plot comparing effect sizes to P-values
-        3. Distribution of studies per gene
-        4. P-value distribution for heterogeneity.
-
-        The generated figure is optionally saved to a specified file path.
+        """Plot a 2x2 summary grid: effect-size distribution, volcano-lite, studies-per-gene,
+        and heterogeneity p-value distribution.
 
         Args:
-            meta_object (Dict[str, Any]): A dictionary containing meta-analysis results.
-                Must include a 'metaAnalysis' key with a 'pooledResults' DataFrame, where
-                effect sizes, P-values, study counts, and heterogeneity metrics should
-                be accessible.
-            save_path (Optional[str]): A file path to save the generated figure.
-                If None, the figure will only be returned and not saved.
+            meta_object: Meta-analysis results, with pooled results under
+                meta_object["metaAnalysis"]["pooledResults"].
+            save_path: If given, save the figure to this path.
 
         Returns:
-            plt.Figure: A matplotlib Figure object containing the generated 2x2 subplot.
+            The generated matplotlib Figure.
         """
         pooled_df: pd.DataFrame = meta_object["metaAnalysis"]["pooledResults"]
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
@@ -841,42 +656,23 @@ class MetaAnalysisPlotter:
         return fig
 
     def _plot_es_dist(self, ax: plt.Axes, es_series: pd.Series) -> None:
-        """
-        Plots the distribution of effect sizes on a given Axes object.
-
-        This function takes a pandas Series containing effect sizes and plots
-        a histogram representing the frequency of the effect sizes. It also
-        includes a vertical red dashed line at zero for reference.
+        """Plot a histogram of effect sizes with a reference line at zero.
 
         Args:
-            ax: plt.Axes
-                The Matplotlib Axes object where the histogram will be plotted.
-            es_series: pd.Series
-                A pandas Series containing the effect sizes to be visualized.
-
-        Returns:
-            None
+            ax: Axes to draw on.
+            es_series: Effect sizes to plot.
         """
         ax.hist(es_series.dropna(), bins=50, alpha=0.7, color="skyblue", edgecolor="black")
         ax.axvline(0, color="red", linestyle="--", alpha=0.7)
         self._set_standard_labels(ax, "Effect Size", "Frequency", "Distribution of Effect Sizes")
 
     def _plot_volcano_lite(self, ax: plt.Axes, es: pd.Series, pvals: pd.Series) -> None:
-        """
-        Plots a lightweight volcano plot on the provided Axes without any additional customizations.
-
-        The method creates a scatter plot to visualize the relationship between effect sizes
-        and the significance level (-log₁₀ of p-values). This minimal implementation allows
-        customization and further modification by other methods or end-users.
+        """Scatter effect size against -log10(p-value), with no significance styling.
 
         Args:
-            ax (plt.Axes): The matplotlib Axes object where the volcano plot will be drawn.
-            es (pd.Series): Pandas Series containing the effect sizes for the plot, typically from a
-                statistical or computational experiment.
-            pvals (pd.Series): Pandas Series containing the p-values corresponding to each effect size.
-
-        Returns:
-            None
+            ax: Axes to draw on.
+            es: Effect sizes (x-axis).
+            pvals: P-values (transformed to -log10 for the y-axis).
         """
         ax.scatter(es, -np.log10(pvals.replace(0, 1e-300)), alpha=0.6, s=20)
         self._set_standard_labels(
@@ -884,19 +680,11 @@ class MetaAnalysisPlotter:
         )
 
     def _plot_study_count_dist(self, ax: plt.Axes, num_studies: pd.Series) -> None:
-        """
-        Plots the distribution of the number of studies per gene.
-
-        This method creates a histogram representing the distribution of gene study
-        counts. Only non-NaN values from num_studies are considered. The plot is
-        formatted using predefined aesthetic settings, including colors and labels.
+        """Plot a histogram of how many studies each gene appears in.
 
         Args:
-            ax (plt.Axes): The matplotlib Axes object on which the histogram will be plotted.
-            num_studies (pd.Series): A pandas Series containing the number of studies per gene.
-
-        Returns:
-            None
+            ax: Axes to draw on.
+            num_studies: Study count per gene (NaN values are dropped).
         """
         valid_counts = num_studies.dropna()
         bins = np.arange(1, valid_counts.max() + 2) if not valid_counts.empty else 10
@@ -913,20 +701,13 @@ class MetaAnalysisPlotter:
         )
 
     def _plot_heterogeneity(self, ax: plt.Axes, pvals: pd.Series) -> None:
-        """
-        Plots a histogram of heterogeneity p-values and highlights the significance threshold.
+        """Plot a histogram of heterogeneity p-values with a p=0.05 reference line.
 
-        This function visualizes the distribution of valid heterogeneity p-values within a histogram
-        and marks a reference line at p=0.05 to indicate the common significance threshold. If there
-        are no valid p-values in the input, a message "No heterogeneity data" is displayed in the plot.
-        This plot is designed to provide an overview of the results of heterogeneity tests.
+        Falls back to a "No heterogeneity data" message when `pvals` has no valid values.
 
         Args:
-            ax (plt.Axes): The Matplotlib Axes object where the histogram will be plotted.
-            pvals (pd.Series): Series of heterogeneity p-values, which may include NaN values.
-
-        Returns:
-            None
+            ax: Axes to draw on.
+            pvals: Heterogeneity p-values, which may include NaN.
         """
         valid_pvals = pvals.dropna()
         if not valid_pvals.empty:
@@ -940,17 +721,13 @@ class MetaAnalysisPlotter:
         )
 
     def _set_standard_labels(self, ax: plt.Axes, x: str, y: str, title: str) -> None:
-        """
-        Sets standard labels for an axis, including x-axis, y-axis, title, and grid visibility.
+        """Set x-label, y-label, title, and a light grid on an axis.
 
         Args:
-            ax (plt.Axes): The Matplotlib axis to modify.
-            x (str): The label for the x-axis.
-            y (str): The label for the y-axis.
-            title (str): The title of the plot.
-
-        Returns:
-            None
+            ax: Axes to format.
+            x: X-axis label.
+            y: Y-axis label.
+            title: Plot title.
         """
         ax.set_xlabel(x)
         ax.set_ylabel(y)

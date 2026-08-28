@@ -9,7 +9,7 @@ import pandas as pd
 from scipy import stats
 from statsmodels.stats.multitest import multipletests
 
-from .core_analysis import MetaAnalysisCore, FisherCombination
+from .core_analysis import FisherCombination, MetaAnalysisCore
 
 
 class EnhancedMetaAnalysis:
@@ -204,10 +204,9 @@ class EnhancedMetaAnalysis:
         except Exception as e:
             raise ValueError(f"Failed to merge studies: {e}") from e
 
-        # Separate up and down regulation columns
-        # ENHANCED: Support both dot and underscore separators to handle different
-        # significance types (P.up, Q_up, F_up, etc.)
-        # This makes the code more robust and handles legacy naming conventions
+        # Separate up- and down-regulation columns. Support both dot and
+        # underscore separators (P.up, Q_up, F_up, etc.) for compatibility
+        # with legacy naming conventions.
         up_columns = [
             col for col in merged_df.columns if col.endswith(".up") or col.endswith("_up")
         ]

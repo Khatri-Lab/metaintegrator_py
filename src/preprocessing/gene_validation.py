@@ -7,10 +7,11 @@ matching R MetaIntegrator's approach for robust offline validation.
 Author: Based on R MetaIntegrator by Vallania et al.
 """
 
-import logging
 import gzip
+import logging
 from pathlib import Path
-from typing import Set, Optional, Dict, Tuple
+from typing import Dict, Optional, Set, Tuple
+
 import pandas as pd
 
 log = logging.getLogger(__name__)
@@ -23,26 +24,22 @@ class EnsemblGeneValidator:
     This matches R MetaIntegrator's validation using ens_ensgID_table.
     Data is bundled with the package for offline use and reproducibility.
 
-    Examples
-    --------
-    >>> validator = EnsemblGeneValidator()
-    >>> validator.is_valid('TP53')
-    True
-    >>> validator.is_valid('ENST00000396160')  # Transcript ID
-    False
-    >>> validator.is_valid('BC042590')  # GenBank ID
-    False
+    Examples:
+        >>> validator = EnsemblGeneValidator()
+        >>> validator.is_valid('TP53')
+        True
+        >>> validator.is_valid('ENST00000396160')  # Transcript ID
+        False
+        >>> validator.is_valid('BC042590')  # GenBank ID
+        False
     """
 
     def __init__(self, data_dir: Optional[Path] = None):
-        """
-        Initialize validator with bundled Ensembl gene reference.
+        """Initialize the validator with the bundled Ensembl gene reference.
 
-        Parameters
-        ----------
-        data_dir : Path, optional
-            Directory containing reference data files.
-            If None, uses bundled data in package.
+        Args:
+            data_dir: Directory containing reference data files. Uses the
+                data bundled with the package when not given.
         """
         self.valid_genes: Set[str] = set()
         self.data_dir = data_dir or Path(__file__).parent / "data"
@@ -106,18 +103,13 @@ class EnsemblGeneValidator:
         )
 
     def is_valid(self, gene_symbol: str) -> bool:
-        """
-        Check if gene symbol is valid according to Ensembl.
+        """Check whether a gene symbol is valid according to Ensembl.
 
-        Parameters
-        ----------
-        gene_symbol : str
-            Gene symbol to validate
+        Args:
+            gene_symbol: Gene symbol to validate.
 
-        Returns
-        -------
-        bool
-            True if gene is in Ensembl database, False otherwise
+        Returns:
+            True if the symbol is present in the Ensembl reference database.
         """
         if not gene_symbol or pd.isna(gene_symbol):
             return False
@@ -126,20 +118,14 @@ class EnsemblGeneValidator:
         return str(gene_symbol).strip() in self.valid_genes
 
     def validate_list(self, gene_symbols: list) -> Tuple[list, list]:
-        """
-        Validate a list of gene symbols.
+        """Validate a list of gene symbols.
 
-        Parameters
-        ----------
-        gene_symbols : list
-            List of gene symbols to validate
+        Args:
+            gene_symbols: Gene symbols to validate.
 
-        Returns
-        -------
-        valid_genes : list
-            Gene symbols that passed validation
-        invalid_genes : list
-            Gene symbols that failed validation
+        Returns:
+            A ``(valid, invalid)`` tuple: gene symbols that passed
+            validation, and gene symbols that failed it.
         """
         valid = []
         invalid = []
@@ -165,25 +151,18 @@ class EnsemblGeneValidator:
 def apply_ensembl_validation(
     dataset_dict: dict, validator: EnsemblGeneValidator, verbose: bool = True
 ) -> dict:
-    """
-    Apply Ensembl validation to a dataset's gene symbols.
+    """Apply Ensembl validation to a dataset's gene symbols.
 
-    This matches R's behavior in .GEO_fData_key_parser() where genes
-    not in ens_ensgID_table$display_label are set to NA.
+    Mirrors R's behavior in ``.GEO_fData_key_parser()``, where genes not
+    found in ``ens_ensgID_table$display_label`` are set to NA.
 
-    Parameters
-    ----------
-    dataset_dict : dict
-        Dataset from sle_data['originalData']
-    validator : EnsemblGeneValidator
-        Initialized validator
-    verbose : bool
-        Print statistics
+    Args:
+        dataset_dict: A dataset from ``sle_data['originalData']``.
+        validator: An initialized validator.
+        verbose: Whether to log validation statistics.
 
-    Returns
-    -------
-    dict
-        Updated dataset with only Ensembl-validated genes
+    Returns:
+        The dataset with only Ensembl-validated genes retained.
     """
     if "keys" not in dataset_dict:
         return dataset_dict
@@ -256,22 +235,17 @@ def validate_all_datasets(
     validator: Optional[EnsemblGeneValidator] = None,
     verbose: bool = True,
 ) -> dict:
-    """
-    Apply Ensembl validation to all datasets in a MetaIntegrator object.
+    """Apply Ensembl validation to every dataset in a MetaIntegrator object.
 
-    Parameters
-    ----------
-    data_dict : dict
-        MetaIntegrator data structure with 'originalData' key
-    validator : EnsemblGeneValidator, optional
-        Validator instance. If None, creates new one.
-    verbose : bool
-        Print statistics
+    Args:
+        data_dict: MetaIntegrator data structure with an ``'originalData'``
+            key.
+        validator: Validator instance to use. A new one is created when
+            not given.
+        verbose: Whether to log validation statistics.
 
-    Returns
-    -------
-    dict
-        Updated data structure with validated genes
+    Returns:
+        The data structure with validated genes.
     """
     if validator is None:
         validator = EnsemblGeneValidator()
@@ -329,21 +303,14 @@ def validate_all_datasets(
 
 
 def create_validator() -> EnsemblGeneValidator:
-    """
-    Create and return an Ensembl gene validator.
+    """Create an Ensembl gene validator initialized with the bundled reference.
 
-    This is a convenience function for notebook use.
+    A convenience function for notebook use.
 
-    Returns
-    -------
-    EnsemblGeneValidator
-        Initialized validator with bundled gene reference
-
-    Examples
-    --------
-    >>> validator = create_validator()
-    >>> validator.is_valid('TP53')
-    True
+    Examples:
+        >>> validator = create_validator()
+        >>> validator.is_valid('TP53')
+        True
     """
     return EnsemblGeneValidator()
 

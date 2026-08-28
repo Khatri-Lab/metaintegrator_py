@@ -18,23 +18,20 @@ Highlights:
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 # Import from consolidated core module (eliminates duplicates)
-from .scoring_core import (
-    # Data structures
-    FilterConfig,
-    FilterResults,
-    # Validators and utilities
-    MetaObjectValidator,
-    FilterResultsValidator,
+from .scoring_core import (  # Data structures; Validators and utilities; Exceptions
     DataFrameUtils,
-    LoggerMixin,
-    # Exceptions
+    FilterConfig,
     FilteringError,
+    FilterResults,
+    FilterResultsValidator,
+    LoggerMixin,
+    MetaObjectValidator,
 )
 
 
@@ -656,7 +653,7 @@ class CombinedCriteriaFilteringStrategy(FilteringStrategy):
 class EnhancedMetaIntegratorFilter(LoggerMixin):
     """Enhanced meta-integrator filter with advanced filtering capabilities."""
 
-    def __init__(self, config: Optional[EnhancedFilterConfig] = None, **kwargs):
+    def __init__(self, config: Optional[EnhancedFilterConfig] = None, **kwargs) -> None:
         """Initialize the enhanced meta-integrator filter.
 
         Args:
@@ -1026,7 +1023,7 @@ class EnhancedMetaIntegratorFilter(LoggerMixin):
 class MetaIntegratorFilter(EnhancedMetaIntegratorFilter):
     """Legacy compatibility class for backward compatibility."""
 
-    def __init__(self, config: Optional[FilterConfig] = None, **kwargs):
+    def __init__(self, config: Optional[FilterConfig] = None, **kwargs) -> None:
         """Initialize with legacy config support.
 
         Args:
@@ -1057,10 +1054,8 @@ class MetaIntegratorFilter(EnhancedMetaIntegratorFilter):
             FilterResults object constructed from the standard enhanced filter results.
         """
         # Import from scoring_core to use the actual class, not the mock
-        from .scoring_core import (
-            FilterResults as CoreFilterResults,
-            FilterConfig as CoreFilterConfig,
-        )
+        from .scoring_core import FilterConfig as CoreFilterConfig
+        from .scoring_core import FilterResults as CoreFilterResults
 
         enhanced_results = self.filter_meta_analysis(meta_object, "standard")
 

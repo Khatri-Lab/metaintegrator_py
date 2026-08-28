@@ -27,7 +27,7 @@ Typical usage
 import argparse
 import sys
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -445,6 +445,7 @@ def compare_csvs(
 # 2.  Main
 # --------------------------------------------------------------------------- #
 def main() -> None:
+    """CLI entry point: parse --folder1/--folder2 and run the CSV comparison."""
     parser = argparse.ArgumentParser(
         description="Compare CSV files in two directories "
         "using user‑supplied partial file names."
@@ -522,7 +523,7 @@ def main() -> None:
 # ------------------------------------------------------------------- #
 # Test CSV file comparison
 # ------------------------------------------------------------------- #
-def test_compare_csvs():
+def test_compare_csvs() -> None:
     """Test function to confirm functionality with different CSV types"""
 
     import tempfile

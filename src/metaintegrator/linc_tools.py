@@ -14,7 +14,7 @@ import warnings
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,7 +35,7 @@ from sklearn.preprocessing import StandardScaler
 class LincsDataManager:
     """Manages LINCS data loading, caching, and quality control access."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize LINCS data manager."""
         self._data_cache = {}
         self._data_loaded = False
@@ -99,13 +99,12 @@ class LincsDataManager:
             zip_file.extractall(temp_dir)
         return temp_dir
 
-    def _load_files_from_dir(self, temp_dir: str):
-        """
-        Loads files from a specified directory into an internal cache for further processing.
+    def _load_files_from_dir(self, temp_dir: str) -> None:
+        """Load known LINCS data files from a directory into the internal cache.
 
-        This method processes a predefined set of file patterns, matches them to files present
-        in the given directory, and loads the matched files into an internal cache. Depending
-        on the file type (either 'pickle' or 'csv'), it applies the appropriate loading method.
+        Matches a predefined set of file patterns against files present in
+        ``temp_dir`` and loads each match with the appropriate method
+        (pickle or CSV) for its file type.
         The method leverages specific separators for CSV files to correctly parse their contents.
         If a file matching a pattern is not found, it is skipped.
 
@@ -133,11 +132,12 @@ class LincsDataManager:
             elif file_type == "csv":
                 self._data_cache[cache_key] = pd.read_csv(full_path, sep=sep)
 
-    def _process_annotations(self):
-        """
-        Processes and cleans LINCS annotation data from the internal data cache. The function
-        standardizes the 'pert_iname' field by uppercasing and removing non-alphanumeric
-        characters, then stores the deduplicated results back into the cache.
+    def _process_annotations(self) -> None:
+        """Clean and standardize the cached LINCS annotation data.
+
+        Standardizes the 'pert_iname' field by uppercasing it and
+        stripping non-alphanumeric characters, then stores the
+        deduplicated result back into the cache.
 
         Raises:
             KeyError
@@ -276,9 +276,8 @@ class LincsDataManager:
 class LincsAnalyzer:
     """Core LINCS analysis functionality including gene network analysis."""
 
-    def __init__(self, data_manager: Optional[LincsDataManager] = None):
-        """
-        Initializes a new instance of a class, optionally with a custom data manager.
+    def __init__(self, data_manager: Optional[LincsDataManager] = None) -> None:
+        """Initialize the analyzer, optionally with a custom data manager.
 
         The constructor allows specifying a custom LincsDataManager instance to manage
         the data. If no data manager is provided, a default LincsDataManager instance is
@@ -807,7 +806,7 @@ class LincsAnalyzer:
 class LincsReporter:
     """Comprehensive reporting functionality for LINCS analysis results."""
 
-    def __init__(self, data_manager: Optional[LincsDataManager] = None):
+    def __init__(self, data_manager: Optional[LincsDataManager] = None) -> None:
         """Initialize LINCS reporter with data manager."""
         self.data_manager = data_manager or LincsDataManager()
         self.analyzer = LincsAnalyzer(self.data_manager)
@@ -1051,8 +1050,8 @@ class LincsReporter:
             return pd.DataFrame(correlation_data).fillna(0)
         return pd.DataFrame()
 
-    def _create_volcano_plot(self, hit_list: pd.DataFrame, dataset_name: str):
-        """Create interactive volcano plot for hit significance."""
+    def _create_volcano_plot(self, hit_list: pd.DataFrame, dataset_name: str) -> "go.Figure":
+        """Create an interactive volcano plot for hit significance."""
         # Calculate -log10(p-value) for volcano plot
         neg_log_p = -np.log10(hit_list["pval"].clip(lower=1e-300))
 
@@ -1139,7 +1138,7 @@ class LincsReporter:
             warnings.warn(f"Failed to create summary correlation plot: {e}")
             return None
 
-    def _save_analysis_objects(self, results: Dict, output_path: Path):
+    def _save_analysis_objects(self, results: Dict, output_path: Path) -> None:
         """Save analysis objects to file."""
         try:
             import pickle
@@ -1400,7 +1399,8 @@ class LincsReporter:
             )
 
             # Add basename filter for template
-            def basename_filter(path):
+            def basename_filter(path: Optional[str]) -> str:
+                """Jinja filter: basename of a path, or empty string if falsy."""
                 return os.path.basename(path) if path else ""
 
             template = Template(html_template)
@@ -1453,7 +1453,7 @@ class LincsReporter:
 class LincsVisualizer:
     """Visualization tools for LINCS analysis results."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize LINCS visualizer."""
         pass
 

@@ -1037,26 +1037,30 @@ class FisherCombination:
     def sum_of_logs(
         list_of_significance_matrices: List[pd.DataFrame],
     ) -> pd.DataFrame:
+        """Combine p-values across studies using Fisher's method.
+
+        Alias for :meth:`sum_of_logs_with_R_bugfix`.
+        """
         return FisherCombination.sum_of_logs_with_R_bugfix(list_of_significance_matrices)
 
     @staticmethod
     def sum_of_logs_with_R_bugfix(
         list_of_significance_matrices: List[pd.DataFrame],
     ) -> pd.DataFrame:
-        """
-        Combine p-values across studies using Fisher's method.
+        """Combine p-values across studies using Fisher's method.
 
-        FIXED: Datasets that are completely empty after filtering (e.g. a dataset
-        whose every probe mapped to a transcript ID and was removed by Ensembl
-        validation) are now silently skipped rather than causing a
-        KeyError: 'keys' crash downstream.
+        Datasets that are completely empty after filtering (e.g. one
+        whose every probe mapped to a transcript ID and was removed by
+        Ensembl validation) are skipped, rather than raising a
+        ``KeyError: 'keys'`` downstream.
 
         Args:
-            list_of_significance_matrices: one DataFrame per study, as returned
-                by FisherCombination.calculate_study_pvalues().
+            list_of_significance_matrices: One DataFrame per study, as
+                returned by ``FisherCombination.calculate_study_pvalues()``.
 
         Returns:
-            DataFrame with columns F.stat.up, F.pval.up, F.stat.down, F.pval.down.
+            DataFrame with columns ``F.stat.up``, ``F.pval.up``,
+            ``F.stat.down``, ``F.pval.down``.
         """
         processed_studies = []
 
@@ -1068,7 +1072,7 @@ class FisherCombination:
             valid_mask = df.iloc[:, 0].notna() & df["keys"].notna() & (df["keys"] != "NA")
             df = df[valid_mask]
 
-            # ── BUGFIX: skip studies with no valid genes ─────────────────────
+            # Skip studies with no valid genes left after filtering.
             if df.empty:
                 logger.warning(
                     f"Study index {study_idx}: no valid genes after filtering "
@@ -1076,7 +1080,6 @@ class FisherCombination:
                     "combination. Check gene annotation for this dataset."
                 )
                 continue
-            # ─────────────────────────────────────────────────────────────────
 
             df = MetaAnalysisCore.expand_dataframe(df)
 

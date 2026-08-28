@@ -5,7 +5,7 @@ including class vector assignment and characteristics column processing.
 """
 
 import warnings
-from typing import Dict, List, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -76,7 +76,7 @@ class PhenotypeProcessor:
         "unaffected",
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize phenotype processor."""
         pass
 
@@ -241,27 +241,15 @@ class PhenotypeProcessor:
 
         return scrambled_cols
 
-    def _warn_if_scrambled(self, pheno: pd.DataFrame, characteristics_cols: List[str]):
-        """
-        Warns the user if characteristics columns in the provided phenotype DataFrame
-        may be scrambled.
+    def _warn_if_scrambled(self, pheno: pd.DataFrame, characteristics_cols: List[str]) -> None:
+        """Warn if characteristics columns in ``pheno`` look scrambled.
 
-        This method checks for potential scrambling in the specified characteristics
-        columns within the given phenotype DataFrame. If any columns are identified
-        as scrambled, a warning is issued to alert the user. The warning
-        indicates that the tool will attempt to unscramble the columns, but it is
-        recommended to verify the raw phenotype data for any irregularities.
+        The tool will attempt to unscramble affected columns automatically,
+        but the warning is a signal to double-check the raw phenotype data.
 
         Args:
-            pheno: pd.DataFrame
-                The phenotype DataFrame to check for potential scrambling.
-            characteristics_cols: List[str]
-                A list of column names in the phenotype DataFrame that represent
-                characteristics to be checked.
-
-        Raises:
-            UserWarning
-                If any characteristics columns are found to be potentially scrambled.
+            pheno: Phenotype DataFrame to check.
+            characteristics_cols: Columns to check for scrambling.
         """
         scrambled_cols = self._check_for_scrambling(pheno, characteristics_cols)
         if scrambled_cols:
@@ -405,8 +393,8 @@ class PhenotypeProcessor:
         if column not in phenotype_df.columns:
             raise ValueError(f"Column '{column}' not found in phenotype data")
 
-        # FIX: Ensure disease_terms is always a list
-        # This handles the case where JSON converts single-element R vectors to strings
+        # A single-element R vector round-trips through JSON as a bare string,
+        # so normalize disease_terms to a list before matching against it.
         if isinstance(disease_terms, str):
             disease_terms = [disease_terms]
         elif not isinstance(disease_terms, list):
@@ -687,6 +675,7 @@ def batch_process_phenotypes(
     processor = PhenotypeProcessor()
 
     def _process_single_dataset(name: str, data: Dict) -> Dict:
+        """Clean, label, and validate the phenotype data for one dataset."""
         print(f"\nProcessing dataset: {name}")
 
         # 1. Clean up phenotype data

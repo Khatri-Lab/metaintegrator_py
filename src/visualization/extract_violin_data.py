@@ -34,31 +34,20 @@ def extract_violin_data(
 ) -> Optional[pd.DataFrame]:
     """Build a tidy DataFrame with one row per sample.
 
-    Columns
-    -------
-    Sample     – GEO sample accession  (also used as the index)
-    MetaScore  – the meta‑score for that sample
-    Class      – binary class label (0 / 1)
-    Label      – human‑readable group label
+    Columns: Sample (GEO accession, also the index), MetaScore, Class
+    (binary 0/1 label), and Label (human-readable group name).
 
-    Parameters
-    ----------
-    filter_object : dict
-        The filter result dict (``posGeneNames`` / ``negGeneNames``).
-    dataset_object : dict
-        A single dataset dict that **should** already contain a
-        ``metaScore`` (or ``score``) key.  If neither key is present
-        the function will attempt to compute scores on the fly via
-        ``ScoreCalculator``.
-    label_column : str
-        Column in ``pheno`` used for group labels.  Falls back to
-        binary class labels (0 → "Control", 1 → "Disease") when the
-        column is missing or has ≤ 1 unique value.
+    Args:
+        filter_object: Filter result dict (``posGeneNames`` / ``negGeneNames``).
+        dataset_object: A dataset dict, ideally already containing a
+            ``metaScore`` (or ``score``) key. If neither is present, scores
+            are computed on the fly via ``ScoreCalculator``.
+        label_column: Column in ``pheno`` used for group labels. Falls back to
+            binary class labels (0 -> "Control", 1 -> "Disease") when the
+            column is missing or has <= 1 unique value.
 
-    Returns
-    -------
-    pd.DataFrame or None
-        ``None`` is returned only when scores cannot be obtained.
+    Returns:
+        The tidy DataFrame, or None if scores could not be obtained.
     """
 
     # ── 1. Get scores ───────────────────────────────────────────────

@@ -9,7 +9,7 @@ The original monolithic implementation lived here prior to the A1+A2
 refactor.  See ``r_parity_source.py`` and ``r_parity_handler.py`` for
 the current implementation.
 
-Usage (unchanged from before)
+Usage
 -----
     from preprocessing.r_parity_loader import load_geo_datasets_r_parity
     datasets = load_geo_datasets_r_parity(["GSE11909", "GSE50635", "GSE39088"])
@@ -31,30 +31,23 @@ def load_geo_datasets_r_parity(
     cache_dir: str | Path = "~/.geo_cache",
     stop_on_error: bool = False,
 ) -> List[ProcessedDataset]:
-    """
-    Load GEO datasets matching R's getGEOData() approach.
+    """Load GEO datasets the way R's ``getGEOData()`` does.
 
-    Expression: from Series Matrix (pre-aligned, same data R uses)
-    Annotation: from GEOparse GPL tables (same annotation source)
-    Phenotype:  from GEOparse per-sample metadata
+    Expression comes from Series Matrix files (pre-aligned, the same data R
+    uses), annotation from GEOparse GPL tables (the same annotation source),
+    and phenotype data from GEOparse's per-sample metadata.
 
     This is a convenience wrapper around::
 
-        DataLoaderFactory.create_geo_loader(strategy='r_parity')
+        DataLoaderFactory.create_geo_loader(strategy='hybrid')
 
-    Parameters
-    ----------
-    gse_ids : list of str
-        GEO Series IDs (e.g., ["GSE11909", "GSE50635", "GSE39088"])
-    cache_dir : str or Path
-        Directory for caching downloaded files
-    stop_on_error : bool
-        If True, raise on first failure
+    Args:
+        gse_ids: GEO Series IDs, e.g. ``["GSE11909", "GSE50635", "GSE39088"]``.
+        cache_dir: Directory for caching downloaded files.
+        stop_on_error: If True, raise on the first failure.
 
-    Returns
-    -------
-    list of ProcessedDataset
-        One per platform, ready for meta-analysis
+    Returns:
+        One processed dataset per platform, ready for meta-analysis.
     """
     # Import here to avoid circular dependency
     # (loader_factory imports r_parity_source/handler;

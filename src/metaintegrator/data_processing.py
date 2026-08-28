@@ -20,9 +20,10 @@ from typing import Dict, List
 
 import pandas as pd
 
+from .labeling import assign_class_labels
+
 # ---- backward-compatible re-exports --------------------------------
 from .sample_ops import subset_original_data, subsetOriginalData
-from .labeling import assign_class_labels
 
 __all__ = [
     "DataProcessor",

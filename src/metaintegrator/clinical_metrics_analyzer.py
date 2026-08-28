@@ -5,11 +5,11 @@ Clinical Metrics Analyzer for MetaIntegrator
 
 import logging
 import warnings
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_curve, confusion_matrix
+from sklearn.metrics import confusion_matrix, roc_curve
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class YoudenJAnalyzer:
     features and better error handling.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Youden's J analyzer."""
         pass
 
@@ -210,21 +210,34 @@ class YoudenJAnalyzer:
 
 
 class NamedArray:
-    """Wrapper for numpy array with row/column names (R-like behavior)."""
+    """Wrapper for a numpy array with row/column names (R-like behavior)."""
 
-    def __init__(self, data, row_names=None, col_names=None):
+    def __init__(
+        self,
+        data: "np.ndarray | list",
+        row_names: Optional[List[str]] = None,
+        col_names: Optional[List[str]] = None,
+    ) -> None:
+        """Wrap ``data`` as an array with optional row/column names.
+
+        Args:
+            data: Array-like data to wrap.
+            row_names: Optional names for each row.
+            col_names: Optional names for each column.
+        """
         self.data = np.array(data)
         self.row_names = row_names
         self.col_names = col_names
 
-    def __getattr__(self, name):
-        # Delegate to numpy array for all other attributes
+    def __getattr__(self, name: str):
+        """Delegate attribute access to the wrapped numpy array."""
         return getattr(self.data, name)
 
     def __getitem__(self, key):
+        """Index into the wrapped numpy array."""
         return self.data[key]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"NamedArray(shape={self.data.shape}, row_names={self.row_names}, col_names={self.col_names})"
 
 
@@ -241,7 +254,7 @@ class ClinicalParametersAnalyzer:
     enhanced error handling and additional metrics.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize clinical parameters analyzer."""
         pass
 
@@ -536,7 +549,8 @@ class ClinicalParametersAnalyzer:
     def _apply_significant_digits(self, array: np.ndarray, digits: int) -> np.ndarray:
         """Apply significant digits rounding (equivalent to R's signif function)."""
 
-        def signif_scalar(x, digits):
+        def signif_scalar(x: float, digits: int) -> float:
+            """Round a single value to the given number of significant digits."""
             if np.isnan(x) or x == 0:
                 return x
             return np.round(x, digits - int(np.floor(np.log10(np.abs(x)))) - 1)
@@ -551,48 +565,56 @@ class ClinicalParametersAnalyzer:
 # ============================================================================
 
 
-def calculate_optimal_cutoff(roc_data, sensitivity_target=0.95, return_details=False):
-    """
-    Convenience function for calculating optimal cutoff using Youden's J statistic.
+def calculate_optimal_cutoff(
+    roc_data: Union[pd.DataFrame, Dict, Tuple[np.ndarray, np.ndarray]],
+    sensitivity_target: float = 0.95,
+    return_details: bool = False,
+) -> Union[Dict, float]:
+    """Convenience function for calculating optimal cutoff using Youden's J statistic.
 
     Args:
-        roc_data: ROC curve data (DataFrame, dict, or tuple)
-        sensitivity_target: Target sensitivity for specificity calculation (default: 0.95)
-        return_details: Return detailed analysis if True, J statistic only if False
+        roc_data: ROC curve data (DataFrame, dict, or tuple).
+        sensitivity_target: Target sensitivity for specificity calculation.
+        return_details: Return a detailed analysis dict if True, or just
+            the J statistic if False.
 
     Returns:
-        Optimal cutoff analysis or J statistic value
+        The optimal cutoff analysis dict, or the J statistic value.
     """
     analyzer = YoudenJAnalyzer()
     return analyzer.calculate_optimal_cutoff(roc_data, sensitivity_target, return_details)
 
 
-def print_optimal_cutoff_summary(roc_data, sensitivity_target=0.95, precision=1):
-    """
-    Print optimal cutoff summary (matches R's .youdenJ output format).
+def print_optimal_cutoff_summary(
+    roc_data: Union[pd.DataFrame, Dict, Tuple[np.ndarray, np.ndarray]],
+    sensitivity_target: float = 0.95,
+    precision: int = 1,
+) -> None:
+    """Print an optimal cutoff summary (matches R's ``.youdenJ`` output format).
 
     Args:
-        roc_data: ROC curve data
-        sensitivity_target: Target sensitivity for specificity calculation
-        precision: Decimal places for percentage display
+        roc_data: ROC curve data.
+        sensitivity_target: Target sensitivity for specificity calculation.
+        precision: Decimal places for percentage display.
     """
     analyzer = YoudenJAnalyzer()
     analyzer.print_optimal_cutoff_summary(roc_data, sensitivity_target, precision)
 
 
 def calculate_multi_study_clinical_parameters(
-    study_data_list, threshold_method="weighted_means", **kwargs
-):
-    """
-    Calculate clinical parameters across multiple studies.
+    study_data_list: List[Dict], threshold_method: str = "weighted_means", **kwargs
+) -> Union[pd.DataFrame, NamedArray]:
+    """Calculate clinical parameters across multiple studies.
 
     Args:
-        study_data_list: List of study dictionaries with 'score' and 'group'/'class'
-        threshold_method: "weighted_means" (R's method), "youden", or "closest_to_topleft"
-        **kwargs: Additional arguments for ClinicalParametersAnalyzer
+        study_data_list: Study dictionaries, each with a 'score' key and a
+            'group'/'class' key.
+        threshold_method: ``"weighted_means"`` (R's method), ``"youden"``,
+            or ``"closest_to_topleft"``.
+        **kwargs: Additional arguments for :class:`ClinicalParametersAnalyzer`.
 
     Returns:
-        DataFrame with clinical performance metrics
+        A DataFrame (or NamedArray) with clinical performance metrics.
     """
     analyzer = ClinicalParametersAnalyzer()
     return analyzer.calculate_multi_study_parameters(study_data_list, threshold_method, **kwargs)

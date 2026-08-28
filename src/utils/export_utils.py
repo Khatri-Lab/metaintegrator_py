@@ -45,7 +45,7 @@ class SummaryROCExporter:
     SUPPORTED_PLOT_FORMATS = ["png", "pdf", "svg", "eps", "jpg", "tiff"]
     SUPPORTED_DATA_FORMATS = ["csv", "excel", "json"]
 
-    def __init__(self, output_dir: Optional[str] = None):
+    def __init__(self, output_dir: Optional[str] = None) -> None:
         """
         Initialize exporter.
 
@@ -315,7 +315,7 @@ class SummaryROCExporter:
         """Get list of all exported files."""
         return self.exported_files.copy()
 
-    def clear_export_history(self):
+    def clear_export_history(self) -> None:
         """Clear the list of exported files."""
         self.exported_files = []
 

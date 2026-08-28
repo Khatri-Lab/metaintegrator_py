@@ -1,6 +1,6 @@
 import warnings
 from functools import reduce
-from typing import Dict, List, Tuple, Optional, Union, Any, TypedDict
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
 import numpy as np
 import pandas as pd
@@ -239,7 +239,8 @@ def _validate_config(
         if platform_col is None:
             raise ValueError("platform_col must be provided if by_platform=True")
 
-        def get_plat_list(gse_list):
+        def get_plat_list(gse_list: List[Dict[str, Any]]) -> List[str]:
+            """Return the sorted, deduplicated platform identifiers found in gse_list."""
             plats = set()
             for ds in gse_list:
                 cols = [c for c in ds["pheno"].columns if platform_col.lower() in c.lower()]
@@ -569,6 +570,7 @@ def _split_combat_data(
     """
 
     def _update_gse_genes(gse: GeneExpressionData) -> GeneExpressionData:
+        """Return a copy of gse with its "genes" columns replaced from combat_data_matrix."""
         new_gse = gse.copy()
         # Extract the relevant columns from the combined matrix based on the original structure
         new_gse["genes"] = combat_data_matrix[gse["genes"].columns].copy()
@@ -901,7 +903,9 @@ def _combat_get_params_no_cov(
     }
 
 
-def _standardize_data(data, design, n_batches, n_batch_count):
+def _standardize_data(
+    data: np.ndarray, design: np.ndarray, n_batches: np.ndarray, n_batch_count: int
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Standardize expression data by removing batch effects.
 
@@ -966,7 +970,9 @@ def _standardize_data(data, design, n_batches, n_batch_count):
     return b_hat, grand_mean, var_pooled, s_data
 
 
-def _fit_ls_model(s_data, batch_design, batches_idx):
+def _fit_ls_model(
+    s_data: np.ndarray, batch_design: np.ndarray, batches_idx: List[np.ndarray]
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Fit a simple linear‐model to estimate batch effects on standardized data.
 
@@ -1017,7 +1023,14 @@ def _fit_ls_model(s_data, batch_design, batches_idx):
     return gamma_hat, delta_hat
 
 
-def _estimate_bayesian_params(s_data, batches_idx, gamma_hat, delta_hat, par_prior, it_conv):
+def _estimate_bayesian_params(
+    s_data: np.ndarray,
+    batches_idx: List[np.ndarray],
+    gamma_hat: np.ndarray,
+    delta_hat: np.ndarray,
+    par_prior: bool,
+    it_conv: float,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Estimate the Bayesian batch‐effect parameters for each batch.
 
@@ -1084,7 +1097,14 @@ def _estimate_bayesian_params(s_data, batches_idx, gamma_hat, delta_hat, par_pri
     return np.array(gamma_star), np.array(delta_star)
 
 
-def _adjust_data_final(s_data, batches_idx, gamma_star, delta_star, var_pooled, stand_mean):
+def _adjust_data_final(
+    s_data: np.ndarray,
+    batches_idx: List[np.ndarray],
+    gamma_star: np.ndarray,
+    delta_star: np.ndarray,
+    var_pooled: np.ndarray,
+    stand_mean: np.ndarray,
+) -> np.ndarray:
     """
     Apply the final ComBat data adjustment and revert to the original scale.
 
@@ -1318,14 +1338,21 @@ def _it_sol(
     return gamma_old, delta_old
 
 
-def _validate_inputs(sdat, g_hat, d_hat, t2, a, b, conv):
+def _validate_inputs(
+    sdat: np.ndarray,
+    g_hat: np.ndarray,
+    d_hat: np.ndarray,
+    t2: float,
+    a: float,
+    b: float,
+    conv: float,
+) -> None:
     """
     Perform sanity checks on the inputs to the parametric EB solver.
 
-    Args
-    ----------
+    Args:
         sdat : ndarray
-            Standardised gene‑expression matrix supplied to the solver. Must be two‑dimensional (genes × samples).
+            Standardized gene‑expression matrix supplied to the solver. Must be two‑dimensional (genes × samples).
         g_hat : array‑like
             Initial estimate of the batch‐effect location parameters (gamma_hat).  Should have one entry per gene.
         d_hat : array‑like
@@ -1357,7 +1384,9 @@ def _validate_inputs(sdat, g_hat, d_hat, t2, a, b, conv):
         raise ValueError("Prior parameters (t2, a, b) must be positive")
 
 
-def _calculate_convergence(g_old, g_new, d_old, d_new, threshold):
+def _calculate_convergence(
+    g_old: np.ndarray, g_new: np.ndarray, d_old: np.ndarray, d_new: np.ndarray, threshold: float
+) -> float:
     """
     Compute a single scalar convergence metric for the iterative PEB solver.
 

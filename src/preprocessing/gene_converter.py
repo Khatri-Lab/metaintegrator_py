@@ -12,10 +12,11 @@ Matches R MetaIntegrator's multi-format annotation support in .GEO_fData_key_par
 Author: Based on R MetaIntegrator by Vallania et al.
 """
 
-import logging
 import gzip
+import logging
 from pathlib import Path
-from typing import Optional, Dict, Set
+from typing import Dict, Optional, Set
+
 import pandas as pd
 
 log = logging.getLogger(__name__)
@@ -27,26 +28,22 @@ class GeneConverter:
 
     Matches R MetaIntegrator's approach of handling diverse annotation formats.
 
-    Examples
-    --------
-    >>> converter = GeneConverter()
-    >>> converter.to_gene_symbol('ENSG00000141510')
-    'TP53'
-    >>> converter.to_gene_symbol('NM_000546')
-    'TP53'
-    >>> converter.is_valid_symbol('TP53')
-    True
+    Examples:
+        >>> converter = GeneConverter()
+        >>> converter.to_gene_symbol('ENSG00000141510')
+        'TP53'
+        >>> converter.to_gene_symbol('NM_000546')
+        'TP53'
+        >>> converter.is_valid_symbol('TP53')
+        True
     """
 
     def __init__(self, data_dir: Optional[Path] = None):
-        """
-        Initialize converter with bundled reference tables.
+        """Initialize the converter with bundled reference tables.
 
-        Parameters
-        ----------
-        data_dir : Path, optional
-            Directory containing reference data files.
-            If None, uses bundled data in package.
+        Args:
+            data_dir: Directory containing reference data files. Uses the
+                data bundled with the package when not given.
         """
         self.data_dir = data_dir or Path(__file__).parent / "data"
 
@@ -129,35 +126,25 @@ class GeneConverter:
         log.info(f"  → Total valid gene symbols: {len(self._valid_symbols):,}")
 
     def to_gene_symbol(self, identifier: str) -> Optional[str]:
-        """
-        Convert any gene identifier to HUGO gene symbol.
+        """Convert any gene identifier to its HUGO gene symbol.
 
-        Matches R's .GEO_fData_key_parser logic:
-        1. Check if already a valid symbol
-        2. Try ENSG format → symbol
-        3. Try RefSeq format → symbol
-        4. Try GenBank format → symbol
-        5. Try Entrez format → symbol
-        6. Return None if unrecognized
+        Mirrors R's ``.GEO_fData_key_parser`` logic, trying each format in
+        order: already-a-symbol, ENSG, RefSeq, GenBank, then Entrez.
 
-        Parameters
-        ----------
-        identifier : str
-            Gene identifier in any format
+        Args:
+            identifier: Gene identifier in any supported format.
 
-        Returns
-        -------
-        str or None
-            HUGO gene symbol, or None if conversion fails
+        Returns:
+            The HUGO gene symbol, or None if the identifier couldn't be
+            converted.
 
-        Examples
-        --------
-        >>> converter.to_gene_symbol('TP53')
-        'TP53'
-        >>> converter.to_gene_symbol('ENSG00000141510')
-        'TP53'
-        >>> converter.to_gene_symbol('NM_000546')
-        'TP53'
+        Examples:
+            >>> converter.to_gene_symbol('TP53')
+            'TP53'
+            >>> converter.to_gene_symbol('ENSG00000141510')
+            'TP53'
+            >>> converter.to_gene_symbol('NM_000546')
+            'TP53'
         """
         identifier = str(identifier).strip()
 
@@ -197,36 +184,27 @@ class GeneConverter:
         return None
 
     def is_valid_symbol(self, symbol: str) -> bool:
-        """
-        Check if string is a valid HUGO gene symbol.
+        """Check whether a string is a valid HUGO gene symbol.
 
-        Parameters
-        ----------
-        symbol : str
-            Gene symbol to validate
+        Args:
+            symbol: Gene symbol to validate.
 
-        Returns
-        -------
-        bool
-            True if valid HUGO gene symbol
+        Returns:
+            True if ``symbol`` is a recognized HUGO gene symbol.
         """
         if not symbol or pd.isna(symbol):
             return False
         return str(symbol).strip() in self._valid_symbols
 
     def convert_list(self, identifiers: list) -> list:
-        """
-        Convert a list of identifiers to gene symbols.
+        """Convert a list of identifiers to gene symbols.
 
-        Parameters
-        ----------
-        identifiers : list
-            List of gene identifiers in any format
+        Args:
+            identifiers: Gene identifiers in any supported format.
 
-        Returns
-        -------
-        list
-            List of gene symbols (or 'NA' for failed conversions)
+        Returns:
+            One gene symbol per input identifier; failed conversions are
+            returned as ``'NA'``.
         """
         return [self.to_gene_symbol(id_) or "NA" for id_ in identifiers]
 
@@ -247,14 +225,7 @@ class GeneConverter:
 
 
 def create_converter() -> GeneConverter:
-    """
-    Create and return a gene converter.
-
-    Returns
-    -------
-    GeneConverter
-        Initialized converter with bundled reference tables
-    """
+    """Create a gene converter initialized with the bundled reference tables."""
     return GeneConverter()
 
 

@@ -69,46 +69,32 @@ def violin_plot(
     ax: Optional[plt.Axes] = None,
     save_path: Optional[str] = None,
 ) -> plt.Figure:
-    """
-    R-parity violin plot for a single dataset.
+    """R-parity violin plot for a single dataset.
 
     Matches R MetaIntegrator's ``violinPlot(filterObject, datasetObject,
     labelColumn)``: one violin per phenotype group, boxplot overlay,
     jittered points, Wilcoxon p-value bracket.
 
-    Parameters
-    ----------
-    filter_object : dict
-        MetaFilter with ``posGeneNames`` / ``negGeneNames``.
-    dataset_object : dict
-        Dataset with ``expr``, ``keys``, ``class``, ``pheno``, and
-        optionally ``score``.
-    label_column : str
-        Column in ``pheno`` that defines the groups. Falls back to
-        binary class labels (0→Control, 1→Disease) when the column
-        is missing or has ≤1 unique value.
-    comparison_method : str
-        ``'wilcox'`` (Mann–Whitney U) or ``'t'`` (Welch's t-test).
-    show_points : bool
-        Overlay jittered data points.
-    show_box : bool
-        Overlay a narrow boxplot inside each violin.
-    show_pvalue : bool
-        Show pairwise p-value brackets (ggpubr style).
-    figsize : tuple
-        Figure size in inches.
-    title : str, optional
-        Plot title. Defaults to dataset's ``geo_id`` if available.
-    colors, fills : list[str], optional
-        Per-group edge / fill colors. Defaults to ggplot2 palette.
-    ax : Axes, optional
-        Draw on an existing Axes (for multi-panel figures).
-    save_path : str, optional
-        Save figure to this path.
+    Args:
+        filter_object: MetaFilter with ``posGeneNames`` / ``negGeneNames``.
+        dataset_object: Dataset with ``expr``, ``keys``, ``class``, ``pheno``,
+            and optionally ``score``.
+        label_column: Column in ``pheno`` that defines the groups. Falls back
+            to binary class labels (0->Control, 1->Disease) when the column
+            is missing or has <=1 unique value.
+        comparison_method: ``'wilcox'`` (Mann-Whitney U) or ``'t'`` (Welch's t-test).
+        show_points: Overlay jittered data points.
+        show_box: Overlay a narrow boxplot inside each violin.
+        show_pvalue: Show pairwise p-value brackets (ggpubr style).
+        figsize: Figure size in inches.
+        title: Plot title. Defaults to the dataset's ``geo_id`` if available.
+        colors: Per-group edge colors. Defaults to the ggplot2 palette.
+        fills: Per-group fill colors. Defaults to the ggplot2 palette.
+        ax: Draw on an existing Axes (for multi-panel figures).
+        save_path: Save figure to this path.
 
-    Returns
-    -------
-    matplotlib.figure.Figure
+    Returns:
+        The generated matplotlib Figure.
     """
     # ── 1. Compute scores if needed ─────────────────────────────────
     scores = _get_or_compute_scores(filter_object, dataset_object)
@@ -263,29 +249,19 @@ def multi_violin_plot(
     save_path: Optional[str] = None,
     **kwargs,
 ) -> plt.Figure:
-    """
-    Violin plot grid for all labelled datasets in a meta-object.
+    """Violin plot grid for all labeled datasets in a meta-object.
 
-    Parameters
-    ----------
-    filter_object : dict
-        MetaFilter with gene signature.
-    meta_object : dict
-        Full meta-analysis object with ``originalData``.
-    label_column : str
-        Phenotype column for group labels.
-    ncols : int
-        Columns in the subplot grid.
-    figsize_per_panel : tuple
-        Size of each individual panel.
-    title : str, optional
-        Super-title for the whole figure.
-    save_path : str, optional
-        Save figure to this path.
+    Args:
+        filter_object: MetaFilter with gene signature.
+        meta_object: Full meta-analysis object with ``originalData``.
+        label_column: Phenotype column for group labels.
+        ncols: Columns in the subplot grid.
+        figsize_per_panel: Size of each individual panel.
+        title: Super-title for the whole figure.
+        save_path: Save figure to this path.
 
-    Returns
-    -------
-    matplotlib.figure.Figure
+    Returns:
+        The generated matplotlib Figure.
     """
     datasets = []
     ds_names = []
@@ -334,7 +310,7 @@ def multi_violin_plot(
 # ══════════════════════════════════════════════════════════════════════
 
 
-def _get_or_compute_scores(filter_object, dataset_object):
+def _get_or_compute_scores(filter_object: Dict, dataset_object: Dict) -> np.ndarray:
     """Return scores from dataset, computing on the fly if needed."""
     if "score" in dataset_object and dataset_object["score"] is not None:
         return np.array(dataset_object["score"], dtype=float)
@@ -345,7 +321,7 @@ def _get_or_compute_scores(filter_object, dataset_object):
     return ScoreCalculator.calculate_score(filter_object, dataset_object, suppress_messages=True)
 
 
-def _resolve_groups(dataset_object, label_column):
+def _resolve_groups(dataset_object: Dict, label_column: str) -> List[str]:
     """Resolve per-sample group labels from pheno or binary class."""
     pheno = dataset_object.get("pheno", None)
     classes = np.array(dataset_object["class"], dtype=float)
@@ -364,7 +340,7 @@ def _resolve_groups(dataset_object, label_column):
     return [class_map.get(int(c), f"Class_{int(c)}") for c in classes]
 
 
-def _apply_ggplot2_theme(ax):
+def _apply_ggplot2_theme(ax: plt.Axes) -> None:
     """Apply a clean ggplot2-inspired theme to an axes."""
     ax.set_facecolor("#FAFAFA")
     ax.spines["top"].set_visible(False)
@@ -386,7 +362,13 @@ def _apply_ggplot2_theme(ax):
     ax.grid(axis="y", color="#EEEEEE", linewidth=0.5, zorder=0)
 
 
-def _draw_pvalue_brackets(ax, group_data, positions, method, colors):
+def _draw_pvalue_brackets(
+    ax: plt.Axes,
+    group_data: List[np.ndarray],
+    positions: List[float],
+    method: str,
+    colors: List[str],
+) -> None:
     """Draw ggpubr-style p-value brackets between consecutive groups."""
     pairs = []
     # All pairwise (for 2 groups this is just one pair)

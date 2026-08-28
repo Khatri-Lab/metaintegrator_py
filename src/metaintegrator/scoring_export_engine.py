@@ -16,7 +16,7 @@ import zipfile
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,13 +25,10 @@ import seaborn as sns
 from jinja2 import Template
 
 # Import from consolidated core module
-from .scoring_core import (
-    # Data structures
+from .scoring_core import (  # Data structures; Utilities and validation; Exceptions
     ExportFormat,
-    StatisticalSummary,
-    # Utilities and validation
     LoggerMixin,
-    # Exceptions
+    StatisticalSummary,
 )
 
 
@@ -51,7 +48,7 @@ class ExportConfig:
         validate_exports: bool = True,
         timestamp_files: bool = True,
         custom_prefix: Optional[str] = None,
-    ):
+    ) -> None:
         """Initialize export configuration.
 
         Args:
@@ -83,7 +80,7 @@ class ExportConfig:
 class ExportEngine(LoggerMixin):
     """Comprehensive export engine for meta‑analysis results and visualizations."""
 
-    def __init__(self, config: Optional[ExportConfig] = None, **kwargs):
+    def __init__(self, config: Optional[ExportConfig] = None, **kwargs) -> None:
         """Initialize the export engine.
 
         Args:
@@ -363,7 +360,7 @@ class ExportEngine(LoggerMixin):
         Export metadata about the analysis and the exported files.
 
         Args:
-            df: The DataFrame that was analysed.
+            df: The DataFrame that was analyzed.
             analysis_name: Name of the current analysis.
             exported_files: Mapping of export type to the file path that was created.
 
@@ -818,7 +815,7 @@ Generated on: {{ timestamp }}
 class ReportExporter(LoggerMixin):
     """Specialized exporter for generating comprehensive analysis reports."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         """Create a new ReportExporter instance."""
         super().__init__(**kwargs)
 
@@ -846,7 +843,7 @@ class ReportExporter(LoggerMixin):
 class PlotExporter(LoggerMixin):
     """Specialized exporter for generating and saving plots."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         """Create a new PlotExporter instance."""
         super().__init__(**kwargs)
 

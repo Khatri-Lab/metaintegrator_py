@@ -14,7 +14,7 @@ Dan Quintana's blog post on Towards Data Science, July 2017.
 
 import warnings
 from dataclasses import dataclass
-from typing import Union, List, Dict, Tuple, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -47,7 +47,8 @@ class MetaAnalysisPowerCalculator:
     # Predefined heterogeneity levels
     HETEROGENEITY_LEVELS = {"small": 0.33, "moderate": 1.0, "large": 3.0}
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize the power calculator."""
         pass
 
     def calc_meta_power(
@@ -566,13 +567,11 @@ class MetaAnalysisPowerCalculator:
 class PowerAnalysisPlotter:
     """Class for plotting power analysis results."""
 
-    def __init__(self, figsize: Tuple[int, int] = (10, 6)):
-        """
-        Represents the initialization of an object with a customizable figure size.
+    def __init__(self, figsize: Tuple[int, int] = (10, 6)) -> None:
+        """Initialize the plotter.
 
         Args:
-            figsize (Tuple[int, int]): A tuple representing the dimensions of the figure
-                in inches. Defaults to (10, 6).
+            figsize: Figure dimensions in inches.
         """
         self.figsize = figsize
 
@@ -818,15 +817,12 @@ def calc_meta_power(
 class PowerAnalysisSummary:
     """Class for creating comprehensive power analysis summaries."""
 
-    def __init__(self):
-        """
-        Initializes  the summary generator.
+    def __init__(self) -> None:
+        """Initialize the summary generator.
 
         Attributes:
-            calculator: MetaAnalysisPowerCalculator
-                Handles calculations for meta-analysis power estimation.
-            plotter: PowerAnalysisPlotter
-                Handles plotting and visualization of power analysis.
+            calculator: Handles power-estimation calculations.
+            plotter: Handles plotting and visualization of the results.
         """
         self.calculator = MetaAnalysisPowerCalculator()
         self.plotter = PowerAnalysisPlotter()

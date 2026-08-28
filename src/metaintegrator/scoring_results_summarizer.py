@@ -18,31 +18,28 @@ Highlights:
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
 # Import from consolidated core module (eliminates duplicates)
-from .scoring_core import (
-    # Data structures
+from .scoring_core import (  # Data structures; Utilities and validation; Exceptions
+    DataFrameUtils,
+    ExportFormat,
+    LoggerMixin,
+    MetaAnalysisValidator,
+    ScoringCalculationError,
     StatisticalSummary,
     SummaryConfig,
-    ExportFormat,
-    # Utilities and validation
-    LoggerMixin,
-    DataFrameUtils,
-    MetaAnalysisValidator,
-    # Exceptions
-    ScoringCalculationError,
 )
-from .scoring_export_engine import ExportEngine, ExportConfig
+from .scoring_export_engine import ExportConfig, ExportEngine
 
 # Import specialized modules for enhanced functionality
 from .scoring_statistical_analysis import (
-    StatisticalAnalyzer,
     DistributionAnalyzer,
+    StatisticalAnalyzer,
 )
 
 # ==================================================================
@@ -129,7 +126,7 @@ class EnhancedResultSummarizer(LoggerMixin):
         config: Optional[EnhancedSummaryConfig] = None,
         export_config: Optional[ExportConfig] = None,
         **kwargs,
-    ):
+    ) -> None:
         """Initialize the enhanced result summarizer.
 
         Args:
@@ -818,7 +815,7 @@ class ResultSummarizer(EnhancedResultSummarizer):
     This ensures backward compatibility with existing code that imports ResultSummarizer.
     """
 
-    def __init__(self, config: Optional[SummaryConfig] = None, **kwargs):
+    def __init__(self, config: Optional[SummaryConfig] = None, **kwargs) -> None:
         """
         Initialize with legacy config support.
 

@@ -54,7 +54,7 @@ _TEXT_BG = "#F0F0F0"
 
 
 def _load_csv(path: Union[str, Path]) -> pd.DataFrame:
-    """Read a violin-data CSV and normalise column names."""
+    """Read a violin-data CSV and normalize column names."""
     df = pd.read_csv(path, index_col=0)
     # make column names lower-case for safety
     df.columns = [c.strip() for c in df.columns]
@@ -75,6 +75,7 @@ def _merge(py_df: pd.DataFrame, r_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _apply_theme(ax: plt.Axes) -> None:
+    """Apply the module's minimal light theme (clean spines, light grid) to an axes."""
     ax.set_facecolor(_FIG_BG)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -105,25 +106,17 @@ def compare_meta_scores(
     figsize: Tuple[float, float] = (12, 10),
     save_path: Optional[Union[str, Path]] = None,
 ) -> plt.Figure:
-    """Create a four-panel parity diagnostic.
+    """Create a four-panel parity diagnostic (see module docstring for the panels).
 
-    Parameters
-    ----------
-    python_csv : path
-        CSV emitted by the Python pipeline
-        (``extract_violin_data``).
-    r_csv : path
-        Matching CSV from the R pipeline.
-    title : str, optional
-        Super-title for the whole figure.
-    figsize : tuple
-        Figure size in inches.
-    save_path : path, optional
-        If given the figure is saved to this location.
+    Args:
+        python_csv: CSV emitted by the Python pipeline (``extract_violin_data``).
+        r_csv: Matching CSV from the R pipeline.
+        title: Super-title for the whole figure.
+        figsize: Figure size in inches.
+        save_path: If given, save the figure to this location.
 
-    Returns
-    -------
-    matplotlib.figure.Figure
+    Returns:
+        The generated matplotlib Figure.
     """
     py_df = _load_csv(python_csv)
     r_df = _load_csv(r_csv)

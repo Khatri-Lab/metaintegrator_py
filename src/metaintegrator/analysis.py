@@ -17,17 +17,16 @@ import logging
 import multiprocessing as mp
 import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass, fields, asdict
-from typing import Dict, List, Optional, Tuple
+from dataclasses import asdict, dataclass, fields
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from statsmodels.stats.multitest import multipletests
 
-from .validation import DatasetValidator
+from .core_analysis import FisherCombination, MetaAnalysisCore
 from .data_processing import DataProcessor
-
-from .core_analysis import MetaAnalysisCore, FisherCombination
+from .validation import DatasetValidator
 
 logger = logging.getLogger(__name__)
 
@@ -73,22 +72,25 @@ class EffectSizeResult:
     # These helpers keep that working while callers migrate to
     # attribute access.
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> Any:
+        """Dict-style read access to a field, by name."""
         try:
             return getattr(self, key)
         except AttributeError:
             raise KeyError(key)
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Dict-style write access to an existing field, by name."""
         if hasattr(self, key):
             object.__setattr__(self, key, value)
         else:
             raise KeyError(key)
 
     def __contains__(self, key: str) -> bool:
+        """Whether ``key`` names one of this dataclass's fields."""
         return key in {f.name for f in fields(self)}
 
-    def keys(self):
+    def keys(self) -> set:
         """Return field names (dict-compat)."""
         return {f.name for f in fields(self)}
 
@@ -194,7 +196,14 @@ class InverseVarianceEngine(MetaAnalysisEngine):
         fisher: Fisher combination backend (default :class:`FisherCombination`).
     """
 
-    def __init__(self, core=None, fisher=None):
+    def __init__(self, core: Optional[Any] = None, fisher: Optional[Any] = None) -> None:
+        """Initialize the engine.
+
+        Args:
+            core: Effect-size backend. Defaults to :class:`MetaAnalysisCore`.
+            fisher: Fisher combination backend. Defaults to
+                :class:`FisherCombination`.
+        """
         self._core = core or MetaAnalysisCore
         self._fisher = fisher or FisherCombination
 
@@ -541,10 +550,12 @@ class RandomEffectsEngine(InverseVarianceEngine):
 
     @property
     def _between_method(self) -> str:
+        """Pooling method: ``'random'``."""
         return "random"
 
     @property
     def description(self) -> str:
+        """Human-readable name of this engine."""
         return "MetaAnalysis: Random Effects Model"
 
 
@@ -565,10 +576,12 @@ class FixedEffectsEngine(InverseVarianceEngine):
 
     @property
     def _between_method(self) -> str:
+        """Pooling method: ``'fixed'``."""
         return "fixed"
 
     @property
     def description(self) -> str:
+        """Human-readable name of this engine."""
         return "MetaAnalysis: Fixed Effects Model"
 
 
@@ -607,7 +620,7 @@ class FilterResult:
     filter_description: str
 
     # -- dict-like access for backward compatibility ----------------
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> Any:
         """Allow ``result['posGeneNames']`` (R-style) or ``result['pos_gene_names']``."""
         _aliases = {
             "posGeneNames": "pos_gene_names",
@@ -626,6 +639,7 @@ class FilterResult:
             raise KeyError(key)
 
     def __contains__(self, key: str) -> bool:
+        """Whether ``key`` names a field, in either R-style or Python-style naming."""
         _aliases = {
             "posGeneNames": "pos_gene_names",
             "negGeneNames": "neg_gene_names",
@@ -638,7 +652,6 @@ class FilterResult:
         """Total number of filtered genes (positive + negative)."""
         return self.n_pos + self.n_neg
 
-    # 20260611dev
     # ------------------------------------------------------------
     # helper – a typed, R‑style dict conversion
     # ------------------------------------------------------------
@@ -704,6 +717,49 @@ class FilterResult:
 
 
 # ------------------------------------------------------------------
+# Module-level leave-one-out worker (must live at module scope — see
+# MetaAnalyzer.run_leave_one_out_analysis for why)
+# ------------------------------------------------------------------
+def _run_loo_subset(
+    analyzer: "MetaAnalyzer", subset_data: List[Dict], use_old_method: bool
+) -> Dict:
+    """Run one leave-one-out subset's core meta-analysis.
+
+    This is a free function at module scope, not a method or a nested
+    closure, because :class:`~concurrent.futures.ProcessPoolExecutor`
+    (used by :meth:`MetaAnalyzer.run_leave_one_out_analysis` for
+    ``max_cores > 1``) has to pickle every callable it submits so it can be
+    sent to a worker process. Pickle can only resolve a callable "by name"
+    — via its fully-qualified module path — and a function defined *inside*
+    another function (a closure) has no such path, so it always fails with
+    ``Can't pickle local object '...run_leave_one_out_analysis.<locals>.
+    analyze_subset'``. That was a real, previously-uncaught bug: every LOO
+    subset raised this exception, so ``run_leave_one_out_analysis`` silently
+    returned a list of four ``None`` results and downstream leave-one-out
+    consistency filtering in :meth:`MetaAnalyzer.filter_genes` was a no-op
+    even when ``is_leave_one_out=True`` in the config, because
+    ``meta_object.get("leaveOneOutAnalysis")`` evaluated as an empty (falsy)
+    dict.
+
+    ``analyzer`` (a :class:`MetaAnalyzer` instance) is passed explicitly so
+    the worker process can call the *same* engine/validator/processor the
+    caller configured, rather than duplicating that wiring here. This is
+    picklable for the default configuration (its collaborators are plain
+    module-level classes), matching the exact scenario in the reported bug.
+
+    Args:
+        analyzer: The :class:`MetaAnalyzer` instance to run the subset on.
+        subset_data: The dataset list with one dataset excluded.
+        use_old_method: Use legacy Q-value Fisher method.
+
+    Returns:
+        The subset's core meta-analysis result dict (same shape as
+        :meth:`MetaAnalyzer.run_meta_analysis_core`'s return value).
+    """
+    return analyzer.run_meta_analysis_core(subset_data, use_old_method)
+
+
+# ------------------------------------------------------------------
 # MetaAnalyzer — orchestrator
 # ------------------------------------------------------------------
 class MetaAnalyzer:
@@ -746,12 +802,31 @@ class MetaAnalyzer:
     def __init__(
         self,
         max_cores: Optional[int] = None,
-        core=None,
-        fisher=None,
-        validator=None,
-        processor=None,
+        core: Optional[Any] = None,
+        fisher: Optional[Any] = None,
+        validator: Optional[Any] = None,
+        processor: Optional[Any] = None,
         engine: Optional[MetaAnalysisEngine] = None,
-    ):
+    ) -> None:
+        """Initialize the analyzer.
+
+        Args:
+            max_cores: Maximum worker processes to use for parallel
+                steps. Defaults to ``min(10, cpu_count())``.
+            core: Effect-size backend, passed through to the engine
+                when *engine* is not given. Defaults to
+                :class:`MetaAnalysisCore`.
+            fisher: Fisher combination backend, passed through to the
+                engine when *engine* is not given. Defaults to
+                :class:`FisherCombination`.
+            validator: Dataset validator. Defaults to
+                :class:`DatasetValidator`.
+            processor: Dataset processor. Defaults to
+                :class:`DataProcessor`.
+            engine: A pre-built :class:`MetaAnalysisEngine`. When given,
+                *core* and *fisher* are ignored; otherwise a
+                :class:`RandomEffectsEngine` is built from them.
+        """
         if max_cores is None:
             max_cores = min(10, mp.cpu_count())
         else:
@@ -1074,18 +1149,25 @@ class MetaAnalyzer:
 
         logger.info("Running leave-one-out analysis with %d cores...", max_cores)
 
-        def analyze_subset(i):
-            subset_data = original_data[:i] + original_data[i + 1 :]
-            return self.run_meta_analysis_core(subset_data, use_old_method)
+        # Build each leave-one-out subset up front. Previously this was
+        # computed lazily inside a nested `analyze_subset(i)` closure, which
+        # is exactly the kind of object `ProcessPoolExecutor` cannot pickle
+        # (see `_run_loo_subset` above) — the fix is to hand the executor the
+        # module-level `_run_loo_subset` function instead, for both the
+        # sequential and parallel branches, so their behavior stays identical.
+        subsets = [original_data[:i] + original_data[i + 1 :] for i in range(n_datasets)]
 
         if max_cores == 1:
             results = []
-            for i in range(n_datasets):
+            for i, subset_data in enumerate(subsets):
                 logger.info("Processing subset %d/%d", i + 1, n_datasets)
-                results.append(analyze_subset(i))
+                results.append(_run_loo_subset(self, subset_data, use_old_method))
         else:
             with ProcessPoolExecutor(max_workers=max_cores) as executor:
-                future_to_index = {executor.submit(analyze_subset, i): i for i in range(n_datasets)}
+                future_to_index = {
+                    executor.submit(_run_loo_subset, self, subset_data, use_old_method): i
+                    for i, subset_data in enumerate(subsets)
+                }
                 results = [None] * n_datasets
                 for future in as_completed(future_to_index):
                     index = future_to_index[future]
@@ -1156,6 +1238,28 @@ class MetaAnalyzer:
                 for name, result in zip(dataset_names, loo_results)
                 if result is not None
             }
+
+            # Make a silent-degradation failure mode loud instead of quiet:
+            # `filter_genes()`'s leave-one-out consistency step only runs
+            # `if meta_object.get("leaveOneOutAnalysis")`, which is falsy for
+            # an *empty* dict. If every subset failed (as happened for the
+            # pickling bug this warning was added alongside — see
+            # `_run_loo_subset`), that step is skipped entirely with no
+            # indication in the log that LOO-based filtering never ran even
+            # though `is_leave_one_out=True` was requested.
+            n_failed = sum(1 for r in loo_results if r is None)
+            if n_failed:
+                n_total = len(loo_results)
+                logger.warning(
+                    "%d/%d leave-one-out subset(s) failed to compute (see the "
+                    "'Subset N generated exception' error(s) above for the cause). "
+                    "Gene-direction leave-one-out consistency filtering in "
+                    "filter_genes() will only consider the %d subset(s) that "
+                    "succeeded, and will be skipped entirely if all subsets failed.",
+                    n_failed,
+                    n_total,
+                    n_total - n_failed,
+                )
 
         return meta_object
 

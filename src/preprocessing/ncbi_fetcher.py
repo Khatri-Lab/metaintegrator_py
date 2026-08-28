@@ -41,14 +41,21 @@ class _SimpleCache:
     """Minimal pickle-based disk cache keyed by string."""
 
     def __init__(self, cache_dir: Path):
+        """Initialize the cache, creating ``cache_dir`` if needed.
+
+        Args:
+            cache_dir: Directory to store cached pickle files in.
+        """
         self.cache_dir = Path(cache_dir).expanduser()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _path(self, key: str) -> Path:
+        """Return the pickle file path for a cache key."""
         safe_key = re.sub(r"[^\w\-]", "_", key)
         return self.cache_dir / f"{safe_key}.pkl"
 
     def get(self, key: str) -> Optional[object]:
+        """Return the cached value for ``key``, or None if absent or unreadable."""
         p = self._path(key)
         if not p.exists():
             return None
@@ -61,6 +68,7 @@ class _SimpleCache:
             return None
 
     def set(self, key: str, value: object) -> None:
+        """Cache ``value`` under ``key``, logging (not raising) on failure."""
         p = self._path(key)
         try:
             with open(p, "wb") as f:
@@ -96,11 +104,11 @@ class NCBIFetcher:
     RETRY_BACKOFF = 2  # seconds
 
     def __init__(self, cache_dir: str | Path = "~/.geo_cache"):
-        """
-        Parameters
-        ----------
-        cache_dir : str or Path
-            Directory for caching downloaded files and result pickles.
+        """Initialize the fetcher.
+
+        Args:
+            cache_dir: Directory for caching downloaded files and result
+                pickles.
         """
         cache_path = Path(cache_dir).expanduser()
         self.cache = _SimpleCache(cache_path)
@@ -113,14 +121,14 @@ class NCBIFetcher:
     # ------------------------------------------------------------------ #
 
     def fetch_series_matrix(self, gse_id: str) -> Dict[str, pd.DataFrame]:
-        """
-        Return mapping {platform_id: DataFrame} for the GSE.
+        """Return a ``{platform_id: DataFrame}`` mapping for the GSE.
 
-        The matrix files are cached on disk; if a matrix is already present
-        the cached version is returned.
+        The matrix files are cached on disk; if a matrix is already
+        present, the cached version is returned.
 
-        FIXED: FTP connection is closed immediately after listing files,
-        before HTTPS downloads begin. This prevents "421 Idle timeout" errors.
+        The FTP connection is closed immediately after listing files and
+        before HTTPS downloads begin, which avoids "421 Idle timeout"
+        errors from the FTP server during long downloads.
         """
         log.info(f"Fetching series matrix for {gse_id}")
 
@@ -210,9 +218,10 @@ class NCBIFetcher:
         return result
 
     def fetch_platform_annotation(self, platform_id: str) -> pd.DataFrame:
-        """
-        Fallback – returns an empty DataFrame.
-        The real mapping comes from GeneAnnotator; kept for API parity.
+        """Fallback that returns an empty DataFrame.
+
+        The real platform-annotation mapping comes from
+        :class:`GeneAnnotator`; this method exists only for API parity.
         """
         return pd.DataFrame()
 
@@ -221,9 +230,9 @@ class NCBIFetcher:
     # ------------------------------------------------------------------ #
 
     def _size_from_listing(self, ftp: ftplib.FTP, filename: str) -> int:
-        """
-        Return the size of *filename* by parsing the FTP LIST
-        (or MLSD) output.  If the size cannot be determined, return 0.
+        """Return the size of ``filename`` by parsing FTP MLSD/LIST output.
+
+        Returns 0 if the size cannot be determined.
         """
         # Try MLSD first
         try:
@@ -297,9 +306,9 @@ class NCBIFetcher:
 
     @staticmethod
     def _probe_platform_from_filename(filename: str) -> str:
-        """
-        Extract GPL code from matrix file name.
-        Example: GSE11909-GPL96_series_matrix.txt.gz → GPL96
+        """Extract the GPL code from a matrix file name.
+
+        Example: ``GSE11909-GPL96_series_matrix.txt.gz`` → ``GPL96``.
         """
         match = re.search(r"(GPL\d+)", filename)
         return match.group(1) if match else "unknown"
@@ -308,9 +317,9 @@ class NCBIFetcher:
     # Minimal metadata fetcher
     # ------------------------------------------------------------------ #
     def fetch_minimal_metadata(self, gse_id: str) -> dict:
-        """
-        Return minimal metadata: title, summary, platform list.
-        Uses the MINiML XML file (small, ~1–10 MB).
+        """Return minimal metadata (title, summary, platform list).
+
+        Uses the MINiML XML file, which is small (~1-10 MB).
         """
         import requests
 

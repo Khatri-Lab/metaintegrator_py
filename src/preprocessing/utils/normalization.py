@@ -14,7 +14,7 @@ Version: 1.0.0
 """
 
 import warnings
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 import numpy as np
 import pandas as pd

@@ -35,6 +35,7 @@ env.bak
 # --- Testing & Coverage ---
 .coverage
 .coverage.*
+coverage*
 htmlcov/
 .pytest_cache/
 .benchmarks/
@@ -87,6 +88,8 @@ tutorials/output*/
 
 # --- Output artifacts from CLI runs ---
 my_meta_*
+data/data_out/
+data/my_data_out/
 
 # --- OS-level ---
 Thumbs.db

@@ -49,7 +49,7 @@ class BiologicalAnnotator:
         "TMSB4Y",
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the biological annotator."""
         self.default_female_genes = self.DEFAULT_FEMALE_GENES.copy()
         self.default_male_genes = self.DEFAULT_MALE_GENES.copy()
@@ -61,27 +61,29 @@ class BiologicalAnnotator:
         mal_genes: Optional[List[str]] = None,
         random_state: int = 42,
     ) -> Optional[np.ndarray]:
-        """
-        Infers the sex of individuals in a dataset based on gene expression data. Uses known
-        sex-associated genes to classify samples into male or female groups. If provided,
-        specific gene sets for male and female can be used; otherwise, default genes from
-        the instance are utilized. The function employs K-means clustering to group samples
-        and then assigns a sex to each cluster based on the gene expression.
+        """Infer each sample's sex from expression of known sex-linked genes.
 
-        Raises warnings if no sex-associated genes are found in the dataset or if the clustering
-        results are ambiguous.
+        Filters the female/male gene panels (defaults from iSEXS, or the
+        panels supplied by the caller) down to genes present in the
+        dataset, k-means clusters samples into two groups, and labels
+        each cluster by whether its centroid looks more female- or
+        male-like. Emits a warning (rather than raising) on any failure
+        path, such as missing fields, no sex-linked genes found, too few
+        samples, or an ambiguous cluster split.
 
         Args:
-            dataset (Dict): A dictionary containing gene expression data and dataset keys.
-            fem_genes (Optional[List[str]]): A list of female-associated genes. Default is None;
-            falls back to instance's default female genes.
-            mal_genes (Optional[List[str]]): A list of male-associated genes. Default is None;
-            falls back to instance's default male genes.
-            random_state (int): Random state used for the K-means algorithm to ensure reproducibility.
+            dataset: Dict with ``'expr'`` (expression matrix) and
+                ``'keys'`` (gene names) entries.
+            fem_genes: Female-associated genes to use. Falls back to this
+                instance's default female gene panel when not given.
+            mal_genes: Male-associated genes to use. Falls back to this
+                instance's default male gene panel when not given.
+            random_state: Random seed for the k-means clustering, for
+                reproducibility.
 
         Returns:
-            Optional[np.ndarray]: An array of inferred sexes ('female' or 'male') for each sample in
-            the dataset. Returns None if sex determination is not possible.
+            An array of ``'female'``/``'male'`` labels, one per sample,
+            or None if sex could not be determined.
         """
 
         # Validate input dataset
@@ -157,25 +159,17 @@ class BiologicalAnnotator:
     def _get_sample_level_gene_data(
         self, dataset: Dict, genes: List[str]
     ) -> Optional[pd.DataFrame]:
-        """
-        Extracts gene expression data at the sample level from the given dataset and filters
-        it based on a provided list of genes. The method attempts to identify and return
-        only the rows of the data corresponding to the given genes.
+        """Return the expression rows for a set of genes, if present in the dataset.
 
         Args:
-            dataset: Dict
-                A dictionary containing at least two required entries:
-                - "expr": The gene expression data, which can be in the form of a pandas DataFrame
-                  or a numpy-like array.
-                - "keys": A list of gene names corresponding to each row in the expression data.
-            genes: List[str]
-                A list of gene names for which expression data should be filtered.
+            dataset: Dict with an ``"expr"`` entry (expression data, as a
+                DataFrame or numpy-like array) and a ``"keys"`` entry
+                (gene names aligned to its rows).
+            genes: Gene names to filter down to.
 
         Returns:
-            Optional[pd.DataFrame]
-                A DataFrame containing the expression data for the provided genes if the genes are
-                present in the dataset. Returns None if no matching genes are found or if an error
-                occurs during the operation.
+            A DataFrame of the matching rows, or None if no requested
+            genes are present or an error occurs.
         """
         try:
             expr = dataset["expr"]
@@ -211,25 +205,22 @@ class BiologicalAnnotator:
         fem_genes: List[str],
         mal_genes: List[str],
     ) -> Optional[int]:
-        """
-        Maps clusters to their corresponding gender sex based on gene expression data.
+        """Decide which k-means cluster centroid looks female vs. male.
 
-        This method leverages provided centroids and gene lists to identify which cluster
-        is most representative of female-like or male-like gene expression. It calculates
-        means of expression for genes associated with each sex and determines the cluster
-        alignment accordingly.
+        Compares each centroid's mean expression across the female- and
+        male-associated genes: the female cluster should show high
+        expression of female genes and low expression of male genes.
 
         Args:
-            centroids: A 2D numpy array where each row corresponds to a cluster, and
-                columns represent gene expression levels.
-            all_genes: A list of all genes corresponding to the columns in the centroids
-                matrix.
-            fem_genes: A list of genes known to be associated with female characteristics.
-            mal_genes: A list of genes known to be associated with male characteristics.
+            centroids: Cluster centroids, shape ``(n_clusters, n_genes)``.
+            all_genes: Gene names corresponding to the centroid columns.
+            fem_genes: Genes associated with female expression.
+            mal_genes: Genes associated with male expression.
 
         Returns:
-            An integer representing the index of the cluster most aligned to female-like
-            gene expression or None if no clear mapping can be determined.
+            Index of the female-like cluster, or None if the two gene
+            panels disagree on which cluster is female (only possible
+            when both panels are available).
         """
         # Create mapping from genes to centroid positions
         gene_map = {gene: i for i, gene in enumerate(all_genes)}
@@ -262,28 +253,19 @@ class BiologicalAnnotator:
     def validate_sex_predictions(
         self, predictions: np.ndarray, known_sex: Optional[List[str]] = None
     ) -> Dict:
-        """
-        Validates a set of sex predictions against optional known labels and computes various
-        statistics about the predictions such as counts, ratios, and optionally accuracy.
+        """Summarize sex predictions, optionally scored against known labels.
 
         Args:
-            predictions: np.ndarray
-                Array of predicted sex labels. Expected values are strings 'female' or 'male'.
-            known_sex: Optional[List[str]]
-                List of true sex labels to evaluate the accuracy of predictions against. Should
-                have the same length as predictions if provided.
+            predictions: Predicted labels (``'female'``/``'male'``), one
+                per sample.
+            known_sex: Ground-truth labels to score against, if
+                available. Must be the same length as ``predictions``.
 
         Returns:
-            Dict
-                A dictionary containing:
-                    - n_samples: Total number of predictions.
-                    - n_female: Number of predictions labeled as 'female'.
-                    - n_male: Number of predictions labeled as 'male'.
-                    - female_ratio: Proportion of predictions labeled as 'female'.
-                    - accuracy: (Optional) Accuracy of predictions if known_sex is provided and has
-                      matching length with predictions.
-                    - confusion_matrix: (Optional) Confusion matrix as a pandas DataFrame if
-                      known_sex is provided and has matching length with predictions.
+            A dict with ``n_samples``, ``n_female``, ``n_male``, and
+            ``female_ratio``; plus ``accuracy`` and ``confusion_matrix``
+            when ``known_sex`` is given and matches ``predictions`` in
+            length.
         """
         results = {
             "n_samples": len(predictions),
@@ -316,25 +298,21 @@ class BiologicalAnnotator:
         fem_genes: Optional[List[str]] = None,
         mal_genes: Optional[List[str]] = None,
     ) -> Dict:
-        """
-        Adds a "sex" field to the given dataset with inferred sex based on the
-        provided female and male gene lists. The inference is done using the
-        infer_sex method. If no predictions can be made, the dataset remains
-        unchanged.
+        """Infer sex and add it to the dataset's phenotype data.
+
+        Calls :meth:`infer_sex` and, if it succeeds, stores the result as
+        ``dataset['pheno']['sex']``. Leaves the dataset unchanged if
+        inference fails.
 
         Args:
-            dataset: Dict
-                A dictionary containing data that will be updated with the predicted
-                "sex" field under the "pheno" sub-dictionary.
-            fem_genes: Optional[List[str]]
-                A list of genes considered to correspond to female-associated markers.
-            mal_genes: Optional[List[str]]
-                A list of genes considered to correspond to male-associated markers.
+            dataset: Dataset dict to update.
+            fem_genes: Female-associated genes to use (see
+                :meth:`infer_sex`).
+            mal_genes: Male-associated genes to use (see
+                :meth:`infer_sex`).
 
         Returns:
-            Dict
-                The updated dataset including the predicted "sex" field under the "pheno"
-                sub-dictionary, if predictions could be made.
+            The dataset, with ``pheno.sex`` set if inference succeeded.
         """
         sex_predictions = self.infer_sex(dataset, fem_genes, mal_genes)
         if sex_predictions is not None:
@@ -389,32 +367,20 @@ def impute_sex(
     fem_genes: Optional[List[str]] = None,
     mal_genes: Optional[List[str]] = None,
 ) -> Optional[np.ndarray]:
-    """
-    Imputes the biological sex of samples in a given dataset based on the expression
-    levels of specified female and male genes. This function acts as a wrapper around
-    the BiologicalAnnotator's infer_sex method.
+    """Infer biological sex from expression data (convenience wrapper).
+
+    A thin wrapper around :meth:`BiologicalAnnotator.infer_sex`.
 
     Args:
-        dataset: Dict
-            A dictionary containing data for which the sex needs to be imputed. The
-            dataset structure and required fields must be compatible with the
-            BiologicalAnnotator class's requirements.
-        fem_genes: Optional[List[str]]
-            A list of gene identifiers considered indicative of female sex. Defaults
-            to None, which may trigger the use of a default or predefined list within
-            the BiologicalAnnotator.
-        mal_genes: Optional[List[str]]
-            A list of gene identifiers considered indicative of male sex. Defaults
-            to None, which may trigger the use of a default or predefined list within
-            the BiologicalAnnotator.
+        dataset: Dataset dict compatible with :class:`BiologicalAnnotator`
+            (needs ``'expr'`` and ``'keys'`` entries).
+        fem_genes: Female-associated genes to use. Falls back to
+            BiologicalAnnotator's defaults when not given.
+        mal_genes: Male-associated genes to use. Falls back to
+            BiologicalAnnotator's defaults when not given.
 
     Returns:
-        Optional[np.ndarray]: An array containing the computed biological sex for
-        each sample in the dataset. The format and exact interpretation of the results
-        depend on the implementation within the BiologicalAnnotator. Returns None
-        if the imputation process fails or if the implementation specifies no output.
+        An array of inferred sex labels, or None if inference failed.
     """
     annotator = BiologicalAnnotator()
-    return annotator.infer_sex(
-        dataset, fem_genes, mal_genes
-    )  # FIXED: was calling impute_sex instead
+    return annotator.infer_sex(dataset, fem_genes, mal_genes)

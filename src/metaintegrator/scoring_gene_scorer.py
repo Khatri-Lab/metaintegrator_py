@@ -18,26 +18,23 @@ Highlights:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 # Import from consolidated core module (eliminates duplicates)
-from .scoring_core import (
-    # Data structures and enums
-    ScoringMethod,
+from .scoring_core import (  # Data structures and enums; Validators and utilities; Exceptions
     AggregationMethod,
-    ScoringConfig,
-    PathwayConfig,
-    # Validators and utilities
-    MetaObjectValidator,
     DataFrameUtils,
     LoggerMixin,
-    # Exceptions
-    ValidationError,
+    MetaObjectValidator,
+    PathwayConfig,
     ScoringCalculationError,
+    ScoringConfig,
+    ScoringMethod,
+    ValidationError,
 )
 
 
@@ -224,7 +221,7 @@ class CombinedStrategy(ScoringStrategy):
     """Combined scoring strategy using weighted metrics.
 
     This strategy aggregates several metric components into a single score.
-    Each component is first normalised according to the configuration and then
+    Each component is first normalized according to the configuration and then
     weighted by the value specified in the ``weights`` dictionary of the
     configuration. Components that should contribute positively to the score
     are inverted (e.g., lower FDR or heterogeneity gives a higher score).
@@ -241,20 +238,20 @@ class CombinedStrategy(ScoringStrategy):
                 contains a ``weights`` dictionary mapping component names
                 to numeric weights, a ``handle_missing`` option for
                 missing values, an ``outlier_handling`` policy, and a
-                ``normalization_method`` specifying how to normalise each
+                ``normalization_method`` specifying how to normalize each
                 component.
 
         Returns:
             pd.Series: A series of combined scores indexed by the data frame
-            index. Scores are normalised by the sum of weights used.
+            index. Scores are normalized by the sum of weights used.
 
         The method processes each available component in the following order:
-        1. Effect size: normalised and multiplied by its weight.
+        1. Effect size: normalized and multiplied by its weight.
         2. FDR: inverted so that lower FDR results in a higher score,
-           normalised and weighted.
-        3. Fisher score: normalised and weighted.
+           normalized and weighted.
+        3. Fisher score: normalized and weighted.
         4. Heterogeneity: inverted so that lower heterogeneity yields a
-           higher score, normalised and weighted.
+           higher score, normalized and weighted.
 
         After accumulating weighted components the result is divided by the
         total weight used so that the final scores lie in a comparable
@@ -308,13 +305,13 @@ class CombinedStrategy(ScoringStrategy):
         """Normalize a component using the specified method.
 
         Args:
-            component (pd.Series): Raw component values to be normalised.
+            component (pd.Series): Raw component values to be normalized.
             config (EnhancedScoringConfig): Configuration object that
                 specifies how to handle missing values, outliers, and the
-                normalisation method.
+                normalization method.
 
         Returns:
-            pd.Series: Normalised component values.
+            pd.Series: Normalized component values.
 
         The method applies the following steps:
 
@@ -326,7 +323,7 @@ class CombinedStrategy(ScoringStrategy):
         2. If an outlier policy other than ``none`` is set, the component
            values are processed by ``_handle_outliers`` using the policy.
 
-        3. Normalisation is applied based on ``normalization_method``:
+        3. Normalization is applied based on ``normalization_method``:
            ``min_max`` scales values to the 0–1 range,
            ``z_score`` transforms values to zero mean and unit standard
            deviation,
@@ -532,7 +529,8 @@ class PathwayAggregator(LoggerMixin):
         constructor. The logger mixin handles configuration and logging.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
+        """Initialize the aggregator, forwarding kwargs to the LoggerMixin."""
         super().__init__(**kwargs)
 
     def aggregate_pathway_scores(
@@ -594,7 +592,7 @@ class PathwayAggregator(LoggerMixin):
                 if weights:
                     pathway_weights = pd.Series(
                         [weights.get(gene, 1.0) for gene in pathway_scores.index],
-                        index=pathway_scores.index,  # FIX: Must specify index to align with pathway_scores
+                        index=pathway_scores.index,  # Align index so the elementwise multiply below matches by gene
                     )
                     return float((pathway_scores * pathway_weights).sum() / pathway_weights.sum())
                 else:
@@ -684,7 +682,7 @@ class EnhancedGeneScorer(LoggerMixin):
     computation and cross‑validation reliability assessment.
     """
 
-    def __init__(self, config: Optional[EnhancedScoringConfig] = None, **kwargs):
+    def __init__(self, config: Optional[EnhancedScoringConfig] = None, **kwargs) -> None:
         """Initialize the enhanced gene scorer.
 
         Args:
@@ -692,7 +690,7 @@ class EnhancedGeneScorer(LoggerMixin):
 
         The constructor creates instances of the supported scoring strategies
         and a pathway aggregator. If no configuration is supplied a default
-        EnhancedScoringConfig object is used. The logger mixin is initialised
+        EnhancedScoringConfig object is used. The logger mixin is initialized
         with any additional keyword arguments and a cache dictionary is
         created for performance.
         """
@@ -1163,7 +1161,7 @@ class GeneScorer(EnhancedGeneScorer):
     This ensures backward compatibility with existing code.
     """
 
-    def __init__(self, config: Optional[ScoringConfig] = None, **kwargs):
+    def __init__(self, config: Optional[ScoringConfig] = None, **kwargs) -> None:
         """Initialize with legacy config support.
 
         Args:

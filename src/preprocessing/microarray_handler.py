@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from .base import DataHandler, RawDataset, ProcessedDataset
+from .base import DataHandler, ProcessedDataset, RawDataset
 from .gene_validation import EnsemblGeneValidator
 
 log = logging.getLogger(__name__)
@@ -33,50 +33,43 @@ class MicroarrayHandler(DataHandler):
     - GEOparse SOFT format (from GEOparseSource)
     - Series Matrix format (from NCBIGeoSource)
 
-    Parameters
-    ----------
-    log_transform : bool, default=False
-        Apply log2 transformation if data is not log-scale
-    normalize : bool, default=False
-        Apply quantile normalization
-
-    Examples
-    --------
-    >>> handler = MicroarrayHandler()
-    >>> processed = handler.process(raw_dataset)
-    >>> print(processed.expr.shape)
-    (22645, 118)  # features × samples
+    Examples:
+        >>> handler = MicroarrayHandler()
+        >>> processed = handler.process(raw_dataset)
+        >>> print(processed.expr.shape)
+        (22645, 118)  # features × samples
     """
 
     def __init__(self, log_transform: bool = False, normalize: bool = False):
+        """Initialize the handler.
+
+        Args:
+            log_transform: Apply log2 transformation if the data isn't
+                already log-scale.
+            normalize: Apply quantile normalization.
+        """
         self.log_transform = log_transform
         self.normalize_flag = normalize
 
     @property
     def data_type(self) -> str:
+        """Human-readable name of the data type this handler processes."""
         return "Microarray"
 
     def parse(self, raw_dataset: RawDataset) -> ProcessedDataset:
-        """
-        Parse raw microarray data into standard format.
+        """Parse raw microarray data into the standard format.
 
-        Automatically detects format (SOFT vs Series Matrix) and
-        applies appropriate parsing logic.
+        Detects the format (SOFT vs. Series Matrix) automatically and
+        applies the matching parsing logic.
 
-        Parameters
-        ----------
-        raw_dataset : RawDataset
-            Raw data from a source
+        Args:
+            raw_dataset: Raw data from a source.
 
-        Returns
-        -------
-        ProcessedDataset
-            Parsed dataset in standard format
+        Returns:
+            The parsed dataset in standard format.
 
-        Raises
-        ------
-        ValueError
-            If raw data format is not recognized
+        Raises:
+            ValueError: If the raw data format is not recognized.
         """
         # Detect format based on metadata
         data_format = raw_dataset.metadata.get("format", "Unknown")
@@ -108,27 +101,22 @@ class MicroarrayHandler(DataHandler):
         # Build expression matrix (may skip some samples)
         expr_df = self._build_expression_matrix(platform_samples, sample_ids)
 
-        # ============================================================
-        # FIX: Filter platform_samples to match expr_df columns
-        # ============================================================
-        # expr_df may have fewer samples if some were skipped
+        # expr_df may have fewer samples than platform_samples if some
+        # were skipped above; keep only the samples that succeeded.
         actual_sample_ids = expr_df.columns.tolist()
         filtered_samples = [gsm for gsm in platform_samples if gsm.name in actual_sample_ids]
 
         # Build phenotype DataFrame (only for successfully processed samples)
         pheno_df = self._build_phenotype_dataframe(filtered_samples)
 
-        # ============================================================
-        # FIX: Ensure pheno_df has same samples as expr_df in same order
-        # ============================================================
+        # Align pheno_df to expr_df's sample order.
         pheno_df = pheno_df.loc[actual_sample_ids]
 
         # Get gene annotations
         gene_symbols_list = self._extract_gene_symbols(gpl, expr_df.index)
 
-        # ========================================================================
-        # FIX: Verify it's a list with correct length
-        # ========================================================================
+        # Ensure gene_symbols_list is a list of the expected length,
+        # padding or truncating if the annotation step returned otherwise.
         if not isinstance(gene_symbols_list, list):
             log.warning(f"gene_symbols is {type(gene_symbols_list)}, converting to list")
             gene_symbols_list = list(gene_symbols_list)
@@ -177,10 +165,22 @@ class MicroarrayHandler(DataHandler):
         return processed
 
     def verify_gene_symbols(dataset):
-        """
-        Verify that gene symbols are correct format.
+        """Check whether a dataset's gene symbols look correctly formatted.
 
-        Returns (is_valid, issues) tuple.
+        Note:
+            This function takes ``dataset`` as its only argument and has no
+            ``self`` parameter, so it cannot be called as a bound instance
+            method (``handler.verify_gene_symbols(x)`` would pass ``handler``
+            as ``dataset``). It is not currently called anywhere in this
+            codebase. Left as-is since fixing it would change the method
+            signature.
+
+        Args:
+            dataset: A dataset dict with a ``"keys"`` entry (gene symbols).
+
+        Returns:
+            An ``(is_valid, issues)`` tuple: whether the symbols look valid,
+            and a list of human-readable descriptions of any problems found.
         """
         keys = dataset.get("keys", [])
 
@@ -269,12 +269,13 @@ class MicroarrayHandler(DataHandler):
 
         return processed
 
-    # 20260603dev
-    def _build_expression_matrix(self, platform_samples, sample_ids):
-        """Build expression matrix from GSM samples — FIXED VERSION.
+    def _build_expression_matrix(
+        self, platform_samples: List, sample_ids: List[str]
+    ) -> pd.DataFrame:
+        """Build an expression matrix from GSM samples.
 
-        Key fix: When a sample has fewer probes than the reference,
-        align values by probe ID instead of naively padding at the end.
+        When a sample has fewer probes than the reference sample, values
+        are aligned by probe ID rather than padded naively at the end.
         """
         import numpy as np
         import pandas as pd
@@ -311,9 +312,8 @@ class MicroarrayHandler(DataHandler):
                         failed_samples.append(gsm.name)
                         continue
 
-                # ============================================================
-                # FIX: Align values by probe ID, not by position
-                # ============================================================
+                # Align values by probe ID rather than position — a sample
+                # can have fewer probes than the reference sample.
                 if len(expr_values) != len(probe_ids):
                     log.warning(
                         f"Shape mismatch in {gsm.name}: {len(expr_values)} values "
@@ -361,9 +361,7 @@ class MicroarrayHandler(DataHandler):
                 failed_samples.append(gsm.name)
                 continue
 
-        # ============================================================
-        # FIX: Report skipped samples
-        # ============================================================
+        # Report any samples skipped above.
         if failed_samples:
             log.warning(
                 f"Skipped {len(failed_samples)} samples due to data issues: "
@@ -376,9 +374,7 @@ class MicroarrayHandler(DataHandler):
                 f"All {len(platform_samples)} samples failed."
             )
 
-        # ============================================================
-        # FIX: Update sample_ids to match successfully processed samples
-        # ============================================================
+        # Keep only the sample IDs that were actually processed.
         processed_sample_ids = [
             sid for sid, gsm in zip(sample_ids, platform_samples) if gsm.name not in failed_samples
         ]
@@ -389,16 +385,11 @@ class MicroarrayHandler(DataHandler):
         # Convert to float64
         expr_df = expr_df.astype("float64")
 
-        # ============================================================
-        # AUTO LOG2 DETECTION & TRANSFORMATION (R PARITY)
-        # ============================================================
-        # R's getGEOData() returns data from Series Matrix files which
-        # are typically already log2-transformed. GEOparse SOFT format
-        # returns raw intensities for Affymetrix arrays. Detect and fix.
-        #
-        # Heuristic: if median expression > 20, data is likely raw
-        # intensity and needs log2 transformation.
-        # ============================================================
+        # Auto-detect and apply log2 transformation (R parity): R's
+        # getGEOData() returns Series Matrix data that's typically already
+        # log2-transformed, while GEOparse SOFT format returns raw
+        # intensities for Affymetrix arrays. Heuristic: a median expression
+        # above 20 indicates raw intensity that still needs log2.
         finite_values = expr_df.values[np.isfinite(expr_df.values)]
         if len(finite_values) > 0:
             median_expr = np.median(finite_values)
@@ -435,157 +426,6 @@ class MicroarrayHandler(DataHandler):
 
         return expr_df
 
-    def _build_expression_matrix_20260603dev(
-        self, platform_samples: List, sample_ids: List[str]
-    ) -> pd.DataFrame:
-        """Build expression matrix from GSM samples."""
-
-        expr_data = []
-        probe_ids = None
-        failed_samples = []
-
-        for gsm in platform_samples:
-            try:
-                # Get probe IDs (only once)
-                if probe_ids is None:
-                    if "ID_REF" in gsm.table.columns:
-                        probe_ids = gsm.table["ID_REF"].values
-                    elif "ID" in gsm.table.columns:
-                        probe_ids = gsm.table["ID"].values
-                    else:
-                        # Use index
-                        probe_ids = gsm.table.index.values
-
-                # Get expression values - try different column names
-                expr_values = None
-                for col_name in ["VALUE", "value", "Signal", "signal", "Expression"]:
-                    if col_name in gsm.table.columns:
-                        expr_values = pd.to_numeric(gsm.table[col_name], errors="coerce").values
-                        break
-
-                if expr_values is None:
-                    # Find first numeric column
-                    numeric_cols = gsm.table.select_dtypes(include=[np.number]).columns
-                    if len(numeric_cols) > 0:
-                        expr_values = gsm.table[numeric_cols[0]].values
-                    else:
-                        log.warning(f"Cannot find expression values for {gsm.name}, skipping")
-                        failed_samples.append(gsm.name)
-                        continue
-
-                if len(expr_values) != len(probe_ids):
-                    log.warning(
-                        f"Shape mismatch in {gsm.name}: {len(expr_values)} values "
-                        f"vs {len(probe_ids)} probes. Adjusting to match."
-                    )
-
-                    # Pad or truncate to match probe_ids length (R behavior)
-                    if len(expr_values) < len(probe_ids):
-                        # Pad with NaN (R uses NA)
-                        n_missing = len(probe_ids) - len(expr_values)
-                        expr_values = np.concatenate([expr_values, np.full(n_missing, np.nan)])
-                        log.info(f"  Padded {gsm.name} with {n_missing} NaN values")
-                    else:
-                        # Truncate to match
-                        n_extra = len(expr_values) - len(probe_ids)
-                        expr_values = expr_values[: len(probe_ids)]
-                        log.info(f"  Truncated {gsm.name}, removed {n_extra} extra values")
-
-                # Check for too many NaN values
-                n_nan = pd.isna(expr_values).sum()
-                if n_nan > len(expr_values) * 0.5:  # More than 50% NaN
-                    log.warning(
-                        f"Sample {gsm.name} has {n_nan} NaN values "
-                        f"({n_nan / len(expr_values) * 100:.1f}%), skipping"
-                    )
-                    failed_samples.append(gsm.name)
-                    continue
-
-                expr_data.append(expr_values)
-
-            except Exception as e:
-                log.warning(f"Failed to process {gsm.name}: {e}")
-                failed_samples.append(gsm.name)
-                continue
-
-        # ============================================================
-        # FIX: Report skipped samples
-        # ============================================================
-        if failed_samples:
-            log.warning(
-                f"Skipped {len(failed_samples)} samples due to data issues: "
-                f"{failed_samples[:5]}{'...' if len(failed_samples) > 5 else ''}"
-            )
-
-        if not expr_data:
-            raise ValueError(
-                f"No valid samples could be processed. "
-                f"All {len(platform_samples)} samples failed."
-            )
-
-        # ============================================================
-        # FIX: Update sample_ids to match successfully processed samples
-        # ============================================================
-        processed_sample_ids = [
-            sid for sid, gsm in zip(sample_ids, platform_samples) if gsm.name not in failed_samples
-        ]
-
-        # Create DataFrame
-        expr_df = pd.DataFrame(
-            np.array(expr_data).T,
-            index=probe_ids,
-            columns=processed_sample_ids,  # Use filtered list
-        )
-
-        # Convert to float64
-        expr_df = expr_df.astype("float64")
-
-        # ============================================================
-        # AUTO LOG2 DETECTION & TRANSFORMATION (R PARITY)
-        # ============================================================
-        # R's getGEOData() returns data from Series Matrix files which
-        # are typically already log2-transformed. GEOparse SOFT format
-        # returns raw intensities for Affymetrix arrays. Detect and fix.
-        #
-        # Heuristic: if median expression > 20, data is likely raw
-        # intensity and needs log2 transformation.
-        # ============================================================
-        finite_values = expr_df.values[np.isfinite(expr_df.values)]
-        if len(finite_values) > 0:
-            median_expr = np.median(finite_values)
-            max_expr = np.max(finite_values)
-            if median_expr > 20:
-                log.info(
-                    f"  ⚠️  Expression data appears to be raw intensity "
-                    f"(median={median_expr:.1f}, max={max_expr:.1f}). "
-                    f"Applying log2 transformation for R parity."
-                )
-                # Replace non-positive values with NaN before log2
-                # (R handles this similarly with NA)
-                expr_df = expr_df.clip(lower=0)
-                expr_df = expr_df.replace(0, np.nan)
-                expr_df = np.log2(expr_df)
-                # Report post-transform stats
-                finite_post = expr_df.values[np.isfinite(expr_df.values)]
-                log.info(
-                    f"  ✓ After log2: range=[{np.min(finite_post):.2f}, "
-                    f"{np.max(finite_post):.2f}], "
-                    f"median={np.median(finite_post):.2f}"
-                )
-            else:
-                log.info(
-                    f"  ✅ Expression data appears log-transformed "
-                    f"(median={median_expr:.2f}, max={max_expr:.2f})"
-                )
-
-        log.info(
-            f"Built expression matrix: {expr_df.shape[0]} features × "
-            f"{expr_df.shape[1]} samples "
-            f"(skipped {len(failed_samples)} problematic samples)"
-        )
-
-        return expr_df
-
     def _build_phenotype_dataframe(self, platform_samples: List) -> pd.DataFrame:
         """Build phenotype DataFrame from GSM samples."""
 
@@ -604,19 +444,21 @@ class MicroarrayHandler(DataHandler):
         return pheno_df
 
     def _extract_gene_symbols(self, gpl, probe_ids: pd.Index) -> list:
-        """
-        Extract gene symbol annotations from GPL object.
+        """Extract gene-symbol annotations from a GPL object.
 
-        FIXED: Now correctly parses gene_assignment format (Affymetrix Gene ST arrays
-        like GPL6244) by taking the SECOND '//' field (gene symbol), not the first
-        (which is a transcript/accession ID).
+        Handles two annotation layouts:
 
-        gene_assignment format:
-          "ENST00000328113 // MIR181A2HG // description // location // entrez"
-           ↑ Field 1: accession ID       ↑ Field 2: gene symbol  (take this!)
+        - ``gene_assignment`` format (Affymetrix Gene ST arrays like
+          GPL6244), where the gene symbol is the *second* ``//``-separated
+          field, not the first (which is a transcript/accession ID)::
 
-        Standard format (/// separated, each entry is // separated):
-          "NM_020937 // GENE1 // desc /// NM_000546 // GENE2 // desc"
+              "ENST00000328113 // MIR181A2HG // description // location // entrez"
+               ^ field 1: accession ID      ^ field 2: gene symbol (used)
+
+        - The standard format, where entries are ``///``-separated and each
+          entry is itself ``//``-separated::
+
+              "NM_020937 // GENE1 // desc /// NM_000546 // GENE2 // desc"
         """
 
         if not hasattr(gpl, "table") or gpl.table is None:
@@ -681,27 +523,25 @@ class MicroarrayHandler(DataHandler):
         # ------------------------------------------------------------------
         import re
 
-        # Regular expression to recognise accession‑style IDs (ENST*, NM_*, etc.)
+        # Regular expression to recognize accession‑style IDs (ENST*, NM_*, etc.)
         # Adjust the pattern if you have additional accession types.
         ACCESSION_PATTERN = re.compile(r"^(ENST|NM_)[0-9]+$")
 
         def clean_gene_symbol(symbol_str, col_is_assignment: bool = False) -> str:
-            """
-            Convert a probe annotation string into a *comma‑separated* list of gene symbols,
-            emulating the R helper:  gsub(";| /// ", ",", keys).
+            """Convert a probe annotation string into a comma-separated gene-symbol list.
+
+            Emulates the R helper ``gsub(";| /// ", ",", keys)``.
 
             Args:
-            symbol_str : str
-                Raw annotation string from the probe file (e.g. "NM_000123 // TP53 // desc
-                /// NM_000456 // ABC1 // something").
-            col_is_assignment : bool, optional
-                Flag that tells the function to look for an *assignment* format.  In that
-                case the gene symbol is always in the second field of each block.
+                symbol_str: Raw annotation string from the probe file,
+                    e.g. ``"NM_000123 // TP53 // desc /// NM_000456 // ABC1 // something"``.
+                col_is_assignment: Whether to treat ``symbol_str`` as an
+                    *assignment*-format value, where the gene symbol is
+                    always the second field of each block.
 
             Returns:
-            str | None
-                A comma‑separated string containing **all** gene symbols that belong to
-                the probe.  If no symbol can be found, ``None`` is returned.
+                A comma-separated string of every gene symbol found for the
+                probe, or ``"NA"`` if none can be found.
             """
             if pd.isna(symbol_str) or str(symbol_str).strip() in (
                 "",
@@ -853,26 +693,17 @@ class MicroarrayHandler(DataHandler):
             return [str(probe) for probe in probe_ids]
 
     def normalize(self, dataset: ProcessedDataset) -> ProcessedDataset:
-        """
-        Apply microarray-specific normalization.
+        """Apply microarray-specific normalization.
 
-        Parameters
-        ----------
-        dataset : ProcessedDataset
-            Parsed dataset
+        Currently supports log transformation and quantile normalization,
+        each applied only if enabled on this handler. Other methods (RMA,
+        MAS5, GCRMA, etc.) could be added here in the future.
 
-        Returns
-        -------
-        ProcessedDataset
-            Normalized dataset
+        Args:
+            dataset: A parsed dataset.
 
-        Notes
-        -----
-        Current implementation:
-        - Log transformation (if enabled)
-        - Quantile normalization (if enabled)
-
-        Future: Could add RMA, MAS5, GCRMA, etc.
+        Returns:
+            The normalized dataset.
         """
         expr = dataset.expr.copy()
 
@@ -909,18 +740,13 @@ class MicroarrayHandler(DataHandler):
         return normalized
 
     def _quantile_normalize(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Apply quantile normalization to expression matrix.
+        """Apply quantile normalization to an expression matrix.
 
-        Parameters
-        ----------
-        df : pd.DataFrame
-            Expression matrix (features × samples)
+        Args:
+            df: Expression matrix (features × samples).
 
-        Returns
-        -------
-        pd.DataFrame
-            Quantile-normalized expression matrix
+        Returns:
+            The quantile-normalized expression matrix.
         """
         # Get ranks
         ranks = df.stack().groupby(df.rank(method="first").stack().astype(int)).mean()
@@ -931,7 +757,23 @@ class MicroarrayHandler(DataHandler):
         return normalized
 
     def is_valid_gene_symbol(symbol_str):
-        """Check if symbol is a valid gene name."""
+        """Check whether a string looks like a valid gene symbol.
+
+        Note:
+            This function takes ``symbol_str`` as its only argument and has
+            no ``self`` parameter, so it cannot be called as a bound
+            instance method. It is not currently called anywhere in this
+            codebase. Left as-is since fixing it would change the method
+            signature.
+
+        Args:
+            symbol_str: Candidate gene symbol string.
+
+        Returns:
+            True if ``symbol_str`` matches the expected gene-symbol pattern
+            (this is pattern matching only — it does not check against a
+            gene database).
+        """
         symbol_str = str(symbol_str)
 
         # Invalid: NA

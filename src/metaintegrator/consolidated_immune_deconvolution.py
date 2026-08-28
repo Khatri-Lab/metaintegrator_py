@@ -10,7 +10,7 @@ import multiprocessing as mp
 import platform
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -85,13 +85,12 @@ class ImmunoStatesDeconvolver:
         self,
         basis_matrix: Optional[pd.DataFrame] = None,
         basis_matrix_path: Optional[str] = None,
-    ):
-        """
-        Initialize the enhanced deconvolver.
+    ) -> None:
+        """Initialize the enhanced deconvolver.
 
         Args:
-            basis_matrix: Custom basis matrix (DataFrame with gene names as index)
-            basis_matrix_path: Path to basis matrix file (CSV, TSV, or Excel)
+            basis_matrix: Custom basis matrix (DataFrame with gene names as index).
+            basis_matrix_path: Path to a basis matrix file (CSV, TSV, or Excel).
         """
         self.basis_matrix = None
         self.basis_matrix_path = basis_matrix_path
@@ -400,11 +399,14 @@ class ImmunoStatesDeconvolver:
             return True
         return "expr" not in dataset or "keys" not in dataset
 
-    def _enhanced_is_deconvolution(self, expression_matrix) -> Optional[pd.DataFrame]:
-        """
-        Enhanced deconvolution with proper gene alignment.
+    def _enhanced_is_deconvolution(
+        self, expression_matrix: Union[pd.DataFrame, np.ndarray]
+    ) -> Optional[pd.DataFrame]:
+        """Run immuneStates deconvolution with gene-name alignment.
 
-        CRITICAL FIX: Uses gene name alignment instead of positional alignment.
+        Aligns the expression matrix to the basis matrix by gene name
+        rather than by row position, so the two can safely have genes in
+        a different order.
         """
         # Ensure we have DataFrames with gene names
         if not isinstance(self.basis_matrix, pd.DataFrame):
@@ -568,7 +570,12 @@ class ImmunoStatesDeconvolverLegacy:
     in a future version.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the legacy deconvolver, warning loudly that it's deprecated.
+
+        See the class docstring — this positional-alignment
+        implementation is kept only for backward compatibility.
+        """
         warnings.warn(
             "\n" + "=" * 70 + "\n"
             "CRITICAL WARNING: Using ImmunoStatesDeconvolverLegacy\n"
@@ -791,17 +798,26 @@ class ImmunoStatesCorrectionAnalyzer:
 class ImmunoStatesMetaAnalyzer:
     """Class for preparing immunoStates results for meta-analysis."""
 
-    def __init__(self, use_enhanced: bool = True):
-        """Initialize with enhanced version by default."""
-        self.deconvolver = ImmunoStatesDeconvolver()  # Always use fixed version
-        self._use_enhanced = True
+    def __init__(
+        self,
+        basis_matrix: Optional[pd.DataFrame] = None,
+        basis_matrix_path: Optional[str] = None,
+        use_enhanced: bool = True,
+    ) -> None:
+        """Initialize the meta-analyzer.
 
-    def __init__(self, basis_matrix=None, basis_matrix_path=None, use_enhanced: bool = True):
-        """Initialize the meta analyzer."""
+        Args:
+            basis_matrix: Custom basis matrix, passed through to
+                :class:`ImmunoStatesDeconvolver`.
+            basis_matrix_path: Path to a basis matrix file, passed
+                through to :class:`ImmunoStatesDeconvolver`.
+            use_enhanced: Present for backward compatibility; the
+                enhanced (gene-name-aligned) deconvolver is always used.
+        """
         self.deconvolver = ImmunoStatesDeconvolver(
             basis_matrix=basis_matrix, basis_matrix_path=basis_matrix_path
         )
-        self._use_enhanced = True
+        self._use_enhanced = use_enhanced
 
     def immunostates_meta(self, meta_object: Dict) -> Dict:
         """
@@ -848,16 +864,12 @@ class ImmunoStatesMetaAnalyzer:
         # Reconstruct meta_object to contain only the processed originalData
         return {"originalData": new_original_data}
 
-    def _handle_excluded_datasets(self, immuno_result: Dict, successful_names: List[str]):
-        """
-        Handles the exclusion of datasets that were not successfully deconvolved.
-
-        This method identifies datasets that were not processed successfully and logs a
-        warning message listing these excluded datasets.
+    def _handle_excluded_datasets(self, immuno_result: Dict, successful_names: List[str]) -> None:
+        """Identify datasets that failed deconvolution and log a warning listing them.
 
         Args:
-            immuno_result (Dict): A dictionary containing immunological result data.
-            successful_names (List[str]): A list of names of datasets that were successfully
+            immuno_result: Dict of immune-deconvolution results.
+            successful_names: Names of datasets that were successfully
                 deconvolved.
         """
         original_names = set(immuno_result.get("originalData", {}).keys())

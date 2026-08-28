@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 
-def diagnose_csv_files(csv_directory: str):
+def diagnose_csv_files(csv_directory: str) -> None:
     """
     Diagnose CSV files to understand sample name mismatch issues.
     """

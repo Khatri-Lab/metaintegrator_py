@@ -41,7 +41,7 @@ try:
 except ImportError:
     GEOparse = None
 
-from .base import DataHandler, RawDataset, ProcessedDataset
+from .base import DataHandler, ProcessedDataset, RawDataset
 from .gene_annotator import GeneAnnotator
 from .gene_validation import EnsemblGeneValidator
 
@@ -73,13 +73,6 @@ class HybridMicroarrayHandler(DataHandler):
     5. Apply log2 transformation if data is raw intensity
     6. Fall back to standalone GPL download if family SOFT yields 0 genes
 
-    Parameters
-    ----------
-    annotator : GeneAnnotator, optional
-        Custom annotator instance.  Uses default if not provided.
-    validator : EnsemblGeneValidator, optional
-        Custom Ensembl validator.  If not provided, one is created
-        automatically (with graceful fallback on failure).
     """
 
     def __init__(
@@ -87,12 +80,22 @@ class HybridMicroarrayHandler(DataHandler):
         annotator: GeneAnnotator | None = None,
         validator: EnsemblGeneValidator | None = None,
     ):
+        """Initialize the handler.
+
+        Args:
+            annotator: Custom annotator instance. Uses a default
+                :class:`GeneAnnotator` when not given.
+            validator: Custom Ensembl validator. When not given, one is
+                created automatically on first use (with graceful fallback
+                if that fails).
+        """
         self._annotator = annotator or GeneAnnotator()
         self._validator = validator  # None means "load lazily on first use"
         self._validator_loaded = validator is not None
 
     @property
     def data_type(self) -> str:
+        """Human-readable name of the data type this handler processes."""
         return "Microarray (Hybrid)"
 
     # ------------------------------------------------------------------ #
@@ -100,18 +103,15 @@ class HybridMicroarrayHandler(DataHandler):
     # ------------------------------------------------------------------ #
 
     def parse(self, raw_dataset: RawDataset) -> ProcessedDataset:
-        """
-        Parse a raw hybrid dataset into :class:`ProcessedDataset`.
+        """Parse a raw hybrid dataset into a :class:`ProcessedDataset`.
 
-        Parameters
-        ----------
-        raw_dataset : RawDataset
-            Must contain ``raw_data`` with keys ``'expr_df'``,
-            ``'gpl'``, ``'gse'``, ``'platform_id'``.
+        Args:
+            raw_dataset: Raw dataset whose ``raw_data`` must contain the
+                keys ``'expr_df'``, ``'gpl'``, ``'gse'``, and
+                ``'platform_id'``.
 
-        Returns
-        -------
-        ProcessedDataset
+        Returns:
+            The processed dataset.
         """
         rd = raw_dataset.raw_data
         expr_df: pd.DataFrame = rd["expr_df"]
@@ -186,12 +186,11 @@ class HybridMicroarrayHandler(DataHandler):
         return dataset
 
     def normalize(self, dataset: ProcessedDataset) -> ProcessedDataset:
-        """
-        No additional normalisation for hybrid datasets.
+        """No additional normalization needed for hybrid datasets.
 
-        Series Matrix data from NCBI is typically already normalised
-        and log-transformed.  The ``_auto_log2`` step in :meth:`parse`
-        handles the rare exception.
+        Series Matrix data from NCBI is typically already normalized and
+        log-transformed; the ``_auto_log2`` step in :meth:`parse` handles
+        the rare exception.
         """
         return dataset
 
@@ -200,7 +199,7 @@ class HybridMicroarrayHandler(DataHandler):
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def _build_pheno(gse, platform_id: str, sample_ids) -> pd.DataFrame:
+    def _build_pheno(gse: "GEOparse.GSE", platform_id: str, sample_ids: "pd.Index") -> pd.DataFrame:
         """Build phenotype DataFrame from GEOparse per-sample metadata."""
         pheno_dict = {}
 
@@ -267,11 +266,11 @@ class HybridMicroarrayHandler(DataHandler):
 
     def _try_standalone_gpl_fallback(
         self,
-        dataset,
-        gse_id,
-        platform_id,
-        expr_df,
-        validator,
+        dataset: ProcessedDataset,
+        gse_id: str,
+        platform_id: str,
+        expr_df: pd.DataFrame,
+        validator: Optional[EnsemblGeneValidator],
     ) -> ProcessedDataset:
         """Re-annotate using standalone GPL when family SOFT yields 0 genes."""
         dataset_name = f"{gse_id}_{platform_id}"

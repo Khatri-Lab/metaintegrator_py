@@ -50,8 +50,11 @@ class ScoreCalculator:
             The Z-score is based off of the geometric mean of expression. As such, negative
             expression values are not allowed. A dataset is thus always scaled by its minimum
             value + 1, such that the lowest value = 1. Any individual NANs or NAs are also
-            set to 1. If a dataset does not have any information on a given gene, the entire
-            gene is simply left out of the score.
+            set to 1. If a dataset does not have any information on a given gene, that gene is
+            NOT dropped from the score: it is still passed through to the geometric-mean
+            calculation as an all-missing row, which gets filled with 1 (so log(1)=0),
+            contributing neutrally rather than being excluded outright. This matches R
+            MetaIntegrator's behavior (see the R-parity note in the implementation below).
 
         Examples:
             >>> filter_obj = {'posGeneNames': ['GENE1', 'GENE2'],

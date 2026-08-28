@@ -14,7 +14,7 @@ This replaces the previous fragmented approach with a single, cohesive system.
 
 import logging
 import warnings
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,17 +22,17 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 from sklearn.metrics import (
-    roc_curve,
     auc,
-    precision_recall_curve,
     average_precision_score,
+    precision_recall_curve,
     roc_auc_score,
+    roc_curve,
 )
 from sklearn.utils import resample
 
 from .clinical_metrics_analyzer import (
-    YoudenJAnalyzer,
     ClinicalParametersAnalyzer,
+    YoudenJAnalyzer,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class ROCAnalysisEngine:
     by all higher-level analyzers in the system.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize ROC analysis engine."""
         pass
 
@@ -383,7 +383,7 @@ class SignatureScoringEngine:
     for all ROC analysis components.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize signature scoring engine."""
         pass
 
@@ -503,7 +503,7 @@ class KesterBuntinxEngine:
     combining multiple study results.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Kester & Buntinx engine."""
         self.roc_engine = ROCAnalysisEngine()
 
@@ -828,7 +828,7 @@ class UnifiedROCAnalyzer:
     cohesive, production-grade system.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with clinical metrics analyzers."""
         self.roc_engine = ROCAnalysisEngine()
         self.scoring_engine = SignatureScoringEngine()
@@ -1256,8 +1256,7 @@ class UnifiedROCAnalyzer:
 
             # 3. Calculate ROC and interpolate TPR at standard FPR points
             # sklearn's roc_curve() defaults to drop_intermediate=True, which removes threshold points that don't change FPR/TPR
-            # # Use drop_intermediate=False to match R
-            # 20260409 fpr, tpr, _ = roc_curve(y_boot, scores_boot)
+            # Use drop_intermediate=False to match R
             fpr, tpr, _ = roc_curve(y_boot, scores_boot, drop_intermediate=False)
 
             # Interpolate to common grid
@@ -1305,16 +1304,6 @@ class UnifiedROCAnalyzer:
         for name, dataset in meta_object.get("originalData", {}).items():
             try:
                 # Calculate signature scores
-                # 20260610orig
-                """
-                scores = self.scoring_engine.calculate_scores(
-                    dataset["expr"],
-                    dataset["keys"],
-                    filter_object.get("posGeneNames", []),
-                    filter_object.get("negGeneNames", []),
-                )
-                """
-                # 20260610dev
                 from .score_calculation import ScoreCalculator
 
                 scores = ScoreCalculator.calculate_score(
@@ -1349,8 +1338,8 @@ class UnifiedROCAnalyzer:
                         "auc": roc_stats["auc"],
                         "auc_ci": roc_stats["auc_ci"],
                         "n_samples": len(y_true),
-                        "scores": scores,  # 20260610dev – keep for concat pooling
-                        "labels": y_true,  # 20260610dev – keep for concat pooling
+                        "scores": scores,  # keep for concat pooling
+                        "labels": y_true,  # keep for concat pooling
                     }
                 )
 
@@ -1394,7 +1383,7 @@ class UnifiedROCAnalyzer:
         # Calculate pooled AUC
         pooled_auc = auc(common_fpr, pooled_tpr)
 
-        # 20260610dev – Also compute a "concatenated" pooled AUC (R-style)
+        # Also compute a "concatenated" pooled AUC (R-style)
         # R pools by concatenating all scores & labels and computing one ROC.
         all_scores = np.concatenate([r["scores"] for r in study_results])
         all_labels = np.concatenate([r["labels"] for r in study_results])
@@ -1433,16 +1422,6 @@ class UnifiedROCAnalyzer:
         study_data = []
         for name, dataset in meta_object.get("originalData", {}).items():
             try:
-                # 20260610orig
-                """
-                scores = self.scoring_engine.calculate_scores(
-                    dataset["expr"],
-                    dataset["keys"],
-                    filter_object.get("posGeneNames", []),
-                    filter_object.get("negGeneNames", []),
-                )
-                """
-                # 20260610dev
                 from .score_calculation import ScoreCalculator
 
                 scores = ScoreCalculator.calculate_score(
@@ -1833,21 +1812,33 @@ class MetaAnalysisUtilities:
 
 
 # Convenience functions for backward compatibility
-def calculate_roc_curve(y_true, y_scores, confidence=0.95):
+def calculate_roc_curve(
+    y_true: Union[np.ndarray, List],
+    y_scores: Union[np.ndarray, List],
+    confidence: float = 0.95,
+) -> Dict[str, Any]:
     """Calculate ROC curve using the core engine."""
     engine = ROCAnalysisEngine()
     return engine.calculate_roc_curve(y_true, y_scores, confidence)
 
 
-def calculate_prc_curve(y_true, y_scores, confidence=0.95):
+def calculate_prc_curve(
+    y_true: Union[np.ndarray, List],
+    y_scores: Union[np.ndarray, List],
+    confidence: float = 0.95,
+) -> Dict[str, Any]:
     """Calculate PRC curve using the core engine."""
     engine = ROCAnalysisEngine()
     return engine.calculate_prc_curve(y_true, y_scores, confidence)
 
 
 def calculate_signature_scores(
-    expr_data, gene_keys, pos_genes, neg_genes, method="mean_difference"
-):
+    expr_data: Union[pd.DataFrame, np.ndarray],
+    gene_keys: List[str],
+    pos_genes: List[str],
+    neg_genes: List[str],
+    method: str = "mean_difference",
+) -> np.ndarray:
     """Calculate signature scores using the core engine."""
     engine = SignatureScoringEngine()
     return engine.calculate_scores(expr_data, gene_keys, pos_genes, neg_genes, method)

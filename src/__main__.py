@@ -18,7 +18,20 @@ Examples
 Run COCONUT::
 
     python -m src coconut_batch_effect_removal \\
-        --csv_dir data/data_csv --output_dir data_out_csv --debug
+        --csv_dir data/data_csv --output_dir my_data_out --debug
+
+    # Data with non-default phenotype column names:
+    python -m src coconut_batch_effect_removal \\
+        --csv_dir data/data_csv --control-col "Group" --disease-col "Case" \\
+        --by-platform --platform-col "Batch"
+
+Note: for `coconut_batch_effect_removal`, --by-platform and --no-par-prior
+always take their CLI default (False / True) unless passed explicitly, even
+when a config file sets `by_platform` or `par_prior` — argparse's store_true /
+store_false flags don't have a way to represent "not set" that config-file
+merging (see `src/utils/config.py::merge_config`) can distinguish from "set to
+the default". Use the CLI flags directly, or call
+`src.coconut.coconut_runner.runner()` from Python, for full control.
 
 Run meta-analysis::
 
@@ -42,14 +55,21 @@ Programmatic usage (no subprocess needed)::
 """
 
 import argparse
+from typing import List, Optional
 
-from .utils.config import load_config, merge_config
 from .coconut.coconut_runner import main as coconut_runner_main
 from .metaintegrator.meta_analysis_runner import main as meta_analysis_runner_main
+from .utils.config import load_config, merge_config
 
 
-def run(argv=None):
-    """Parse CLI arguments and dispatch to the appropriate subcommand."""
+def run(argv: Optional[List[str]] = None) -> None:
+    """Parse CLI arguments and dispatch to the matching subcommand handler.
+
+    Args:
+        argv: Command-line arguments to parse. Defaults to ``sys.argv[1:]``
+            when not given, which is the normal case for real CLI use; pass
+            an explicit list for programmatic or test invocations.
+    """
     parser = argparse.ArgumentParser(
         prog="Metaintegrator_py",
         description="MetaIntegrator Python — meta-analysis and batch-effect tools",
@@ -89,6 +109,53 @@ def run(argv=None):
         action="store_true",
         default=False,
         help="Print additional debugging information.",
+    )
+    prep_parser.add_argument(
+        "--control-col",
+        type=str,
+        default=None,
+        dest="control_0_col",
+        help="Phenotype column indicating control samples (0 = control). "
+        "(default: 'Healthy0.Sepsis1')",
+    )
+    prep_parser.add_argument(
+        "--disease-col",
+        type=str,
+        default=None,
+        dest="disease_col",
+        help="Phenotype column indicating disease samples. If omitted, all "
+        "non-control samples are treated as disease.",
+    )
+    prep_parser.add_argument(
+        "--by-platform",
+        action="store_true",
+        default=False,
+        dest="by_platform",
+        help="Normalize per platform instead of across all datasets at once "
+        "(requires --platform-col).",
+    )
+    prep_parser.add_argument(
+        "--platform-col",
+        type=str,
+        default=None,
+        dest="platform_col",
+        help="Phenotype column containing platform information, used with "
+        "--by-platform. (default: 'Platform_id')",
+    )
+    prep_parser.add_argument(
+        "--no-par-prior",
+        action="store_false",
+        default=True,
+        dest="par_prior",
+        help="Disable parametric priors in the Bayesian batch-effect adjustment "
+        "(default: enabled).",
+    )
+    prep_parser.add_argument(
+        "--it-conv",
+        type=float,
+        default=None,
+        dest="it_conv",
+        help="Convergence threshold for the iterative COCONUT solution. (default: 1e-04)",
     )
     prep_parser.set_defaults(func=coconut_runner_main)
 
@@ -157,7 +224,8 @@ def run(argv=None):
     args.func(merged_args)
 
 
-def main():
+def main() -> None:
+    """Entry point invoked by ``python -m src``."""
     run()
 
 

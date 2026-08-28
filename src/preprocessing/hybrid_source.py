@@ -11,7 +11,7 @@ samples may have missing probes).  It matches the strategy used by
 R's ``GEOquery::getGEO()``.
 
 Network I/O is delegated to :class:`NCBINetwork`, which can be injected
-for testing (mock) or customised (timeouts, retries).
+for testing (mock) or customized (timeouts, retries).
 
 Usage
 -----
@@ -47,14 +47,12 @@ log = logging.getLogger(__name__)
 
 
 class HybridGeoSource(DataSource):
-    """
-    Fetch GEO datasets using a hybrid strategy.
+    """Fetch GEO datasets using a hybrid strategy.
 
     Combines two data retrieval methods in a single fetch:
 
     1. **Series Matrix files** (via :class:`NCBINetwork`) for expression
        data — pre-aligned, probe × sample matrices.
-
     2. **GEOparse SOFT files** for GPL annotation tables and per-sample
        phenotype metadata.
 
@@ -66,25 +64,16 @@ class HybridGeoSource(DataSource):
     - ``'gse'``: GEOparse GSE object (for phenotype metadata)
     - ``'platform_id'``: GPL identifier string
 
-    Parameters
-    ----------
-    cache_dir : str or Path, default='~/.geo_cache'
-        Directory for caching downloaded files.
-    network : NCBINetwork, optional
-        Injectable network layer.  When ``None`` (default), a standard
-        ``NCBINetwork(cache_dir)`` is created automatically.  Pass a
-        mock or custom instance for testing or non-standard configurations.
+    Examples:
+        >>> source = HybridGeoSource()
+        >>> raw_datasets = source.fetch('GSE11909')
+        >>> len(raw_datasets)
+        2  # GPL96 + GPL97
 
-    Examples
-    --------
-    >>> source = HybridGeoSource()
-    >>> raw_datasets = source.fetch('GSE11909')
-    >>> len(raw_datasets)
-    2  # GPL96 + GPL97
+        With a custom network (e.g. for testing):
 
-    # With custom network (e.g. for testing):
-    >>> mock_net = MockNCBINetwork(...)
-    >>> source = HybridGeoSource(network=mock_net)
+        >>> mock_net = MockNCBINetwork(...)
+        >>> source = HybridGeoSource(network=mock_net)
     """
 
     SERIES_MATRIX_SUFFIX = "_series_matrix.txt.gz"
@@ -94,6 +83,14 @@ class HybridGeoSource(DataSource):
         cache_dir: str | Path = "~/.geo_cache",
         network: Optional[NCBINetwork] = None,
     ):
+        """Initialize the hybrid GEO source.
+
+        Args:
+            cache_dir: Directory for caching downloaded files.
+            network: Injectable network layer. When not given, a standard
+                ``NCBINetwork(cache_dir)`` is created automatically; pass a
+                mock or custom instance for testing or non-standard setups.
+        """
         if GEOparse is None:
             raise ImportError("GEOparse is required: pip install GEOparse")
         super().__init__(cache_dir)
@@ -101,6 +98,7 @@ class HybridGeoSource(DataSource):
 
     @property
     def source_name(self) -> str:
+        """Human-readable name of this data source."""
         return "NCBI GEO (Hybrid: SeriesMatrix + GEOparse)"
 
     # ------------------------------------------------------------------ #
@@ -108,25 +106,18 @@ class HybridGeoSource(DataSource):
     # ------------------------------------------------------------------ #
 
     def fetch(self, dataset_id: str, **kwargs) -> List[RawDataset]:
-        """
-        Fetch a single GSE using the hybrid strategy.
+        """Fetch a single GSE using the hybrid strategy.
 
-        Parameters
-        ----------
-        dataset_id : str
-            GEO Series ID (e.g., ``'GSE11909'``).
+        Args:
+            dataset_id: GEO Series ID, e.g. ``'GSE11909'``.
 
-        Returns
-        -------
-        list[RawDataset]
+        Returns:
             One ``RawDataset`` per platform found in the GSE.
 
-        Raises
-        ------
-        ValueError
-            If no Series Matrix files are found or no platforms match.
-        RuntimeError
-            If download or GEOparse loading fails.
+        Raises:
+            ValueError: If no Series Matrix files are found, or no
+                platforms match between Series Matrix and GEOparse.
+            RuntimeError: If the download or GEOparse loading fails.
         """
         gse_id = dataset_id.strip().upper()
         log.info(f"Loading {gse_id} (hybrid mode: SeriesMatrix + GEOparse)...")
@@ -195,20 +186,15 @@ class HybridGeoSource(DataSource):
         stop_on_error: bool = False,
         **kwargs,
     ) -> List[RawDataset]:
-        """
-        Fetch multiple GSE IDs.
+        """Fetch multiple GSE IDs.
 
-        Parameters
-        ----------
-        dataset_ids : list[str]
-            GEO Series IDs.
-        stop_on_error : bool, default=False
-            Raise on first failure if ``True``; skip and continue otherwise.
+        Args:
+            dataset_ids: GEO Series IDs.
+            stop_on_error: Raise on the first failure if True; skip and
+                continue otherwise.
 
-        Returns
-        -------
-        list[RawDataset]
-            All raw datasets across all GSE IDs.
+        Returns:
+            All raw datasets across every GSE ID.
         """
         all_raw: List[RawDataset] = []
 
@@ -279,12 +265,11 @@ class HybridGeoSource(DataSource):
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def _parse_series_matrix(filepath: Path):
-        """
-        Parse a Series Matrix file → ``(platform_id, expression DataFrame)``.
+    def _parse_series_matrix(filepath: Path) -> tuple[str, pd.DataFrame]:
+        """Parse a Series Matrix file into ``(platform_id, expression_df)``.
 
         The Series Matrix is a pre-aligned, tab-delimited expression matrix
-        with all probes × all samples.
+        covering all probes × all samples.
         """
         with gzip.open(str(filepath), "rt") as f:
             txt = f.read()
@@ -321,9 +306,8 @@ class HybridGeoSource(DataSource):
     #  GEOparse: Load family SOFT                                         #
     # ------------------------------------------------------------------ #
 
-    def _load_geoparse(self, gse_id: str):
-        """
-        Load GSE via GEOparse (family SOFT file) for pheno + annotation.
+    def _load_geoparse(self, gse_id: str) -> "GEOparse.GSE":
+        """Load a GSE via GEOparse (family SOFT file) for pheno + annotation.
 
         Must use ``how='full'`` and ``include_data=True`` to ensure
         GEOparse fully parses the GPL annotation tables.

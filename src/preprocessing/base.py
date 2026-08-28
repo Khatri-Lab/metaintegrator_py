@@ -16,9 +16,9 @@ This architecture supports:
 from __future__ import annotations
 
 import abc
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
-from dataclasses import dataclass
 
 import pandas as pd
 
@@ -41,7 +41,8 @@ class RawDataset:
     raw_data: Any = None  # Source-specific raw data
     metadata: Dict[str, Any] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """Default ``metadata`` to an empty dict when not provided."""
         if self.metadata is None:
             self.metadata = {}
 
@@ -54,24 +55,17 @@ class ProcessedDataset:
     This is the final output format used by analysis workflows.
     All handlers must produce this format.
 
-    Attributes
-    ----------
-    geo_id : str
-        Dataset identifier (e.g., ``'GSE11909_GPL96'``).
-    expr : pd.DataFrame
-        Expression matrix, shape ``(n_features, n_samples)``.
-        Index = probe IDs, columns = sample IDs.
-    pheno : pd.DataFrame
-        Phenotype data, shape ``(n_samples, n_metadata_cols)``.
-        Index = sample IDs (must match ``expr.columns``).
-    keys : list[str]
-        Gene symbols aligned 1:1 with ``expr.index``.
-        Multi-gene probes are comma-separated (e.g. ``'CD6,IL2RG'``).
-        Unmappable probes are ``'NA'``.
-        This matches R MetaIntegrator's format where ``keys`` is a
-        character vector of the same length as the number of probes.
-    metadata : dict[str, Any]
-        Additional metadata (source, platform, handler, etc.).
+    Attributes:
+        geo_id: Dataset identifier (e.g. ``'GSE11909_GPL96'``).
+        expr: Expression matrix, shape ``(n_features, n_samples)`` with
+            probe IDs as the index and sample IDs as the columns.
+        pheno: Phenotype data, shape ``(n_samples, n_metadata_cols)``,
+            indexed by sample ID (must match ``expr.columns``).
+        keys: Gene symbols aligned 1:1 with ``expr.index``. Multi-gene
+            probes are comma-separated (e.g. ``'CD6,IL2RG'``); unmappable
+            probes are ``'NA'``. This mirrors R MetaIntegrator's ``keys``,
+            a character vector the same length as the number of probes.
+        metadata: Additional metadata (source, platform, handler, etc.).
     """
 
     geo_id: str
@@ -80,8 +74,8 @@ class ProcessedDataset:
     keys: List[str]
     metadata: Dict[str, Any]
 
-    def __post_init__(self):
-        """Validate dataset structure."""
+    def __post_init__(self) -> None:
+        """Validate that expr, pheno, and keys are mutually consistent."""
         # Ensure expr and pheno have matching sample IDs
         if not self.expr.columns.equals(self.pheno.index):
             raise ValueError(
@@ -121,40 +115,29 @@ class DataSource(abc.ABC):
     """
 
     def __init__(self, cache_dir: str | Path = "~/.data_cache"):
-        """
-        Initialize data source.
+        """Initialize the data source.
 
-        Parameters
-        ----------
-        cache_dir : str or Path
-            Directory for caching downloaded files
+        Args:
+            cache_dir: Directory used to cache downloaded files.
         """
         self.cache_dir = Path(cache_dir).expanduser()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     @abc.abstractmethod
     def fetch(self, dataset_id: str, **kwargs) -> List[RawDataset]:
-        """
-        Fetch raw data from the source.
+        """Fetch raw data from the source.
 
-        Parameters
-        ----------
-        dataset_id : str
-            Identifier for the dataset (format depends on source)
-        **kwargs
-            Source-specific parameters
+        Args:
+            dataset_id: Identifier for the dataset (format depends on the
+                source implementation).
+            **kwargs: Source-specific parameters.
 
-        Returns
-        -------
-        List[RawDataset]
-            List of raw datasets (may be multiple platforms/batches)
+        Returns:
+            One raw dataset per platform/batch found for ``dataset_id``.
 
-        Raises
-        ------
-        ValueError
-            If dataset cannot be found
-        RuntimeError
-            If download/fetch fails
+        Raises:
+            ValueError: If the dataset cannot be found.
+            RuntimeError: If the download or fetch fails.
         """
         raise NotImplementedError
 
@@ -162,22 +145,16 @@ class DataSource(abc.ABC):
     def fetch_multiple(
         self, dataset_ids: List[str], stop_on_error: bool = False, **kwargs
     ) -> List[RawDataset]:
-        """
-        Fetch multiple datasets.
+        """Fetch multiple datasets.
 
-        Parameters
-        ----------
-        dataset_ids : List[str]
-            List of dataset identifiers
-        stop_on_error : bool, default=False
-            If True, raise on first error; if False, continue
-        **kwargs
-            Source-specific parameters
+        Args:
+            dataset_ids: Dataset identifiers to fetch.
+            stop_on_error: If True, raise on the first error; if False, skip
+                the failed dataset and continue with the rest.
+            **kwargs: Source-specific parameters.
 
-        Returns
-        -------
-        List[RawDataset]
-            All raw datasets from all IDs
+        Returns:
+            All raw datasets collected across every ID.
         """
         raise NotImplementedError
 
@@ -204,59 +181,42 @@ class DataHandler(abc.ABC):
 
     @abc.abstractmethod
     def parse(self, raw_dataset: RawDataset) -> ProcessedDataset:
-        """
-        Parse raw data into standard format.
+        """Parse raw data into the standard dataset format.
 
-        Parameters
-        ----------
-        raw_dataset : RawDataset
-            Raw data from a source
+        Args:
+            raw_dataset: Raw data returned by a source.
 
-        Returns
-        -------
-        ProcessedDataset
-            Processed dataset in standard format
+        Returns:
+            The dataset in standard MetaIntegrator format.
 
-        Raises
-        ------
-        ValueError
-            If raw data is invalid or cannot be parsed
+        Raises:
+            ValueError: If the raw data is invalid or cannot be parsed.
         """
         raise NotImplementedError
 
     @abc.abstractmethod
     def normalize(self, dataset: ProcessedDataset) -> ProcessedDataset:
-        """
-        Apply data type-specific normalization.
+        """Apply data-type-specific normalization.
 
-        Parameters
-        ----------
-        dataset : ProcessedDataset
-            Parsed dataset
+        Args:
+            dataset: A parsed dataset.
 
-        Returns
-        -------
-        ProcessedDataset
-            Normalized dataset
+        Returns:
+            The normalized dataset.
         """
         raise NotImplementedError
 
     def process(self, raw_dataset: RawDataset) -> ProcessedDataset:
-        """
-        Complete processing pipeline: parse + normalize.
+        """Run the full processing pipeline: parse, then normalize.
 
-        This is a template method that defines the processing workflow.
-        Subclasses implement parse() and normalize().
+        This is a template method — it defines the processing workflow while
+        subclasses supply the actual ``parse()`` and ``normalize()`` logic.
 
-        Parameters
-        ----------
-        raw_dataset : RawDataset
-            Raw data from a source
+        Args:
+            raw_dataset: Raw data from a source.
 
-        Returns
-        -------
-        ProcessedDataset
-            Fully processed dataset ready for analysis
+        Returns:
+            A fully processed dataset, ready for analysis.
         """
         parsed = self.parse(raw_dataset)
         normalized = self.normalize(parsed)
@@ -281,43 +241,33 @@ class DataLoader:
     This is the main entry point for loading datasets. It coordinates
     fetching from a source and processing with a handler.
 
-    Examples
-    --------
-    >>> source = GEOparseSource()
-    >>> handler = MicroarrayHandler()
-    >>> loader = DataLoader(source, handler)
-    >>> datasets = loader.load_multiple(['GSE11909', 'GSE50635'])
+    Examples:
+        >>> source = GEOparseSource()
+        >>> handler = MicroarrayHandler()
+        >>> loader = DataLoader(source, handler)
+        >>> datasets = loader.load_multiple(['GSE11909', 'GSE50635'])
     """
 
     def __init__(self, source: DataSource, handler: DataHandler):
-        """
-        Initialize loader with a source and handler.
+        """Initialize the loader with a source and a handler.
 
-        Parameters
-        ----------
-        source : DataSource
-            Where to fetch data from
-        handler : DataHandler
-            How to process the data
+        Args:
+            source: Where to fetch data from.
+            handler: How to process the fetched data.
         """
         self.source = source
         self.handler = handler
 
     def load(self, dataset_id: str, **kwargs) -> List[ProcessedDataset]:
-        """
-        Load and process a single dataset.
+        """Load and process a single dataset.
 
-        Parameters
-        ----------
-        dataset_id : str
-            Dataset identifier
-        **kwargs
-            Passed to source.fetch()
+        Args:
+            dataset_id: Dataset identifier.
+            **kwargs: Forwarded to ``source.fetch()``.
 
-        Returns
-        -------
-        List[ProcessedDataset]
-            Processed datasets (may be multiple platforms)
+        Returns:
+            The processed dataset(s) — more than one if the source spans
+            multiple platforms.
         """
         # Fetch raw data from source
         raw_datasets = self.source.fetch(dataset_id, **kwargs)
@@ -336,22 +286,16 @@ class DataLoader:
     def load_multiple(
         self, dataset_ids: List[str], stop_on_error: bool = False, **kwargs
     ) -> List[ProcessedDataset]:
-        """
-        Load and process multiple datasets.
+        """Load and process multiple datasets.
 
-        Parameters
-        ----------
-        dataset_ids : List[str]
-            List of dataset identifiers
-        stop_on_error : bool, default=False
-            If True, raise on first error; if False, continue
-        **kwargs
-            Passed to source.fetch_multiple()
+        Args:
+            dataset_ids: Dataset identifiers to load.
+            stop_on_error: If True, raise on the first error; if False, log
+                failures and return whatever succeeded.
+            **kwargs: Forwarded to ``source.fetch_multiple()``.
 
-        Returns
-        -------
-        List[ProcessedDataset]
-            All processed datasets
+        Returns:
+            All successfully processed datasets.
         """
         # Fetch all raw datasets
         raw_datasets = self.source.fetch_multiple(

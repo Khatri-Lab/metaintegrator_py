@@ -16,7 +16,7 @@ Highlights:
 - Multi-dimensional correlation analysis
 """
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -24,16 +24,13 @@ from scipy import stats
 from sklearn.preprocessing import StandardScaler
 
 # Import from consolidated core module (eliminates duplicates)
-from .scoring_core import (
-    # Use unified data structures and configurations
+from .scoring_core import (  # Use unified data structures and configurations; Use core validation and utilities; Use core exceptions
+    DataFrameUtils,
+    LoggerMixin,
+    MetaAnalysisValidator,
+    ScoringCalculationError,
     StatisticalSummary,
     SummaryConfig,
-    # Use core validation and utilities
-    MetaAnalysisValidator,
-    LoggerMixin,
-    DataFrameUtils,
-    # Use core exceptions
-    ScoringCalculationError,
 )
 
 # ==================================================================
@@ -49,7 +46,7 @@ class StatisticalAnalyzer(LoggerMixin):
     correlation data and threshold counts from a meta-analysis DataFrame.
     """
 
-    def __init__(self, config: SummaryConfig, **kwargs):
+    def __init__(self, config: SummaryConfig, **kwargs) -> None:
         """
         Create a StatisticalAnalyzer instance.
 
@@ -433,7 +430,8 @@ class StatisticalAnalyzer(LoggerMixin):
 class DistributionAnalyzer(LoggerMixin):
     """Specialized analyzer for distribution properties and testing."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
+        """Initialize the analyzer, forwarding kwargs to the LoggerMixin."""
         super().__init__(**kwargs)
 
     def analyze_distributions(self, data: Dict[str, np.ndarray]) -> Dict[str, Any]:
@@ -634,7 +632,8 @@ class DistributionAnalyzer(LoggerMixin):
             bootstrap_medians.append(np.median(sample))
 
         # Calculate confidence intervals
-        def calculate_ci(values):
+        def calculate_ci(values: List[float]) -> List[float]:
+            """Compute the [lower, upper] percentile bounds for one bootstrap sample."""
             return [
                 float(np.percentile(values, 100 * alpha / 2)),
                 float(np.percentile(values, 100 * (1 - alpha / 2))),

@@ -6,18 +6,18 @@ gene search optimization, and related statistical computations.
 
 import logging
 import warnings
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
 from sklearn.metrics import (
-    roc_curve,
     auc,
-    precision_recall_curve,
     average_precision_score,
+    precision_recall_curve,
     roc_auc_score,
+    roc_curve,
 )
 from sklearn.utils import resample
 
@@ -26,7 +26,12 @@ try:
     from .sample_level_gene_data import getSampleLevelGeneData
 except ImportError:
     # Fallback if module not found
-    def getSampleLevelGeneData(dataset, genes):
+    def getSampleLevelGeneData(dataset: Dict, genes: List[str]) -> Any:
+        """Placeholder used only if :mod:`.sample_level_gene_data` fails to import.
+
+        Always raises, since there is no real implementation to fall
+        back to.
+        """
         raise ImportError("getSampleLevelGeneData function not available")
 
 
@@ -774,33 +779,43 @@ class GeneSearchOptimizer:
 
         return weighted_auc
 
-    def _precompute_gene_indices(self, gene_matrix, all_genes):
-        """Precompute gene->row index mapping to cache gene index lookups."""
+    def _precompute_gene_indices(
+        self, gene_matrix: pd.DataFrame, all_genes: List[str]
+    ) -> Dict[str, int]:
+        """Precompute a gene -> row-index mapping to cache gene index lookups."""
         index_map = {}
         for gene in all_genes:
             if gene in gene_matrix.index:
                 index_map[gene] = gene_matrix.index.get_loc(gene)
         return index_map
 
-    # 20260610dev - maybe for later
     def _score_genes_matrix_fast(
-        self, gene_matrix_values, pos_indices, neg_indices, n_samples
+        self,
+        gene_matrix_values: np.ndarray,
+        pos_indices: List[int],
+        neg_indices: List[int],
+        n_samples: int,
     ) -> np.ndarray:
-        """Vectorized scoring using precomputed indices.
+        """Vectorized scoring using precomputed gene row indices.
 
-        This is meant to be additional optimization
-        - It goes inside _backward_search_weighted and _forward_search_weighted, before the search loop,
-        where you'd convert each dataset's genes DataFrame to a raw NumPy array and pass it to
-        _score_genes_matrix_fast.
+        Note:
+            Not currently called anywhere — prepared as a faster
+            alternative to :meth:`_score_genes_matrix` for use inside
+            :meth:`_backward_search_weighted` / :meth:`_forward_search_weighted`,
+            where a dataset's gene expression DataFrame would be converted
+            to a raw NumPy array once and passed here together with
+            precomputed indices from :meth:`_precompute_gene_indices`,
+            avoiding repeated pandas label lookups inside the search loop.
 
         Args:
-            gene_matrix (pd.DataFrame): Gene expression matrix with genes as rows and samples as columns.
-            pos_genes (List[str]): List of genes in the positive signature.
-            neg_genes (List[str]): List of genes in the negative signature.
-            n_samples (int): Number of samples.
+            gene_matrix_values: Gene expression matrix as a raw NumPy
+                array (genes as rows, samples as columns).
+            pos_indices: Row indices of the positive-signature genes.
+            neg_indices: Row indices of the negative-signature genes.
+            n_samples: Number of samples (columns).
 
         Returns:
-            np.ndarray: Standardized score vector for each sample.
+            Standardized score vector, one value per sample.
         """
         epsilon = 1e-10
 

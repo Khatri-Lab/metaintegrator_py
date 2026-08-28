@@ -5,7 +5,7 @@ and extraction of sample-level gene data.
 """
 
 import warnings
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ import pandas as pd
 class COCONUTIntegrator:
     """Class for integrating MetaIntegrator objects with COCONUT analysis."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the COCONUT integrator."""
         pass
 
@@ -42,9 +42,7 @@ class COCONUTIntegrator:
             - rawDiseaseList: Original unnormalized disease samples
             - controlList: Normalized control samples and parameters
         """
-        from coconut.coconut import (
-            coconut as coconut_analysis,
-        )  # cross-package; resolved via src/ on sys.path
+        from coconut.coconut import coconut as coconut_analysis  # cross-package; resolved via src/ on sys.path
 
         # Convert to gene-level meta format (dict of dicts)
         gene_level_data_dict = self.gene_level_meta(meta_object)
@@ -247,7 +245,7 @@ class SampleLevelGeneExtractor:
     DEFAULT_REPLACEMENT_VALUE = 1.0
     DEFAULT_THRESHOLD = 0.0
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the extractor."""
         pass
 
@@ -781,7 +779,7 @@ class MetaIntegratorToCOCONUT:
                    gene data.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the converter."""
         self.integrator = COCONUTIntegrator()
         self.extractor = SampleLevelGeneExtractor()

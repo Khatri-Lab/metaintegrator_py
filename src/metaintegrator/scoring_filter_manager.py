@@ -6,27 +6,21 @@ FilterManager uses the consolidated scoring_core infrastructure.
 import warnings
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Any
+from typing import Any, Dict, List, Optional, Set
 
 import numpy as np
 import pandas as pd
 
 # Import from the consolidated core module (eliminates ~300 lines)
-from .scoring_core import (
-    # Data structures (eliminates duplicates)
-    FilterSummary,
-    OverlapAnalysis,
-    # Validators (simplifies validation)
-    MetaObjectValidator,
+from .scoring_core import ConfigurationError  # Configuration validation
+from .scoring_core import FilteringError  # Specific filtering errors
+from .scoring_core import LoggerMixin  # Adds consistent logging
+from .scoring_core import (  # Data structures (eliminates duplicates); Validators (simplifies validation); Utilities (standardizes operations); Standardizes DataFrame ops; Exceptions (standardizes error handling); Better error messages
     FilterResultsValidator,
-    # Utilities (standardizes operations)
-    LoggerMixin,  # Adds consistent logging
+    FilterSummary,
+    MetaObjectValidator,
+    OverlapAnalysis,
     StatisticalUtils,
-    # Standardizes DataFrame ops
-    # Exceptions (standardizes error handling)
-    # Better error messages
-    FilteringError,  # Specific filtering errors
-    ConfigurationError,  # Configuration validation
 )
 
 # ==================================================================
@@ -107,9 +101,9 @@ class FilterValidator:
 class FilterExtractor(LoggerMixin):
     """Enhanced filter extractor with improved error handling."""
 
-    def __init__(self, validator: FilterValidator, **kwargs):
+    def __init__(self, validator: FilterValidator, **kwargs) -> None:
         """
-        Initialise the extractor with a validator instance.
+        Initialize the extractor with a validator instance.
 
         Args:
             validator (FilterValidator): The validator to use for meta objects.
@@ -126,7 +120,7 @@ class FilterExtractor(LoggerMixin):
 
         Args:
             meta_object (Dict): The meta object containing filter results.
-            filter_name (str): The name of the filter to summarise.
+            filter_name (str): The name of the filter to summarize.
 
         Returns:
             FilterSummary: A summary object describing the filter.
@@ -232,7 +226,7 @@ class FilterExtractor(LoggerMixin):
 class OverlapCalculator(LoggerMixin):
     """Enhanced overlap calculator using core utilities."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         """Initialize the calculator.
 
         Args:
@@ -489,9 +483,9 @@ class OverlapCalculator(LoggerMixin):
 class FilterManager(LoggerMixin):
     """Enhanced filter manager with simplified architecture and better error handling."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         """
-        Initialise the manager with its components.
+        Initialize the manager with its components.
 
         Args:
             **kwargs: Additional keyword arguments passed to the LoggerMixin constructor.
@@ -868,7 +862,7 @@ def create_filter_manager(**kwargs) -> FilterManager:
 # ==================================================================
 
 
-def example_usage():
+def example_usage() -> None:
     """Example of how to use the enhanced FilterManager."""
     import logging
 

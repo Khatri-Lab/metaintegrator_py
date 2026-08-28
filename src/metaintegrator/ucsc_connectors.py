@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -48,7 +48,7 @@ class UCSDConnectionPool:
     Handles connection reuse and automatic cleanup.
     """
 
-    def __init__(self, config: UCSDConnectionConfig, max_connections: int = 5):
+    def __init__(self, config: UCSDConnectionConfig, max_connections: int = 5) -> None:
         """Initialize connection pool."""
         self.config = config
         self.max_connections = max_connections
@@ -57,7 +57,7 @@ class UCSDConnectionPool:
         self._max_connection_age = timedelta(minutes=10)  # Refresh connections after 10 min
 
     @contextmanager
-    def get_connection(self, database: str):
+    def get_connection(self, database: str) -> Iterator[Any]:
         """Get a database connection from the pool."""
         if not MYSQL_AVAILABLE:
             raise RuntimeError("MySQL connector not available")
@@ -74,7 +74,7 @@ class UCSDConnectionPool:
                 self._cleanup_connection(database)
             raise e
 
-    def _get_or_create_connection(self, database: str):
+    def _get_or_create_connection(self, database: str) -> Any:
         """Get existing connection or create new one."""
         now = datetime.now()
 
@@ -111,7 +111,7 @@ class UCSDConnectionPool:
         except MySQLError as e:
             raise MySQLError(f"Failed to connect to UCSC database {database}: {str(e)}")
 
-    def _cleanup_connection(self, database: str):
+    def _cleanup_connection(self, database: str) -> None:
         """Clean up a specific database connection."""
         if database in self._connections:
             try:
@@ -125,7 +125,7 @@ class UCSDConnectionPool:
                 if database in self._connection_times:
                     del self._connection_times[database]
 
-    def cleanup_all(self):
+    def cleanup_all(self) -> None:
         """Clean up all connections."""
         for database in list(self._connections.keys()):
             self._cleanup_connection(database)
@@ -143,7 +143,7 @@ class UCSDGenBankConnector:
         self,
         cache_dir: Optional[str] = None,
         config: Optional[UCSDConnectionConfig] = None,
-    ):
+    ) -> None:
         """
         Initialize GenBank connector.
 
@@ -165,7 +165,7 @@ class UCSDGenBankConnector:
         self.local_db = self.cache_dir / "ucsc_genbank.db"
         self._init_local_cache()
 
-    def _init_local_cache(self):
+    def _init_local_cache(self) -> None:
         """Initialize local SQLite cache."""
         try:
             with sqlite3.connect(self.local_db) as conn:
@@ -327,7 +327,7 @@ class UCSDGenBankConnector:
 
         return None
 
-    def _save_to_cache(self, df: pd.DataFrame, organism: int):
+    def _save_to_cache(self, df: pd.DataFrame, organism: int) -> None:
         """Save data to local cache."""
         try:
             with sqlite3.connect(self.local_db) as conn:
@@ -407,7 +407,7 @@ class UCSDGenBankConnector:
 
         return result_mapping
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Clean up resources."""
         self.connection_pool.cleanup_all()
 
@@ -424,7 +424,7 @@ class UCSDRefSeqConnector:
         self,
         cache_dir: Optional[str] = None,
         config: Optional[UCSDConnectionConfig] = None,
-    ):
+    ) -> None:
         """
         Initialize RefSeq connector.
 
@@ -445,7 +445,7 @@ class UCSDRefSeqConnector:
         self.local_db = self.cache_dir / "ucsc_refseq.db"
         self._init_local_cache()
 
-    def _init_local_cache(self):
+    def _init_local_cache(self) -> None:
         """Initialize local SQLite cache."""
         try:
             with sqlite3.connect(self.local_db) as conn:
@@ -596,7 +596,7 @@ class UCSDRefSeqConnector:
 
         return None
 
-    def _save_to_cache(self, df: pd.DataFrame, database: str):
+    def _save_to_cache(self, df: pd.DataFrame, database: str) -> None:
         """Save data to local cache."""
         try:
             with sqlite3.connect(self.local_db) as conn:
@@ -681,7 +681,7 @@ class UCSDRefSeqConnector:
 
         return result_mapping
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Clean up resources."""
         self.connection_pool.cleanup_all()
 

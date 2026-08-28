@@ -47,7 +47,7 @@ def _maybe_convert_series(series: pd.Series) -> pd.Series:
     Inspect a Series.  If it is *numeric* and every non‑null value is a whole number, cast it to Int64.
     Otherwise, return it unchanged.
 
-    The function also normalises missing values:
+    The function also normalizes missing values:
       * the literal string "NA" (case‑insensitive) → np.nan
       * empty strings → np.nan
     """
@@ -101,7 +101,7 @@ def convert_floats_to_int64(df: pd.DataFrame) -> pd.DataFrame:
 
 def run_convert_floats_to_int64(
     input_path: str, output_path: str | None = None, debug: bool = False
-):
+) -> None:
     """
     Reads a CSV file, transforms float columns that are whole numbers into int64,
     and writes the resulting modified data to either an output file or standard output.
@@ -140,6 +140,7 @@ def run_convert_floats_to_int64(
 #  Main routine
 # --------------------------------------------------------------------------- #
 def main(argv: List[str] | None = None) -> None:
+    """CLI entry point: parse --input/--output/--debug and run the conversion."""
     parser = argparse.ArgumentParser(
         description="Read a CSV and cast columns that are whole‑number floats to Int64."
     )

@@ -7,15 +7,16 @@ appropriate sources and handlers for common use cases.
 All loader creation goes through :class:`DataLoaderFactory`.  The
 convenience functions at module level are thin wrappers.
 
-Examples
---------
-# R-parity (recommended — matches R MetaIntegrator output)
->>> loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
->>> datasets = loader.load_multiple(['GSE11909', 'GSE50635'])
+Examples:
+    R-parity (recommended — matches R MetaIntegrator output)::
 
-# Or via convenience functions:
->>> datasets = load_geo_datasets_processed(['GSE11909'], strategy='r_parity')
->>> datasets = load_geo_datasets(['GSE11909'], strategy='r_parity')  # legacy dict format
+        loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
+        datasets = loader.load_multiple(['GSE11909', 'GSE50635'])
+
+    Or via the convenience functions::
+
+        datasets = load_geo_datasets_processed(['GSE11909'], strategy='r_parity')
+        datasets = load_geo_datasets(['GSE11909'], strategy='r_parity')  # legacy dict format
 """
 
 from __future__ import annotations
@@ -24,11 +25,11 @@ import logging
 from pathlib import Path
 from typing import List
 
-from .base import DataLoader, DataSource, DataHandler, ProcessedDataset
+from .base import DataHandler, DataLoader, DataSource, ProcessedDataset
 from .geo_sources import create_geo_source
-from .microarray_handler import MicroarrayHandler
-from .hybrid_source import HybridGeoSource
 from .hybrid_handler import HybridMicroarrayHandler
+from .hybrid_source import HybridGeoSource
+from .microarray_handler import MicroarrayHandler
 
 log = logging.getLogger(__name__)
 
@@ -62,35 +63,28 @@ class DataLoaderFactory:
         normalize: bool = False,
         **kwargs,
     ) -> DataLoader:
-        """
-        Create a DataLoader for GEO microarray data.
+        """Create a DataLoader for GEO microarray data.
 
-        Parameters
-        ----------
-        strategy : str, default='full'
-            ``'hybrid'``: Series Matrix expr + GEOparse annotation.
-                **Recommended for production.**
-            ``'r_parity'``: Alias for ``'hybrid'``.
-            ``'full'``: Complete dataset with ALL samples (GEOparse/SOFT).
-            ``'fast'``: Subset via Series Matrix (may miss samples).
-        cache_dir : str or Path, default='~/.geo_cache'
-            Cache directory for downloaded files.
-        log_transform : bool, default=False
-            Apply log2 transformation (``full`` / ``fast`` only).
-        normalize : bool, default=False
-            Apply quantile normalization (``full`` / ``fast`` only).
-        **kwargs
-            Additional arguments passed to source constructor.
+        Args:
+            strategy: ``'hybrid'`` uses Series Matrix expression + GEOparse
+                annotation and is recommended for production;
+                ``'r_parity'`` is an alias for ``'hybrid'``; ``'full'``
+                downloads the complete dataset with all samples via
+                GEOparse/SOFT; ``'fast'`` uses Series Matrix only and may
+                miss samples.
+            cache_dir: Cache directory for downloaded files.
+            log_transform: Apply log2 transformation (``full`` / ``fast``
+                strategies only).
+            normalize: Apply quantile normalization (``full`` / ``fast``
+                strategies only).
+            **kwargs: Additional arguments passed to the source constructor.
 
-        Returns
-        -------
-        DataLoader
-            Configured loader ready to fetch and process data.
+        Returns:
+            A configured loader, ready to fetch and process data.
 
-        Examples
-        --------
-        >>> loader = DataLoaderFactory.create_geo_loader('hybrid')
-        >>> datasets = loader.load_multiple(['GSE11909', 'GSE50635'])
+        Examples:
+            >>> loader = DataLoaderFactory.create_geo_loader('hybrid')
+            >>> datasets = loader.load_multiple(['GSE11909', 'GSE50635'])
         """
         if strategy in ("hybrid", "r_parity"):
             source = HybridGeoSource(cache_dir=cache_dir)
@@ -109,28 +103,22 @@ class DataLoaderFactory:
     def create_microarray_loader(
         source_type: str = "geo_full", cache_dir: str | Path = "~/.data_cache", **kwargs
     ) -> DataLoader:
-        """
-        Create a DataLoader for microarray data from various sources.
+        """Create a DataLoader for microarray data from various sources.
 
-        A more general version of :meth:`create_geo_loader` that can
-        be extended to support additional microarray sources.
+        A more general version of :meth:`create_geo_loader` that can be
+        extended to support additional microarray sources.
 
-        Parameters
-        ----------
-        source_type : str, default='geo_full'
-            ``'geo_hybrid'``: Hybrid strategy (recommended).
-            ``'geo_r_parity'``: Alias for ``'geo_hybrid'``.
-            ``'geo_full'``: NCBI GEO via SOFT (complete).
-            ``'geo_fast'``: NCBI GEO via Series Matrix (subset).
-            ``'geo'``: Alias for ``'geo_full'``.
-        cache_dir : str or Path
-            Cache directory.
-        **kwargs
-            Additional arguments for source/handler.
+        Args:
+            source_type: ``'geo_hybrid'`` (recommended) or its alias
+                ``'geo_r_parity'`` use the hybrid strategy;
+                ``'geo_full'`` (and its alias ``'geo'``) fetches from
+                NCBI GEO via SOFT (complete); ``'geo_fast'`` fetches via
+                Series Matrix (subset).
+            cache_dir: Cache directory.
+            **kwargs: Additional arguments for the source/handler.
 
-        Returns
-        -------
-        DataLoader
+        Returns:
+            A configured loader for the requested source type.
         """
         source_map = {
             "geo_hybrid": "hybrid",
@@ -159,11 +147,8 @@ class DataLoaderFactory:
     def create_rnaseq_loader(
         source: str = "gdc", cache_dir: str | Path = "~/.data_cache", **kwargs
     ) -> DataLoader:
-        """
-        Create a DataLoader for RNA-seq data.
+        """Create a DataLoader for RNA-seq data.
 
-        Notes
-        -----
         Placeholder — not yet implemented.
         """
         raise NotImplementedError(
@@ -174,11 +159,8 @@ class DataLoaderFactory:
     def create_single_cell_loader(
         source: str = "cellxgene", cache_dir: str | Path = "~/.data_cache", **kwargs
     ) -> DataLoader:
-        """
-        Create a DataLoader for single-cell RNA-seq data.
+        """Create a DataLoader for single-cell RNA-seq data.
 
-        Notes
-        -----
         Placeholder — not yet implemented.
         """
         raise NotImplementedError(
@@ -198,36 +180,27 @@ def load_geo_datasets_processed(
     stop_on_error: bool = False,
     **kwargs,
 ) -> List[ProcessedDataset]:
-    """
-    Load GEO datasets and return :class:`ProcessedDataset` objects.
+    """Load GEO datasets and return :class:`ProcessedDataset` objects.
 
-    This is the recommended entry point for new code.  It supports
-    all strategies and returns typed objects.
+    This is the recommended entry point for new code — it supports every
+    strategy and returns typed objects.
 
-    Parameters
-    ----------
-    gse_ids : list[str]
-        GEO Series IDs to load.
-    strategy : str, default='hybrid'
-        Loader strategy (see :meth:`DataLoaderFactory.create_geo_loader`).
-    cache_dir : str or Path
-        Cache directory.
-    stop_on_error : bool, default=False
-        If ``True``, raise on first failure.
-    **kwargs
-        Additional arguments passed to the factory.
+    Args:
+        gse_ids: GEO Series IDs to load.
+        strategy: Loader strategy (see
+            :meth:`DataLoaderFactory.create_geo_loader`).
+        cache_dir: Cache directory.
+        stop_on_error: If True, raise on the first failure.
+        **kwargs: Additional arguments passed to the factory.
 
-    Returns
-    -------
-    list[ProcessedDataset]
-        Processed datasets ready for meta-analysis.
+    Returns:
+        Processed datasets, ready for meta-analysis.
 
-    Examples
-    --------
-    >>> datasets = load_geo_datasets_processed(['GSE11909', 'GSE50635'])
-    >>> for ds in datasets:
-    ...     print(f"{ds.geo_id}: {ds.expr.shape}")
-    GSE11909_GPL96: (22283, 118)
+    Examples:
+        >>> datasets = load_geo_datasets_processed(['GSE11909', 'GSE50635'])
+        >>> for ds in datasets:
+        ...     print(f"{ds.geo_id}: {ds.expr.shape}")
+        GSE11909_GPL96: (22283, 118)
     """
     loader = DataLoaderFactory.create_geo_loader(
         strategy=strategy,
@@ -245,29 +218,20 @@ def load_geo_datasets(
     cache_dir: str = "~/.geo_cache",
     **kwargs,
 ) -> list[dict]:
-    """
-    Load GEO datasets and return legacy dict format.
+    """Load GEO datasets and return the legacy dict format.
 
-    .. deprecated::
-        Prefer :func:`load_geo_datasets_processed` which returns typed
-        :class:`ProcessedDataset` objects and defaults to ``r_parity``.
+    Deprecated: prefer :func:`load_geo_datasets_processed`, which returns
+    typed :class:`ProcessedDataset` objects and defaults to ``r_parity``.
 
-    Parameters
-    ----------
-    gse_ids : list[str]
-        GEO Series IDs to load.
-    strategy : str, default='full'
-        ``'r_parity'``, ``'full'``, or ``'fast'``.
-    cache_dir : str
-        Cache directory.
-    **kwargs
-        Additional arguments for the factory.
+    Args:
+        gse_ids: GEO Series IDs to load.
+        strategy: ``'r_parity'``, ``'full'``, or ``'fast'``.
+        cache_dir: Cache directory.
+        **kwargs: Additional arguments for the factory.
 
-    Returns
-    -------
-    list[dict]
-        Each dict has keys: ``geo_id``, ``expr``, ``pheno``,
-        ``keys``, ``metadata``.
+    Returns:
+        One dict per dataset, each with keys ``geo_id``, ``expr``,
+        ``pheno``, ``keys``, and ``metadata``.
     """
     loader = DataLoaderFactory.create_geo_loader(
         strategy=strategy,

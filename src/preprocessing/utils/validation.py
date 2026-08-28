@@ -18,7 +18,7 @@ Version: 1.0.0
 """
 
 import warnings
-from typing import Dict, List, Tuple, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -655,18 +655,18 @@ def quick_validate_download(
         return False
 
 
-def print_validation_report(geo_data: Dict[str, Any], title: str = "Dataset Validation Report"):
+def print_validation_report(
+    geo_data: Dict[str, Any], title: str = "Dataset Validation Report"
+) -> None:
     """
     Print comprehensive validation report.
 
     Args:
-    geo_data : dict
-        GEO dataset to validate
-    title : str, default="Dataset Validation Report"
-        Report title
+        geo_data: GEO dataset to validate.
+        title: Report title.
 
     Examples:
-    >>> print_validation_report(dataset, "GSE12345 Validation")
+        >>> print_validation_report(dataset, "GSE12345 Validation")
     """
     print(f"\n{'=' * 80}")
     print(f"{title}")

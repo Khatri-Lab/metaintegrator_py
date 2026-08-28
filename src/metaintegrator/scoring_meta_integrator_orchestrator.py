@@ -27,22 +27,19 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
 # Import all refactored scoring modules (relative imports within package)
-from .scoring_core import (
-    # Core infrastructure
-    LoggerMixin,
-    # Exceptions
-    ValidationError,
+from .scoring_core import (  # Core infrastructure; Exceptions; Data structures
     ConfigurationError,
-    # Data structures
+    LoggerMixin,
     StatisticalSummary,
+    ValidationError,
 )
-from .scoring_export_engine import ExportEngine, ExportConfig
+from .scoring_export_engine import ExportConfig, ExportEngine
 
 # Import refactored modules
 from .scoring_gene_scorer import (
@@ -51,13 +48,13 @@ from .scoring_gene_scorer import (
     ScoringMethod,
 )
 from .scoring_meta_integrator_filter import (
-    EnhancedMetaIntegratorFilter,
     EnhancedFilterConfig,
     EnhancedFilterResults,
+    EnhancedMetaIntegratorFilter,
 )
 from .scoring_results_summarizer import (
-    EnhancedSummaryConfig,
     EnhancedResultSummarizer,
+    EnhancedSummaryConfig,
 )
 from .scoring_statistical_analysis import StatisticalAnalyzer
 
@@ -71,7 +68,7 @@ class OrchestratorConfig:
     """
     Enhanced configuration for the MetaIntegratorOrchestrator.
 
-    This dataclass defines the settings that control the behaviour of the orchestrator. It
+    This dataclass defines the settings that control the behavior of the orchestrator. It
     includes options for logging, caching, validation, and workflow control.
 
     Attributes:
@@ -157,7 +154,7 @@ class OrchestrationResults:
     Container for comprehensive orchestration results.
 
     This dataclass aggregates the results from the MetaIntegratorOrchestrator and
-    provides utility properties and methods to summarise the outcomes. It holds core
+    provides utility properties and methods to summarize the outcomes. It holds core
     metadata about the run, results from individual components, quality and performance
     metrics, export paths, error and warning tracking, and configuration snapshots.
 
@@ -275,12 +272,12 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
 
     Attributes:
         config (OrchestratorConfig, optional): Configuration object controlling
-            logging, caching, validation, and workflow behaviour. When omitted,
+            logging, caching, validation, and workflow behavior. When omitted,
             a default OrchestratorConfig instance is created.
         **kwargs: Additional keyword arguments passed to the LoggerMixin base class.
     """
 
-    def __init__(self, config: Optional[OrchestratorConfig] = None, **kwargs):
+    def __init__(self, config: Optional[OrchestratorConfig] = None, **kwargs) -> None:
         """
         Initialize the enhanced meta‑integrator orchestrator.
 
@@ -543,7 +540,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
 
         Step 3: Comprehensive statistical analysis
             Applies an EnhancedResultSummarizer that includes trend analysis,
-            quality assessment, and visualisation generation. The summarised
+            quality assessment, and visualization generation. The summarized
             output, statistical summary and quality assessment are stored in
             results.comprehensive_summary, results.statistical_summary and
             results.quality_assessment respectively. The duration of the analysis
@@ -1239,7 +1236,7 @@ class EnhancedMetaIntegratorOrchestrator(LoggerMixin):
 class MetaIntegratorOrchestrator(EnhancedMetaIntegratorOrchestrator):
     """Legacy compatibility class for backward compatibility."""
 
-    def __init__(self, config: Optional[dict] = None, **kwargs):
+    def __init__(self, config: Optional[dict] = None, **kwargs) -> None:
         """
         Legacy initialization supporting legacy config format.
 

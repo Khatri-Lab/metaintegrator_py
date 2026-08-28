@@ -18,11 +18,11 @@ Original R package by Winston A. Haynes , Francesco Vallania , Aurelie Tomczak ,
 Aditya M. Rao , Purvesh Khatri (Khatri Lab, Stanford University).
 """
 
-# Core modules
-from .core_analysis import *
-
 # Analysis and scoring modules
 from .analysis import *
+
+# Core modules
+from .core_analysis import *
 from .scoring_core import *
 from .scoring_meta_integrator_orchestrator import *
 
@@ -38,31 +38,31 @@ try:
 except ImportError:
     _HAS_ENHANCED_PLOTTER = False
 
-# Data validation (comprehensive framework)
-from .validation import (
-    DatasetValidator,
-    MetaAnalysisValidator,
-    MetaObjectValidator,
-    DataObjectValidator,
-    ValidationResult,
-    check_data_object,
-    validate_and_report,
-)
+# Biological annotation
+from .biological_annotation import *
+
+# Integration modules
+from .coconut_integration import *
 
 # Data processing (transformation operations)
 from .data_processing import DataProcessor
-from .sample_ops import subset_original_data, subsetOriginalData
 from .labeling import assign_class_labels
-
-# Biological annotation
-from .biological_annotation import *
 
 # Specialized analysis modules
 from .power_calculation import *
 from .prc_analysis import *
+from .sample_ops import subset_original_data, subsetOriginalData
 
-# Integration modules
-from .coconut_integration import *
+# Data validation (comprehensive framework)
+from .validation import (
+    DataObjectValidator,
+    DatasetValidator,
+    MetaAnalysisValidator,
+    MetaObjectValidator,
+    ValidationResult,
+    check_data_object,
+    validate_and_report,
+)
 
 __version__ = "0.1.0"
 __author__ = "Khatri Lab - Python port of R MetaIntegrator"

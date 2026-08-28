@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Set, Union, Any, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -920,7 +920,7 @@ class MetaObjectValidator(BaseValidator):
 class LoggerMixin:
     """Mixin to provide consistent logging across all classes."""
 
-    def __init__(self, logger: Optional[logging.Logger] = None, **kwargs):
+    def __init__(self, logger: Optional[logging.Logger] = None, **kwargs) -> None:
         """
         Initialize the LoggerMixin.
 

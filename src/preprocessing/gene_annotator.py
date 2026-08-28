@@ -40,7 +40,7 @@ class GeneAnnotator:
     Implements R MetaIntegrator's .GEO_fData_key_parser() logic:
 
     1. Locate the gene-symbol column in the GPL table by trying a
-       prioritised list of known column names.
+       prioritized list of known column names.
     2. For *direct* symbol columns (``Gene Symbol``, ``Symbol``, ...),
        replace ``///`` and ``;`` separators with commas, keeping the
        full multi-gene string -- matching R's ``gsub``.
@@ -106,23 +106,17 @@ class GeneAnnotator:
         probe_ids: pd.Index,
         validator: object | None = None,
     ) -> List[str]:
-        """
-        Map *probe_ids* to gene symbols using *gpl_table*.
+        """Map ``probe_ids`` to gene symbols using ``gpl_table``.
 
-        Parameters
-        ----------
-        gpl_table : pd.DataFrame
-            GPL annotation table.
-        probe_ids : pd.Index
-            Probe identifiers from the expression matrix.
-        validator : object with ``valid_genes: Set[str]``, optional.
-            When supplied, symbols whose first gene is absent from the
-            set are replaced with ``'NA'``.
+        Args:
+            gpl_table: GPL annotation table.
+            probe_ids: Probe identifiers from the expression matrix.
+            validator: Optional object exposing a ``valid_genes: Set[str]``
+                attribute. When supplied, any symbol whose first gene is
+                absent from that set is replaced with ``'NA'``.
 
-        Returns
-        -------
-        list[str]
-            Gene symbols aligned 1-to-1 with *probe_ids*.
+        Returns:
+            Gene symbols aligned 1-to-1 with ``probe_ids``.
         """
         gene_col = self.find_symbol_column(gpl_table)
         if gene_col is None:
@@ -181,7 +175,7 @@ class GeneAnnotator:
     # ------------------------------------------------------------------ #
 
     def find_symbol_column(self, table: pd.DataFrame) -> Optional[str]:
-        """Return the first recognised gene-symbol column in *table*."""
+        """Return the first recognized gene-symbol column in *table*."""
         for col in self.SYMBOL_COLUMNS:
             if col in table.columns:
                 return col

@@ -31,8 +31,8 @@ import gzip
 import io
 import logging
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import List, Optional
 
@@ -43,30 +43,14 @@ class NCBINetwork:
     """
     Low-level NCBI network operations with retry and caching.
 
-    All network I/O goes through this class, making it the single
-    seam to mock for offline testing.
+    All network I/O goes through this class, making it the single seam to
+    mock for offline testing.
 
-    Parameters
-    ----------
-    cache_dir : str or Path
-        Directory for caching downloaded files on disk.
-    ftp_host : str, default='ftp.ncbi.nlm.nih.gov'
-        NCBI FTP hostname (also used for HTTPS mirror URLs).
-    ftp_timeout : int, default=30
-        Timeout in seconds for FTP connections.
-    http_timeout : int, default=120
-        Timeout in seconds for HTTPS downloads.
-    max_retries : int, default=3
-        Maximum number of retry attempts for failed downloads.
-    retry_backoff : float, default=2.0
-        Exponential backoff base in seconds between retries.
-
-    Examples
-    --------
-    >>> net = NCBINetwork(cache_dir='~/.geo_cache')
-    >>> ftp_path = NCBINetwork.geo_series_ftp_path('GSE11909', 'matrix')
-    >>> files = net.list_ftp_directory(ftp_path, suffix='_series_matrix.txt.gz')
-    >>> local = net.download_file(ftp_path, files[0])
+    Examples:
+        >>> net = NCBINetwork(cache_dir='~/.geo_cache')
+        >>> ftp_path = NCBINetwork.geo_series_ftp_path('GSE11909', 'matrix')
+        >>> files = net.list_ftp_directory(ftp_path, suffix='_series_matrix.txt.gz')
+        >>> local = net.download_file(ftp_path, files[0])
     """
 
     DEFAULT_FTP_HOST = "ftp.ncbi.nlm.nih.gov"
@@ -80,6 +64,17 @@ class NCBINetwork:
         max_retries: int = 3,
         retry_backoff: float = 2.0,
     ):
+        """Initialize the network layer.
+
+        Args:
+            cache_dir: Directory for caching downloaded files on disk.
+            ftp_host: NCBI FTP hostname (also used for HTTPS mirror URLs).
+            ftp_timeout: Timeout in seconds for FTP connections.
+            http_timeout: Timeout in seconds for HTTPS downloads.
+            max_retries: Maximum retry attempts for failed downloads.
+            retry_backoff: Exponential backoff base, in seconds, between
+                retries.
+        """
         self.cache_dir = Path(cache_dir).expanduser()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.ftp_host = ftp_host
@@ -97,27 +92,19 @@ class NCBINetwork:
         ftp_path: str,
         suffix: Optional[str] = None,
     ) -> List[str]:
-        """
-        List files in an NCBI FTP directory.
+        """List files in an NCBI FTP directory.
 
-        Parameters
-        ----------
-        ftp_path : str
-            Path relative to FTP root (e.g.
-            ``'geo/series/GSE11nnn/GSE11909/matrix'``).
-        suffix : str, optional
-            If given, only return filenames ending with this suffix
-            (e.g. ``'_series_matrix.txt.gz'``).
+        Args:
+            ftp_path: Path relative to the FTP root, e.g.
+                ``'geo/series/GSE11nnn/GSE11909/matrix'``.
+            suffix: If given, only return filenames ending with this
+                suffix, e.g. ``'_series_matrix.txt.gz'``.
 
-        Returns
-        -------
-        list[str]
+        Returns:
             Filenames (not full paths) in the directory.
 
-        Raises
-        ------
-        ConnectionError
-            If the FTP connection fails after retries.
+        Raises:
+            ConnectionError: If the FTP connection fails after retries.
         """
         last_error: Optional[Exception] = None
 
@@ -157,28 +144,21 @@ class NCBINetwork:
         ftp_path: str,
         filename: str,
     ) -> Path:
-        """
-        Download a file via HTTPS and cache it on disk.
+        """Download a file via HTTPS and cache it on disk.
 
         If the file already exists in :attr:`cache_dir`, the cached
-        version is returned immediately (no network call).
+        version is returned immediately with no network call.
 
-        Parameters
-        ----------
-        ftp_path : str
-            FTP directory path (used to build HTTPS mirror URL).
-        filename : str
-            Name of the file to download.
+        Args:
+            ftp_path: FTP directory path (used to build the HTTPS mirror
+                URL).
+            filename: Name of the file to download.
 
-        Returns
-        -------
-        Path
+        Returns:
             Local path to the (possibly cached) file.
 
-        Raises
-        ------
-        RuntimeError
-            If download fails after retries.
+        Raises:
+            RuntimeError: If the download fails after retries.
         """
         local = self.cache_dir / filename
         if local.exists():
@@ -219,29 +199,21 @@ class NCBINetwork:
         ftp_path: str,
         filename: str,
     ) -> bytes:
-        """
-        Download a file and return its contents as bytes.
+        """Download a file and return its contents as bytes.
 
-        Uses HTTPS as the primary method.  Falls back to FTP with
-        retry if HTTPS fails.  Validates gzip integrity if the
-        filename ends with ``.gz``.
+        Uses HTTPS as the primary method, falling back to FTP with retry
+        if HTTPS fails. Validates gzip integrity when the filename ends
+        with ``.gz``.
 
-        Parameters
-        ----------
-        ftp_path : str
-            FTP directory path.
-        filename : str
-            Name of the file to download.
+        Args:
+            ftp_path: FTP directory path.
+            filename: Name of the file to download.
 
-        Returns
-        -------
-        bytes
-            Raw file contents.
+        Returns:
+            The raw file contents.
 
-        Raises
-        ------
-        RuntimeError
-            If both HTTPS and FTP fail.
+        Raises:
+            RuntimeError: If both HTTPS and FTP fail.
         """
         is_gz = filename.endswith(".gz")
 
@@ -299,28 +271,21 @@ class NCBINetwork:
 
     @staticmethod
     def geo_series_ftp_path(gse_id: str, subpath: str = "matrix") -> str:
-        """
-        Build the FTP directory path for a GEO series.
+        """Build the FTP directory path for a GEO series.
 
-        Parameters
-        ----------
-        gse_id : str
-            GEO Series ID (e.g. ``'GSE11909'``).
-        subpath : str, default='matrix'
-            Subdirectory within the series (``'matrix'``, ``'soft'``,
-            ``'suppl'``).
+        Args:
+            gse_id: GEO Series ID, e.g. ``'GSE11909'``.
+            subpath: Subdirectory within the series (``'matrix'``,
+                ``'soft'``, ``'suppl'``).
 
-        Returns
-        -------
-        str
-            FTP path, e.g. ``'geo/series/GSE11nnn/GSE11909/matrix'``.
+        Returns:
+            The FTP path, e.g. ``'geo/series/GSE11nnn/GSE11909/matrix'``.
 
-        Examples
-        --------
-        >>> NCBINetwork.geo_series_ftp_path('GSE11909', 'matrix')
-        'geo/series/GSE11nnn/GSE11909/matrix'
-        >>> NCBINetwork.geo_series_ftp_path('GSE50635', 'soft')
-        'geo/series/GSE50nnn/GSE50635/soft'
+        Examples:
+            >>> NCBINetwork.geo_series_ftp_path('GSE11909', 'matrix')
+            'geo/series/GSE11nnn/GSE11909/matrix'
+            >>> NCBINetwork.geo_series_ftp_path('GSE50635', 'soft')
+            'geo/series/GSE50nnn/GSE50635/soft'
         """
         gse_num = gse_id.replace("GSE", "")
         subdir = f"GSE{gse_num[:-3]}nnn"
@@ -332,13 +297,10 @@ class NCBINetwork:
 
     @staticmethod
     def _validate_gzip(data: bytes, source_label: str) -> None:
-        """
-        Verify that *data* is a valid gzip stream.
+        """Verify that ``data`` is a valid, non-empty gzip stream.
 
-        Raises
-        ------
-        ValueError
-            If data is not valid gzip or is empty.
+        Raises:
+            ValueError: If the data is not valid gzip, or is empty.
         """
         try:
             with gzip.GzipFile(fileobj=io.BytesIO(data)) as gz:

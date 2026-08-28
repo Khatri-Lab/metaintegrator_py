@@ -25,10 +25,6 @@ enhanced/forest-plot-capable class must switch to
 ``from visualization import EnhancedMetaAnalysisPlotter``.
 """
 
-# The "basic" plotter: volcano, forest, heatmap, effect-size distribution,
-# study overview, MA summary.
-from .plotting import MetaAnalysisPlotter
-
 # The "enhanced" plotter: forest/gg-forest/heatmap/Manhattan/
 # predictive-value/ROC/PRC/violin/regression, plus multi-dataset ROC/PRC
 # convenience functions. Was also named MetaAnalysisPlotter — see the
@@ -39,14 +35,17 @@ from .enhanced_plotting import (
     gg_forest_plot,
     heatmap_plot,
     manhattan_plot,
-    predictive_value_plot,
-    multiple_roc_plot,
     multiple_prc_plot,
-    roc_plot,
+    multiple_roc_plot,
     prc_plot,
+    predictive_value_plot,
+    roc_plot,
 )
 
-from .violin_plot import violin_plot, multi_violin_plot
+# The "basic" plotter: volcano, forest, heatmap, effect-size distribution,
+# study overview, MA summary.
+from .plotting import MetaAnalysisPlotter
+from .violin_plot import multi_violin_plot, violin_plot
 
 __all__ = [
     "MetaAnalysisPlotter",

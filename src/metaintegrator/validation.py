@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Union, Any, Protocol, Tuple
+from typing import Any, Dict, List, Protocol, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -534,7 +534,7 @@ class DatasetValidator(BaseValidator):
         The class vector is optional.  When present it must be numeric and
         contain only the values 0, 1, or -1.  The method accepts the vector in
         a variety of Python or pandas containers (dict, list, Series, or a
-        scalar) and normalises it to a list of floats for validation.
+        scalar) and normalizes it to a list of floats for validation.
         """
         class_vector = dataset.get("class")
 
@@ -542,14 +542,12 @@ class DatasetValidator(BaseValidator):
             return  # Class vector is optional
 
         # Convert to list for checking
-        # Bug fix:
-        # The bug was that numpy arrays (np.ndarray) needs to be included in the isinstance check.
-        # When class_vector is a numpy array, it fell through to the else clause which wrapped
-        # the entire array in a list: [array([0, 0, 1, 1, ...])]
-        # This caused float(v) to try converting the whole array → TypeError
+        # np.ndarray must be handled explicitly here alongside pd.Series/list --
+        # otherwise it falls through to the else branch below and gets wrapped
+        # whole in a single-element list, which breaks the float(v) conversion.
         if isinstance(class_vector, dict):
             values = list(class_vector.values())
-        elif isinstance(class_vector, (pd.Series, list, np.ndarray)):  # ✅ FIXED: Added np.ndarray
+        elif isinstance(class_vector, (pd.Series, list, np.ndarray)):
             values = list(class_vector)
         else:
             values = [class_vector]
@@ -845,8 +843,6 @@ class DatasetValidator(BaseValidator):
         """
         Check if dataset has proper class vector structure.
 
-        FIXED: Now properly handles None class vectors.
-
         Args:
             dataset: Dictionary containing 'expr', 'class', and 'keys'
 
@@ -857,7 +853,8 @@ class DatasetValidator(BaseValidator):
         if "class" not in dataset or "expr" not in dataset:
             return False
 
-        # CRITICAL FIX: Check if class vector is None BEFORE trying to use it
+        # Check for None before converting to a numpy array, which would
+        # otherwise raise rather than let us return a clean False.
         class_vector_raw = dataset["class"]
         if class_vector_raw is None:
             return False  # Cannot validate a None class vector
@@ -1558,6 +1555,7 @@ class MetaObjectValidator(BaseValidator):
     """Validator for Meta objects (main containers)."""
 
     def __init__(self) -> None:
+        """Initialize with validators for datasets, meta-analysis, and meta-filter sub-objects."""
         super().__init__()
         self.dataset_validator = DatasetValidator()
         self.meta_analysis_validator = MetaAnalysisValidator()
@@ -1733,7 +1731,7 @@ class MetaObjectValidator(BaseValidator):
         The method attempts to retrieve the leaveOneOutAnalysis field
         from meta_obj.  When the field is missing the component is
         considered optional and the method returns without adding any
-        issue.  If the field is present the value is normalised to a
+        issue.  If the field is present the value is normalized to a
         list: dictionaries are converted to a list of their values,
         non‑list scalars are wrapped in a list, and existing lists are
         used unchanged.  Each element of the resulting list is
@@ -1778,7 +1776,7 @@ class MetaObjectValidator(BaseValidator):
         The method retrieves the filterResults field from meta_obj.  When the
         field is missing an error is recorded under the field path
         filterResults and the method exits.  If the field is present the
-        value is normalised to a list: dictionaries are converted to a
+        value is normalized to a list: dictionaries are converted to a
         list of their values, non‑list scalars are wrapped in a list,
         and existing lists are used unchanged.  Each element of the
         resulting list is validated with MetaFilterValidator.  Issues
@@ -1861,6 +1859,7 @@ class DataObjectValidator:
     """Main validation orchestrator using composition."""
 
     def __init__(self) -> None:
+        """Initialize with one validator per object type (dataset, meta-analysis, meta-filter, meta)."""
         self.dataset_validator = DatasetValidator()
         self.meta_analysis_validator = MetaAnalysisValidator()
         self.meta_filter_validator = MetaFilterValidator()
@@ -1882,13 +1881,13 @@ class DataObjectValidator:
         Returns:
             ValidationResult with all validation information.
 
-        The method first normalises the type arguments when strings are
+        The method first normalizes the type arguments when strings are
         supplied.  If object_type is a string it is converted to an
         ObjectType enumeration; a ValueError during this conversion
         results in an invalid ValidationResult with a single error
         issue.  The same conversion logic applies to object_stage,
-        which is normalised to an ObjectStage enumeration.  After
-        normalisation the method routes the validation request to the
+        which is normalized to an ObjectStage enumeration.  After
+        normalization the method routes the validation request to the
         appropriate validator component: DatasetValidator for a
         Dataset, MetaAnalysisValidator for a MetaAnalysis, MetaFilterValidator
         for a MetaFilter, and MetaObjectValidator for a Meta.  If the

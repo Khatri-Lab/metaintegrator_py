@@ -6,7 +6,7 @@ gene search optimization, and related statistical computations.
 
 import logging
 import warnings
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,11 +14,11 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 from sklearn.metrics import (
-    roc_curve,
     auc,
-    precision_recall_curve,
     average_precision_score,
+    precision_recall_curve,
     roc_auc_score,
+    roc_curve,
 )
 from sklearn.utils import resample
 
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 class PRCAnalyzer:
     """Class for Precision-Recall curve analysis."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize PRC analyzer."""
         pass
 
