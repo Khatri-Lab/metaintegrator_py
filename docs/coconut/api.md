@@ -21,7 +21,16 @@ User-friendly interface for common workflows, especially CSV-based data.
 Run the complete COCONUT pipeline with a single command.
 
 ```python
-def runner(csv_dir: str, output_dir: str | None = None) -> None
+def runner(
+    csv_dir: str,
+    output_dir: str | None = None,
+    control_0_col: str = "Healthy0.Sepsis1",
+    disease_col: str | None = None,
+    by_platform: bool = False,
+    platform_col: str | None = "Platform_id",
+    par_prior: bool = True,
+    it_conv: float = 1e-04,
+) -> None
 ```
 
 **Parameters:**
@@ -32,10 +41,28 @@ def runner(csv_dir: str, output_dir: str | None = None) -> None
 - **output_dir** *(str, optional)*  
   Directory to save output CSV files. If `None`, results are only printed
 
+- **control_0_col** *(str, optional)*  
+  Phenotype column indicating control samples (0 = control). Defaults to `"Healthy0.Sepsis1"` — pass your own column name if your data uses a different one.
+
+- **disease_col** *(str, optional)*  
+  Phenotype column indicating disease samples. If `None`, all non-control samples are treated as disease.
+
+- **by_platform** *(bool, optional)*  
+  Whether to normalize per platform. Requires `platform_col` when `True`.
+
+- **platform_col** *(str, optional)*  
+  Phenotype column with platform info, used when `by_platform=True`. Defaults to `"Platform_id"`.
+
+- **par_prior** *(bool, optional)*  
+  Whether to use parametric priors in the Bayesian batch-effect adjustment.
+
+- **it_conv** *(float, optional)*  
+  Convergence threshold for the iterative solution.
+
 **Output Files** (when `output_dir` provided):
 
-- `mcoco_combined_genes.csv` - Gene expression (genes × samples)
-- `mcoco_combined_genes_samples.csv` - Transposed (samples × genes)  
+- `mcoco_combined_genes_samples.csv` - Gene expression (genes × samples)
+- `mcoco_combined_genes.csv` - Transposed (samples × genes)  
 - `mcoco_combined_pheno.csv` - Sample metadata
 - `mcoco_combined_class_labels.csv` - Binary labels (0=control, 1=disease)
 
@@ -136,13 +163,24 @@ my_studies/
 Interactive workflow that helps users understand their data and COCONUT parameters.
 
 ```python
-def load_and_run_coconut_example(csv_directory: str) -> Dict
+def load_and_run_coconut_example(
+    csv_directory: str,
+    control_0_col: str = "Healthy0.Sepsis1",
+    disease_col: str | None = None,
+    by_platform: bool = False,
+    platform_col: str | None = "Platform_id",
+    par_prior: bool = True,
+    it_conv: float = 1e-04,
+) -> Dict
 ```
 
 **Parameters:**
 
 - **csv_directory** *(str, required)*  
   Path to directory with CSV files
+
+- **control_0_col**, **disease_col**, **by_platform**, **platform_col**, **par_prior**, **it_conv** *(optional)*  
+  Same meaning and defaults as in [`runner()`](#runner-most-popular) above — forwarded directly to `coconut()`.
 
 **Returns:**
 
@@ -151,10 +189,9 @@ Dictionary containing COCONUT results (same structure as `coconut()`)
 **What it does:**
 
 1. Loads data from CSV directory
-2. Shows available phenotype columns for each dataset
-3. Helps identify the control column
-4. Runs COCONUT with suggested parameters
-5. Returns results for further analysis
+2. Shows available phenotype columns for each dataset — useful for confirming your column names are actually present in your data
+3. Runs COCONUT using the column names you passed (or the defaults, if you didn't)
+4. Returns results for further analysis
 
 **Example:**
 
@@ -603,23 +640,19 @@ result = coconut(gses, control_0_col='control', par_prior=False)
 ## Version Information
 
 ```python
-import coconut
+import metaintegrator
 
 # Check version
-print(coconut.__version__)
+print(metaintegrator.__version__)
 ```
 
 ---
 
 ## See Also
 
+- [Command-Line Interface](../getting_started/cli.md) - Run this same pipeline from the shell
 - [Quick Start Guide](quickstart.md) - Get started in 5 minutes
 - [Workflow Guide](workflow.md) - Step-by-step tutorial
 - [Runner Guide](runner_guide.md) - Detailed `coconut_runner` documentation
 - [Best Practices](best_practices.md) - Tips for production use
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
-
----
-
-*Last updated: 2026-04-24*  
-*Package: metaintegrator_py*

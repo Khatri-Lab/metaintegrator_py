@@ -117,8 +117,7 @@ options(repr.plot.width = 10, repr.plot.height = 8)
 
 ## 📚 Advanced Usage
 
-
-#### 3. Enable Advanced Analyses
+#### 1. Enable Advanced Analyses
 ```r
 # Uncomment in Section 6:
 # Forward search

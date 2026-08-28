@@ -53,12 +53,16 @@ pytest test_coconut.py test_coconut_runner.py -v
 Specific tests, using the class/method names that actually exist today:
 
 ```bash
-pytest tests/coconut/test_coconut.py::TestCoconutMainFunction::test_debug_coconut_steps -v -s
+pytest tests/coconut/test_coconut.py::test_debug_coconut_steps -v -s
 pytest tests/coconut/test_coconut.py::TestCoconutMainFunction::test_data_structure_validation -v -s
 pytest tests/coconut/test_coconut.py::TestCoconutMainFunction::test_simple_coconut_functionality -v -s
 pytest tests/coconut/test_coconut.py::TestIntegrationTests -v
 pytest tests/coconut/test_coconut_runner.py::TestIntegration -v
 ```
+
+Note `test_debug_coconut_steps` is a module-level function, not a method of
+`TestCoconutMainFunction` — don't qualify it under that class or pytest
+won't find it.
 
 With coverage:
 
@@ -68,22 +72,22 @@ pytest tests/coconut/ --cov=coconut --cov-report=html
 
 ### Markers
 
-The root `pyproject.toml` registers `slow`, `integration`, `unit`,
-`parametric`, and `nonparametric` project-wide. Of those, **only `slow` is
-actually applied** anywhere in this directory today (one test in
-`test_coconut.py`, `TestPerformanceAndStress`). `integration`/`unit` etc.
-aren't decorated onto any test here — the `TestIntegrationTests` /
-`TestIntegration` classes above are just class *names*, not
-`@pytest.mark.integration`. So:
+The root `pyproject.toml` registers seven markers project-wide: `slow`,
+`integration`, `unit`, `parametric`, `nonparametric`, `performance`, and
+`regression`. Of those, **only `slow` is actually applied** anywhere in this
+directory today (one test in `test_coconut.py`, `TestPerformanceAndStress`).
+`integration`/`unit` etc. aren't decorated onto any test here — the
+`TestIntegrationTests` / `TestIntegration` classes above are just class
+*names*, not `@pytest.mark.integration`. So:
 
 ```bash
 pytest tests/coconut/ -m "not slow"      # skips the perf/stress test — does something
 pytest tests/coconut/ -m "not integration"  # currently a no-op here — nothing's marked
 ```
 
-is accurate; a command like `-m "not integration and not slow"` (as this
-doc previously suggested) only actually filters on the `slow` half of that
-expression today.
+is accurate; a command like `-m "not integration and not slow"` only
+actually filters on the `slow` half of that expression today, since nothing
+here is marked `integration`.
 
 ## Debugging tips
 

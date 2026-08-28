@@ -158,23 +158,25 @@ Gene expression meta-analysis differs from traditional clinical meta-analysis:
 ### Implementation
 
 ```python
-from preprocessing.geo_data_loader import get_geo_data
-from preprocessing.geo_annotation_engine import annotate_geo_dataset, GeneAnnotationEngine
+from preprocessing.loader_factory import DataLoaderFactory
+from metaintegrator.labeling import assign_class_labels
 from metaintegrator.analysis import MetaAnalyzer
 import numpy as np
 
-# 1. Data Acquisition
-meta_object = get_geo_data(
-    gse_vector=["GSE5847", "GSE28750"],
-    q_norm=True
-)
+# 1. Data Acquisition (gene annotation happens automatically inside the
+#    loader's handler -- there's no separate "annotate" step to call)
+loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
+datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
-# 2-3. QC happens during acquisition
+meta_object = {"originalData": {}}
+for ds in datasets:
+    dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
+               "formattedName": ds.geo_id, "class": None}
+    meta_object["originalData"][ds.geo_id] = assign_class_labels(
+        dataset, column_name="title", disease_terms=["disease"]
+    )
 
-# 4. Gene Annotation
-engine = GeneAnnotationEngine()
-for name, dataset in meta_object['originalData'].items():
-    meta_object['originalData'][name] = annotate_geo_dataset(dataset, engine)
+# 2-4. Preprocessing, QC, and gene annotation all happen during loading
 
 # 5. Gene Filtering (optional, shown in filtering guide)
 
@@ -480,7 +482,7 @@ for name, dataset in meta_object['originalData'].items():
 1. Check gene annotation was applied
 2. Verify all datasets are from same organism
 3. Check platform compatibility
-4. Re-run annotation with `enable_remote=True`
+4. Try re-annotating with a different annotation source (see the Gene Annotation tutorial)
 
 ```python
 # Check gene overlap

@@ -164,6 +164,20 @@ for ds in datasets:
 print("\n✅ Data ready for meta-analysis")
 ```
 
+!!! tip "Why the same `column_name` value works across every GEO dataset"
+    `ds.pheno` always has the same five standardized columns —
+    `title`, `source_name`, `organism`, `characteristics`, and
+    `description` — no matter what the original GEO submitter called
+    them (e.g. a raw `characteristics_ch1` field). Each loading
+    strategy's handler builds `pheno` from GEOparse's per-sample
+    metadata and normalizes the field names during loading, so
+    `column_name` in `assign_class_labels()` (and `possible_columns` in
+    a CLI config file) should reference one of these five standardized
+    names rather than a dataset's raw GEO field name. That's what lets
+    the same `column_name="title"` call, or a CLI config that lists
+    `characteristics` as a candidate column, work unchanged across
+    different GEO datasets.
+
 ### Platform-Specific Handling
 
 Platform lives on `ProcessedDataset.metadata`, before it's converted into the

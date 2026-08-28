@@ -376,7 +376,6 @@ print("   Creating heatmap...")
 fig = plotter.plot_heatmap(
     results,
     n_top_genes=50,
-    cluster=True,
     save_path=str(output_dir / "heatmap.png"),
 )
 print(f"      ✅ Saved: {output_dir}/heatmap.png")

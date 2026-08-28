@@ -634,7 +634,7 @@ After creating visualizations:
 
 ---
 
-### Step 7: Violin Plots (R-Parity)
+### Step 9: Violin Plots (R-Parity)
 
 Violin plots are the standard way to validate a gene signature in an independent
 dataset, showing the meta-score distribution for disease vs. control groups.

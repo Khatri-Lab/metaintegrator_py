@@ -171,8 +171,8 @@ df.loc[row_name, column_name]
 | `multipleROCPlot()` | `multiple_roc_plot()` | `visualization.enhanced_plotting` | — |
 | `multiplePRCPlot()` | `multiple_prc_plot()` | `visualization.enhanced_plotting` | — |
 | **ROC/PRC** | | | |
-| `calculateROC()` | `ROCAnalysisEngine.compute_roc()` | `metaintegrator.roc_analysis_engine` | — |
-| `calculatePRC()` | `PRCAnalysis.calculate_prc()` | `metaintegrator.prc_analysis` | — |
+| `calculateROC()` | `ROCAnalysisEngine.calculate_roc()` | `metaintegrator.roc_analysis_engine` | — |
+| `calculatePRC()` | `PRCAnalyzer.calculate_prc()` | `metaintegrator.prc_analysis` | — |
 | **Scoring** | | | |
 | `calculateScore()` | `ScoreCalculator.calculate_score()` | `metaintegrator.score_calculation` | Also: `calculateScore()` convenience function |
 | **Power Analysis** | | | |
@@ -535,7 +535,7 @@ results = pooled.loc[gene_list, "effectSize"].tolist()
 # ✅ Automatic resource cleanup
 import matplotlib.pyplot as plt
 
-with plt.style.context('seaborn'):
+with plt.style.context('seaborn-v0_8'):
     fig = plotter.plot_volcano(results)
     plt.savefig("volcano.png")
 # Style automatically reset after block

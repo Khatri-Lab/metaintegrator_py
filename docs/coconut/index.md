@@ -28,6 +28,10 @@ runner(csv_dir='./my_studies', output_dir='./results')
 
 👉 [**Full Quick Start Guide**](quickstart.md)
 
+Prefer the command line over a Python script? The same pipeline is available
+as `python -m src coconut_batch_effect_removal` — see the
+[Command-Line Interface guide](../getting_started/cli.md).
+
 ---
 
 ## 📚 Documentation Structure
@@ -134,46 +138,6 @@ COCONUT Python offers **significant improvements** for CSV-based workflows:
 | **Error Messages** | Generic | Specific, actionable |
 
 **See comparison:** [R to Python Guide](r_to_python.md)
-
----
-
-## 📖 Learning Paths
-
-### Path 1: Complete Beginners
-
-1. **Read** [Quick Start](quickstart.md) (5 min)
-2. **Run** the example code
-3. **Read** [Workflow Guide](workflow.md) (15 min)
-4. **Apply** to your own data
-5. **Reference** [Best Practices](best_practices.md) as needed
-
-**Total time:** ~30 minutes to first results
-
----
-
-### Path 2: R Users Migrating
-
-1. **Read** [R to Python Guide](r_to_python.md) (10 min)
-   - See syntax differences
-   - Discover Python advantages
-2. **Read** [Runner Guide](runner_guide.md) (15 min)
-   - Learn the one-command workflow
-   - See CSV loading simplifications
-3. **Run** example code
-4. **Reference** [API Reference](api.md) for specifics
-
-**Total time:** ~25 minutes to migration
-
----
-
-### Path 3: Experienced Python Users
-
-1. **Skim** [Quick Start](quickstart.md) (3 min)
-2. **Run** example code
-3. **Reference** [API Reference](api.md) as needed
-4. **Consult** [Best Practices](best_practices.md) for production
-
-**Total time:** ~10 minutes to first results
 
 ---
 
@@ -365,9 +329,9 @@ plt.ylabel("PC2")
 - 📖 [Best Practices](best_practices.md) - Production tips
 
 ### Community
-- 🐛 [Report bugs on GitHub](https://github.com/yourusername/metaintegrator_py/issues)
-- 💬 [Discussions](https://github.com/yourusername/metaintegrator_py/discussions)
-- 📧 Email: support@metaintegrator.org
+- 🐛 [Report bugs on GitHub](https://github.com/Khatri-Lab/metaintegrator_py/issues)
+- 💬 [Discussions](https://github.com/Khatri-Lab/metaintegrator_py/discussions)
+- 📧 Email: khatrilab-support@stanford.edu
 
 ### Debug Mode
 ```python
@@ -398,27 +362,6 @@ This package is licensed under the MIT License. See [LICENSE](../about/license.m
 
 ---
 
-## 🗺️ Site Map
-
-### Getting Started
-- [Quick Start](quickstart.md) ⚡
-- [Workflow Guide](workflow.md) 📖
-- [R to Python Guide](r_to_python.md) 🔄
-
-### Reference
-- [API Reference](api.md) 📚
-- [Runner Guide](runner_guide.md) 🏃
-- [Best Practices](best_practices.md) 💡
-- [Troubleshooting](troubleshooting.md) 🔧
-
-### Examples
-- One-command workflow → [Quick Start](quickstart.md)
-- Step-by-step tutorial → [Workflow Guide](workflow.md)
-- CSV loading → [Runner Guide](runner_guide.md)
-- Production patterns → [Best Practices](best_practices.md)
-
----
-
 **Ready to get started?** 🚀
 
 ```python
@@ -428,8 +371,3 @@ runner(csv_dir='./your_data', output_dir='./results')
 ```
 
 **Next:** [Quick Start Guide →](quickstart.md)
-
----
-
-*Last updated: 2026-04-24*  
-*Package: metaintegrator_py v0.1.0*

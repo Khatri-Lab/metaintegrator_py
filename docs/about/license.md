@@ -96,7 +96,7 @@ The original R MetaIntegrator package is licensed separately. This Python implem
 - Francesco Vallania
 - Purvesh Khatri
 
-**Reference**: Haynes WA, Vallania F, Liu C, et al. (2017). BIOINFORMATICS. [doi:10.1093/bioinformatics/btw694](https://doi.org/10.1093/bioinformatics/btw694)
+**Reference**: Haynes WA, Vallania F, Liu C, et al. (2017). *Bioinformatics*. [doi:10.1093/bioinformatics/btw694](https://doi.org/10.1093/bioinformatics/btw694)
 
 ---
 

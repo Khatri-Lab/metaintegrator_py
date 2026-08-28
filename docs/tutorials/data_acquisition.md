@@ -107,10 +107,11 @@ for ds in datasets:
 First download: ~2-3 minutes per dataset (network dependent)
 Subsequent runs against the same `cache_dir`: < 5 seconds (uses cached data)
 
-!!! tip "stop_on_error=False"
-    By default `load_multiple()` raises on the first failed dataset. Pass
-    `stop_on_error=False` to skip datasets that fail (bad GSE ID, network
-    issue, etc.) and keep the ones that succeeded.
+!!! tip "stop_on_error"
+    By default (`stop_on_error=False`), `load_multiple()` already skips
+    datasets that fail (bad GSE ID, network issue, etc.) and returns the
+    ones that succeeded. Pass `stop_on_error=True` if you want it to raise
+    on the first failure instead.
 
 ### Step 4: Inspect Dataset Structure
 

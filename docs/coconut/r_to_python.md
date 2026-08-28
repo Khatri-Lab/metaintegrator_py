@@ -81,6 +81,9 @@ runner(csv_dir='./data', output_dir='./results')
 
 ## Performance Benchmarks
 
+!!! warning "Performance Benchmarks Status"
+    The timing and memory figures below are theoretical estimates based on algorithm complexity, not measured results from head-to-head benchmarking. Actual performance depends on your dataset and hardware -- benchmark with your own data before relying on these numbers.
+
 ### Speed Comparison
 
 | Dataset Size | R Runtime | Python Runtime | Speedup |
@@ -105,7 +108,8 @@ runner(csv_dir='./data', output_dir='./results')
 
 ## Migration Checklist
 
-# Create the virtual environment
+### ✅ Step 1: Create the Virtual Environment
+
 ```bash
 # Using the built-in venv (Standard)
 python3 -m venv myenv
@@ -138,7 +142,7 @@ runner(csv_dir='./data', output_dir='./results')
 import pandas as pd
 import numpy as np
 
-python_genes = pd.read_csv('results/mcoco_combined_genes.csv', index_col=0)
+python_genes = pd.read_csv('results/mcoco_combined_genes_samples.csv', index_col=0)
 r_genes = pd.read_csv('r_results/genes.csv', index_col=0)
 
 correlation = np.corrcoef(

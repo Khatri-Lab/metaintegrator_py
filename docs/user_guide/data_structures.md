@@ -142,8 +142,8 @@ print(list(meta_object['originalData'].keys()))
 # Get all datasets
 datasets = meta_object['originalData']
 
-# Get specific dataset
-breast_cancer = meta_object['originalData']['Breast_Cancer']
+# Get specific dataset (keyed by geo_id, e.g. "GSE5847_GPL570" -- see above)
+breast_cancer = meta_object['originalData']['GSE5847_GPL570']
 
 # Get expression matrix
 expr = breast_cancer['expr']
@@ -261,6 +261,12 @@ print(f"Controls: {counts[0]}, Cases: {counts[1]}")
 **Shape**: (n_samples, n_features)  
 **Index**: Sample identifiers (matching `expr` columns)  
 **Columns**: Clinical/technical variables
+
+For data loaded from GEO specifically, `pheno` always exposes a standardized
+set of columns (`title`, `source_name`, `organism`, `characteristics`,
+`description`) regardless of the original GEO field names -- see
+[GEO Integration](geo_integration.md#data-processing-pipeline) for details.
+The generic example below applies to any `pheno` table, GEO-derived or not.
 
 ```python
 # Example

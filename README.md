@@ -49,7 +49,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-**Python 3.9+** is required. Core dependencies: pandas, numpy, scipy, scikit-learn, matplotlib, seaborn, statsmodels, GEOparse.
+**Python 3.10+** is required. Core dependencies: pandas, numpy, scipy, scikit-learn, matplotlib, seaborn, statsmodels, GEOparse.
 
 ## Project Structure
 

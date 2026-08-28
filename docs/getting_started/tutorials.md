@@ -212,9 +212,6 @@ Understanding typical execution times helps plan your analysis:
 | Visualization | 5-10 sec | Top 50 genes |
 | **Complete pipeline** | **1-2 min** | **2 studies** |
 
-### Pre-computed Mode Performance
-- **Everything**: < 30 seconds ⚡
-
 **Note**: First downloads require internet access and are slower. Subsequent runs use cached data for much faster execution.
 
 ## Learning Paths
@@ -336,7 +333,7 @@ for group_name, gse_list in dataset_groups.items():
    with open('meta_object.pkl', 'rb') as f:
        meta_object = pickle.load(f)
    ```
-6. **Use pre-computed data for teaching** – Avoid download delays in workshops
+6. **Pre-cache datasets before teaching** – Run the download once ahead of time so a workshop or demo uses the local cache instead of a live GEO download
 7. **Customize visualization early** – Set plot styles and sizes before generating many figures
 8. **Monitor memory usage** – For large datasets (>200 samples, >50k genes), process sequentially
 
@@ -411,9 +408,8 @@ git clone https://github.com/Khatri-Lab/metaintegrator_py.git
 ### Getting Support
 
 - **GitHub Issues**: [Report bugs or request features](https://github.com/Khatri-Lab/metaintegrator_py/issues)
-- **Discussion Forum**: Ask questions and share tips
-- **Email**: Contact the development team
-- **Stack Overflow**: Tag your question with `metaintegrator`
+- **GitHub Discussions**: [Ask questions](https://github.com/Khatri-Lab/metaintegrator_py/discussions)
+- **Email**: khatrilab-support@stanford.edu
 
 ## What's Different from R MetaIntegrator?
 
@@ -438,7 +434,7 @@ If you're coming from R MetaIntegrator, here are key differences:
 - **Integrated validation** – Built-in quality checks
 
 ### Compatibility
-- **Compatible data structures** – Can read R .RData files
+- **One-off R-to-Python conversion scripts** – A helper script (`download_and_convert_immunostates.py`, requiring R + rpy2) converts R-format reference data like the ImmunoStates matrix to CSV, to jump-start users coming from R MetaIntegrator. R and rpy2 are only needed for that one-time conversion, not for everyday use of metaintegrator_py.
 - **Equivalent results** – Statistical outputs match R version
 - **Same workflows** – Familiar analysis pipeline
 
@@ -485,7 +481,7 @@ Ready to start? We recommend:
 
 ---
 
-**Questions or feedback?** We'd love to hear from you! Open an issue on GitHub or join our discussion forum.
+**Questions or feedback?** We'd love to hear from you! Open an issue on GitHub.
 
 **Last updated**: 2026-04-22  
 **Contributors**: MetaIntegrator-py Development Team

@@ -406,7 +406,7 @@ import json
 
 processing_log = {
     'date': datetime.datetime.now().isoformat(),
-    'coconut_version': coconut.__version__,
+    'coconut_version': metaintegrator.__version__,
     'parameters': {
         'control_0_col': 'Healthy0.Sepsis1',
         'by_platform': False,

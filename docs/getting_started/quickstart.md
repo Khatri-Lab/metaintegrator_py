@@ -71,6 +71,7 @@ print(f"Up-regulated: {sig.n_pos}, Down-regulated: {sig.n_neg}")
 
 ## Next Steps
 
+- [Command-Line Interface](cli.md) — run this same pipeline without writing a script
 - [Complete Tutorial](../tutorials/complete_workflow.md)
 - [User Guide](../user_guide/concepts.md)
 - [API Reference](../api/overview.md)

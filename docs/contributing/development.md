@@ -35,7 +35,7 @@ We welcome contributors of all experience levels! Whether you're fixing a typo, 
 
 ### Prerequisites
 
-- **Python**: 3.8 or later
+- **Python**: 3.10 or later
 - **Git**: For version control
 - **GitHub Account**: To fork and submit pull requests
 - **IDE**: VS Code, PyCharm, or your preferred editor
@@ -46,11 +46,11 @@ We welcome contributors of all experience levels! Whether you're fixing a typo, 
 # 1. Fork the repository on GitHub (click "Fork" button)
 
 # 2. Clone your fork
-git clone https://github.com/Khatri-Lab/metaintegrator_py.git
-cd metaintegrator-py
+git clone https://github.com/YOUR-USERNAME/metaintegrator_py.git
+cd metaintegrator_py
 
 # 3. Add upstream remote
-git remote add upstream https://github.com/original/metaintegrator_py.git
+git remote add upstream https://github.com/Khatri-Lab/metaintegrator_py.git
 
 # 4. Create virtual environment
 python -m venv venv
@@ -117,23 +117,23 @@ pre-commit install
 pre-commit run --all-files
 ```
 
-Our `.pre-commit-config.yaml`:
+Example `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/psf/black
-    rev: 23.3.0
+    rev: 26.1.0
     hooks:
       - id: black
-        language_version: python3.9
+        language_version: python3.10
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+    rev: 9.0.1
     hooks:
       - id: isort
         args: ["--profile", "black"]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         args: ["--max-line-length=100", "--extend-ignore=E203,W503"]
@@ -513,16 +513,17 @@ We follow **PEP 8** with some modifications:
 # Configuration in pyproject.toml
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310']
+target-version = ['py310', 'py311', 'py312']
 
 [tool.isort]
 profile = "black"
 line_length = 100
-
-[tool.flake8]
-max-line-length = 100
-extend-ignore = ["E203", "W503"]
 ```
+
+flake8 doesn't read its configuration from `pyproject.toml` without extra
+tooling this project doesn't use. There's currently no `setup.cfg`, `.flake8`,
+or `tox.ini` in the repo either, so flake8 runs with its defaults today; if
+you want project-wide flake8 settings, add one of those files.
 
 ### Running Linters
 
@@ -744,7 +745,7 @@ class TestMyClass:
 ## Next Steps
 
 1. 📖 Read the [Contributing Guidelines](guidelines.md)
-2. 🐛 Find a [good first issue](https://github.com/org/metaintegrator-py/labels/good%20first%20issue)
+2. 🐛 Find a [good first issue](https://github.com/Khatri-Lab/metaintegrator_py/labels/good%20first%20issue)
 3. 💬 Join the discussion on GitHub
 4. 🚀 Start contributing!
 

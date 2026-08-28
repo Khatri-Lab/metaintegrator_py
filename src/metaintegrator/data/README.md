@@ -36,13 +36,17 @@ write.csv(immunoStatesMatrix, "immunoStates_reference_matrix.csv")
 
 Then place the CSV file in this directory.
 
-#### Option 2: Download from GitHub
+#### Option 2: Download from the Khatri Lab
+
+The reference matrix is also available directly from the Khatri Lab:
+
+```
+http://khatrilab.stanford.edu/immunoStates
+```
+
+After downloading the `.rda` file, convert it using the provided script:
 
 ```bash
-# Download the R data file
-wget https://github.com/Franenco/ImmunoStates/raw/master/data/immunoStatesMatrix.rda
-
-# Convert using the provided script
 python convert_immunostates_rda_to_csv.py
 ```
 

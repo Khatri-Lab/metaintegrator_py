@@ -29,6 +29,11 @@ runner(csv_dir='./my_data', output_dir='./results')
 
 **That's it!** Three lines replace 20+ lines of manual code.
 
+!!! tip "Command-line equivalent"
+    Prefer not to write a script at all? The same pipeline is available from
+    the shell as `python -m src coconut_batch_effect_removal` — see the
+    [Command-Line Interface guide](../getting_started/cli.md).
+
 ---
 
 ## 📦 Available Functions
@@ -39,12 +44,27 @@ runner(csv_dir='./my_data', output_dir='./results')
 
 **Signature**:
 ```python
-def runner(csv_dir: str, output_dir: str | None = None) -> None
+def runner(
+    csv_dir: str,
+    output_dir: str | None = None,
+    control_0_col: str = "Healthy0.Sepsis1",
+    disease_col: str | None = None,
+    by_platform: bool = False,
+    platform_col: str | None = "Platform_id",
+    par_prior: bool = True,
+    it_conv: float = 1e-04,
+) -> None
 ```
 
 **Parameters**:
 - `csv_dir` (str, required): Path to directory containing CSV files
 - `output_dir` (str, optional): Where to save output files. If None, only prints results.
+- `control_0_col` (str, optional): Phenotype column indicating control samples (0 = control). Defaults to `"Healthy0.Sepsis1"` — the column name used by this project's own sample data. **Pass your own column name if your phenotype data uses a different one.**
+- `disease_col` (str, optional): Phenotype column indicating disease samples. If `None`, all non-control samples are treated as disease.
+- `by_platform` (bool, optional): Whether to normalize per platform. Requires `platform_col` when `True`.
+- `platform_col` (str, optional): Phenotype column with platform info, used when `by_platform=True`. Defaults to `"Platform_id"`.
+- `par_prior` (bool, optional): Whether to use parametric priors in the Bayesian batch-effect adjustment.
+- `it_conv` (float, optional): Convergence threshold for the iterative solution.
 
 **What it does**:
 1. Loads all CSV files from directory
@@ -54,8 +74,8 @@ def runner(csv_dir: str, output_dir: str | None = None) -> None
 5. Exports 4 CSV files (if output_dir specified)
 
 **Output Files** (when output_dir is specified):
-- `mcoco_combined_genes.csv` - Gene expression (genes × samples)
-- `mcoco_combined_genes_samples.csv` - Transposed version (samples × genes)
+- `mcoco_combined_genes_samples.csv` - Gene expression (genes × samples)
+- `mcoco_combined_genes.csv` - Transposed version (samples × genes)
 - `mcoco_combined_pheno.csv` - Sample metadata
 - `mcoco_combined_class_labels.csv` - Binary class labels (0=control, 1=disease)
 
@@ -164,25 +184,33 @@ my_studies/
 
 **Signature**:
 ```python
-def load_and_run_coconut_example(csv_directory: str) -> Dict
+def load_and_run_coconut_example(
+    csv_directory: str,
+    control_0_col: str = "Healthy0.Sepsis1",
+    disease_col: str | None = None,
+    by_platform: bool = False,
+    platform_col: str | None = "Platform_id",
+    par_prior: bool = True,
+    it_conv: float = 1e-04,
+) -> Dict
 ```
 
 **Parameters**:
 - `csv_directory` (str): Path to directory containing CSV files
+- `control_0_col`, `disease_col`, `by_platform`, `platform_col`, `par_prior`, `it_conv`: Same meaning and defaults as in [`runner()`](#1-runner-complete-end-to-end-pipeline-most-popular) above — these are forwarded straight to `coconut()`.
 
 **What it does**:
 1. Loads data from CSV directory
-2. **Shows available phenotype columns** for each dataset
-3. Helps identify the control column
-4. Runs COCONUT with suggested parameters
-5. Returns results for further analysis
+2. **Shows available phenotype columns** for each dataset — useful for confirming your `control_0_col` / `disease_col` / `platform_col` values are actually present in your data
+3. Runs COCONUT using the column names you passed (or the defaults, if you didn't)
+4. Returns results for further analysis
 
 **Example Output**:
 ```
 🥥 COCONUT Pipeline Starting...
 
-🔎 Loading CSV data from './sepsis_studies' …
-✅ Successfully loaded 3 datasets
+[loading prints a "📊 DATASET SUMMARY" block here -- genes/samples
+ counts and key phenotype columns per dataset]
 
 🔍 Inspecting phenotype columns...
 
@@ -558,7 +586,7 @@ def complete_analysis_pipeline(
     runner(csv_dir=input_dir, output_dir=str(output_path / 'coconut'))
     
     # Load results
-    genes = pd.read_csv(output_path / 'coconut' / 'mcoco_combined_genes.csv', index_col=0)
+    genes = pd.read_csv(output_path / 'coconut' / 'mcoco_combined_genes_samples.csv', index_col=0)
     pheno = pd.read_csv(output_path / 'coconut' / 'mcoco_combined_pheno.csv', index_col=0)
     labels = pd.read_csv(output_path / 'coconut' / 'mcoco_combined_class_labels.csv')
     
@@ -685,41 +713,6 @@ result = memory_efficient_coconut('./large_dataset', './results', max_genes_per_
 ```
 
 **Use when**: Working with >50K genes or limited memory
-
----
-
-## 📚 Complete Tutorial Scripts
-
-For fully executable, production-ready examples, see these tutorial scripts:
-
-### Main Tutorial
-📄 **[tutorials/complete_coconut_tutorial.py]**
-
-**Includes:**
-- Complete workflow from loading to export
-- All 6 steps with detailed comments
-- Quality assessment plots (PCA, distributions, correlations)
-- Error handling examples
-- Analysis report generation
-
-**Run it:**
-```bash
-python tutorials/complete_coconut_tutorial.py
-```
-
-### Introductory Tutorial
-📄 **[tutorials/coconut_introductory_workflow_complete.py]**
-
-**Includes:**
-- Introduction to batch effects (conceptual figure)
-- Simplified workflow for beginners
-- Basic quality checks
-- Step-by-step explanations
-
-**Run it:**
-```bash
-python tutorials/coconut_introductory_workflow_complete.py
-```
 
 ---
 
@@ -863,7 +856,7 @@ Study2_pheno.csv
 
 ## 📊 Output File Guide
 
-### File 1: `mcoco_combined_genes.csv`
+### File 1: `mcoco_combined_genes_samples.csv`
 
 **Format**: Standard gene expression matrix
 ```
@@ -877,7 +870,7 @@ Gene2    7.12     5.98     8.34     ...
 
 ---
 
-### File 2: `mcoco_combined_genes_samples.csv`
+### File 2: `mcoco_combined_genes.csv`
 
 **Format**: Transposed (samples as rows)
 ```
@@ -934,14 +927,10 @@ Sample3,0
 
 ## 📞 Getting Help
 
+- **Command-Line Interface**: [cli.md](../getting_started/cli.md)
 - **Quick Start**: [quickstart.md](quickstart.md)
 - **Workflow Guide**: [workflow.md](workflow.md)
 - **API Reference**: [api.md](api.md)
 - **Best Practices**: [best_practices.md](best_practices.md)
 - **Troubleshooting**: [troubleshooting.md](troubleshooting.md)
 - **R Comparison**: [r_to_python.md](r_to_python.md)
-
----
-
-*Last updated: 2026-04-24*
-*Package: metaintegrator_py v0.1.0*

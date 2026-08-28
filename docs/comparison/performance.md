@@ -47,7 +47,7 @@ The theoretical estimates below assume the following environment:
 
 | Software | Python | R |
 |----------|--------|---|
-| **Language** | Python 3.9+ | R 4.2+ |
+| **Language** | Python 3.10+ | R 4.2+ |
 | **Package** | metaIntegrator-py | MetaIntegrator (Bioconductor) |
 | **Key Dependencies** | NumPy, pandas, scipy | Bioconductor packages |
 

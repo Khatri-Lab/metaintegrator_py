@@ -35,7 +35,7 @@ print(pooled.nsmallest(10, "effectSizeFDR")[["effectSize", "effectSizeFDR"]])
 ```
 
 ## Key Features
-   
+
 - **🥥 COCONUT Batch Normalization**: Remove technical batch effects
 - **Meta-Analysis**: Combine results across studies
 - **GEO Integration**: Direct data download
@@ -74,6 +74,7 @@ print(pooled.nsmallest(10, "effectSizeFDR")[["effectSize", "effectSizeFDR"]])
 ## 📚 Documentation Sections
 
 - **[Getting Started](getting_started/installation.md)** - Installation and quick start
+- **[Command-Line Interface](getting_started/cli.md)** - Run COCONUT and meta-analysis from the command line, no script required
 - **[Tutorials](tutorials/complete_workflow.md)** - Step-by-step guides
 - **[User Guide](user_guide/concepts.md)** - Core concepts and best practices
 - **[API Reference](api/overview.md)** - Detailed API documentation
@@ -121,6 +122,7 @@ EnhancedMetaAnalysisPlotter().forest_plot(gene_name="GENE1", meta_object=results
 
 - [COCONUT Quick Start (5 min)](coconut/quickstart.md)
 - [MetaIntegrator Quick Start](getting_started/quickstart.md)
+- [Command-Line Interface](getting_started/cli.md)
 - [Installation Guide](getting_started/installation.md)
 - [Complete Tutorial](tutorials/complete_workflow.md)
 - [API Reference](api/overview.md)

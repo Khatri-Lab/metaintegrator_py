@@ -25,25 +25,10 @@ In 2025, development began on MetaIntegrator-py to bring these trusted methods t
 - **Usability**: Pythonic API with comprehensive documentation
 - **Community**: Open development with transparent testing
 
-### Timeline
-
-| Date | Milestone                                               |
-|------|---------------------------------------------------------|
-| **2017-01** | Original R MetaIntegrator published in *Bioinformatics* |
-| **2025-12** | Python port development initiated                       |
-| **2026-02** | Alpha release with core meta-analysis functionality     |
-| **2026-03** | Beta release for internal testing                       |
-| **2026-04** | Public v1.0.0 release with full R parity                |
-
----
-
 ## 👥 Core Team
 
-### Principal Investigator
-**Purvesh Khatri, PhD**  
-Associate Professor, Stanford University  
-Director, Institute for Immunity, Transplantation and Infection  
-[ORCID: 0000-0002-0364-5028](https://orcid.org/0000-0002-0364-5028)
+### Khatri Lab Team, Stanford University
+MetaIntegrator-py is developed and maintained by the [Khatri Lab](https://khatrilab.stanford.edu/) at Stanford University.
 
 ### Original R Package Authors
 - **Winston A. Haynes** – Lead developer, original R package
@@ -132,20 +117,6 @@ If you use MetaIntegrator-py in your research, please cite:
 ---
 
 ## 🙏 Acknowledgments
-
-### Funding
-
-Development of MetaIntegrator-py has been supported by:
-- National Institutes of Health (NIH)
-- Stanford University
-- Bill & Melinda Gates Foundation
-
-### Research Collaborations
-
-We thank our collaborators and early adopters who provided valuable feedback:
-- Stanford Institute for Immunity, Transplantation and Infection
-- Clinical research partners across multiple institutions
-- The broader bioinformatics community
 
 ### Open-Source Community
 

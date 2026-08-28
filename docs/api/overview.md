@@ -55,7 +55,8 @@ Core analysis, scoring, and gene filtering.
 | `core_analysis` | `MetaAnalysisCore`, `FisherCombination` | Statistical engine (Hedge's g, inverse-variance, Fisher) |
 | `score_calculation` | `ScoreCalculator` | Geometric-mean z-score per sample |
 | `sample_level_gene_data` | `SampleLevelGeneDataProcessor` | Probe-to-gene matrix for scoring |
-| `scoring_meta_integrator_filter` | `MetaIntegratorFilter`, `FilterResults` | FDR + effect-size + LOOA gene filtering (the fuller, strategy-based filter — see note below) |
+| `scoring_meta_integrator_filter` | `MetaIntegratorFilter` | FDR + effect-size + LOOA gene filtering (the fuller, strategy-based filter — see note below) |
+| `scoring_core` | `FilterConfig`, `FilterResults` (+ shared configs/validators) | Config and result dataclasses used by `MetaIntegratorFilter` |
 | `scoring_meta_integrator_orchestrator` | `MetaIntegratorOrchestrator` | End-to-end scoring pipeline |
 | `scoring_filter_manager` | `FilterManager` | Filter parameter management |
 | `scoring_gene_scorer` | `GeneScorer` | Per-gene scoring logic |
@@ -70,6 +71,8 @@ Core analysis, scoring, and gene filtering.
 | `labeling` | `assign_class_labels()` | Build a class vector from a phenotype column (module-level function, not a class) |
 | `biological_annotation` | `BiologicalAnnotator` | Gene set enrichment & pathway annotation |
 | `clinical_metrics_analyzer` | `ClinicalParametersAnalyzer`, `YoudenJAnalyzer` | Sensitivity, specificity, PPV/NPV, optimal cutpoint |
+| `meta_analysis_config` | `validate_config()`, `generate_template()`, `load_config_file()`, `DEFAULTS` | Config schema, validation, and template generation for the `meta_analysis` CLI command |
+| `meta_analysis_runner` | `run_pipeline()`, `main()` | 8-stage pipeline orchestrator behind the `meta_analysis` CLI command — see the [Command-Line Interface guide](../getting_started/cli.md) |
 
 > **Two independent gene-filtering paths exist** — `analysis.filter_genes()` /
 > `analysis.FilterResult` is the lightweight filter that mirrors R's

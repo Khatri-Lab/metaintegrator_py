@@ -327,18 +327,19 @@ print(f"Disease: {(labels == 1).sum()}")
 
 ```python
 # Check sample counts
-input_disease_samples = sum(
-    (gse['pheno']['control'] == 1).sum() 
+input_total_samples = sum(
+    len(gse['genes'].columns)
     for gse in gse_data
 )
 
 output_samples = len(combined['genes'].columns)
 
-print(f"\nInput disease samples: {input_disease_samples}")
+print(f"\nInput total samples: {input_total_samples}")
 print(f"Output samples: {output_samples}")
 
-# These should match (controls excluded from output by design)
-if input_disease_samples != output_samples:
+# These should match -- combine_coco_output() keeps both the normalized
+# controls and the normalized disease samples, nothing is dropped by design.
+if input_total_samples != output_samples:
     print("⚠️ Sample count mismatch - investigate!")
 ```
 
@@ -546,7 +547,6 @@ Common genes: {len(common_genes)}
 Parameters Used
 --------------
 control_0_col: control
-by_platform: {result.get('by_platform', False)}
 par_prior: True
 
 Output Data
@@ -580,28 +580,6 @@ with open(output_dir / 'analysis_report.txt', 'w') as f:
 print("✅ Analysis report saved")
 print(report)
 ```
-
----
-
-## Complete Example Script
-
-See the executable tutorial script for a working example:
-
-📄 **[tutorials/complete_coconut_tutorial.py]**
-
-This script includes:
-- Complete workflow from loading to export
-- All quality assessment plots
-- Detailed comments explaining each step
-- Error handling examples
-
-**Run it:**
-```bash
-python tutorials/complete_coconut_tutorial.py
-```
-
-**Introductory version:**
-📄 **[tutorials/coconut_introductory_workflow_complete.py]**
 
 ---
 

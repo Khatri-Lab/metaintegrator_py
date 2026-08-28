@@ -16,15 +16,20 @@ graph TB
 
     subgraph "Preprocessing Layer"
         Annotator["GeneAnnotator<br/><i>probe → gene symbol</i>"]
-        Validator["GeneValidator<br/><i>Ensembl filtering</i>"]
+        Validator["EnsemblGeneValidator<br/><i>Ensembl filtering</i>"]
         Converter["GeneConverter<br/><i>ID translation</i>"]
+    end
+
+    subgraph "Batch Correction (optional)"
+        Coconut["coconut()<br/><i>COCONUT batch normalization</i>"]
     end
 
     subgraph "Analysis Layer"
         Meta["MetaAnalyzer<br/><i>run_meta_analysis</i>"]
         Core["MetaAnalysisCore<br/><i>effect sizes, pooling</i>"]
         Fisher["FisherCombination<br/><i>directional p-values</i>"]
-        Filter["ScoringMetaIntegratorFilter<br/><i>gene filtering</i>"]
+        Filter["MetaIntegratorFilter<br/><i>gene filtering</i>"]
+        GeneSearch["GeneSearchOptimizer<br/><i>forward/backward search</i>"]
     end
 
     subgraph "Scoring Layer"
@@ -46,14 +51,21 @@ graph TB
     Annotator --> Validator
     Annotator --> Converter
     Handlers -->|ProcessedDataset| Meta
+    Handlers -.->|optional, per-study CSVs| Coconut
+    Coconut -.->|combine_coco_output → meta_input| Meta
     Meta --> Core
     Meta --> Fisher
     Core -->|pooledResults| Filter
+    Filter -->|optional refinement| GeneSearch
     Filter --> Score
+    GeneSearch -.-> Score
     Score --> SampleGene
     Score --> ROC
     ROC --> Enhanced
     Filter --> Violin
+
+    style Coconut fill:#e0f7fa
+    style GeneSearch fill:#f3e5f5
 ```
 
 ## Module Map
@@ -62,7 +74,7 @@ graph TB
 |---------|--------|---------------|
 | **preprocessing** | `base.py` | Abstract base classes: `DataSource`, `DataHandler`, `DataLoader`, `ProcessedDataset` |
 | | `loader_factory.py` | `DataLoaderFactory` — single entry point for creating loaders |
-| | `geo_sources.py` | `NCBIGeoSource` — Series Matrix fetching |
+| | `geo_sources.py` | `NCBIGeoSource` — Series Matrix fetching; `GEOparseSource` — full SOFT-based fetching (the `'full'` strategy) |
 | | `hybrid_source.py` | `HybridGeoSource` — Series Matrix expr + GEOparse annotation |
 | | `hybrid_handler.py` | `HybridMicroarrayHandler` — orchestrates annotation, log2, pheno |
 | | `microarray_handler.py` | `MicroarrayHandler` — full SOFT-based processing |
@@ -72,11 +84,13 @@ graph TB
 | | `ncbi_fetcher.py` | `NCBIFetcher` — Series Matrix downloader behind the `'fast'` strategy, with size guard and pickle caching |
 | | `ncbi_network.py` | `NCBINetwork` — low-level FTP/HTTPS transport with retry & disk caching, the injectable seam used by every source |
 | | `r_parity_handler.py`, `r_parity_source.py` | **Deprecated aliases** — re-export `HybridMicroarrayHandler`/`HybridGeoSource` under their old names; not separate implementations |
+| | `r_parity_loader.py` | `load_geo_datasets_r_parity()` — backward-compatible function wrapper around `DataLoaderFactory(strategy='r_parity')`, kept for older notebooks/tests |
 | **metaintegrator** | `analysis.py` | `MetaAnalyzer` — top-level orchestrator for meta-analysis |
 | | `core_analysis.py` | `MetaAnalysisCore`, `FisherCombination` — statistical engine |
 | | `score_calculation.py` | `ScoreCalculator` — geometric-mean z-score computation |
 | | `sample_level_gene_data.py` | `SampleLevelGeneDataProcessor` — probe-level to gene-level extraction |
-| | `scoring_meta_integrator_filter.py` | Gene filtering by FDR, effect size, leave-one-out |
+| | `scoring_meta_integrator_filter.py` | `MetaIntegratorFilter` — gene filtering by FDR, effect size, leave-one-out |
+| | `gene_search_optimizer.py` | `GeneSearchOptimizer` — AUC-driven `forward_search()` / `backward_search()` signature refinement |
 | | `scoring_meta_integrator_orchestrator.py` | End-to-end scoring orchestration |
 | | `roc_analysis_engine.py` | ROC curve computation and multi-dataset ROC plots |
 | | `prc_analysis.py` | Precision-recall curve analysis |
@@ -167,7 +181,7 @@ flowchart LR
     Strategy -->|"// format"| Parse["Parse delimited"]
     Strategy -->|"RefSeq/GenBank"| Convert["GeneConverter"]
 
-    Direct --> Validate{"GeneValidator<br/>(Ensembl)"}
+    Direct --> Validate{"EnsemblGeneValidator<br/>(Ensembl)"}
     Parse --> Validate
     Convert --> Validate
 
@@ -185,7 +199,7 @@ flowchart LR
 
 **Key design decisions for R-parity:**
 
-1. **Ensembl validation** (`GeneValidator`) — rejects non-HGNC symbols like LOC*, ORFs,
+1. **Ensembl validation** (`EnsemblGeneValidator`) — rejects non-HGNC symbols like LOC*, ORFs,
    and mitochondrial gene aliases. Controlled via `validator` parameter in `HybridMicroarrayHandler`.
 2. **GenBank accession filter** (`GeneAnnotator.GENBANK_ACCESSION_RE`) — rejects accession IDs
    (AF*, AK*, BC*, etc.) that some platforms include alongside gene symbols.
@@ -245,7 +259,8 @@ jupyter notebook jupyter_metaintegrator_sle_tutorial.ipynb
 2. **Meta-analysis**: `MetaAnalyzer.run_meta_analysis()` → `MetaAnalysisCore.calculate_effect_sizes()` → `pool_inverse_variance()`
 3. **Filter genes**: `MetaAnalyzer.filter_genes()` (in `analysis.py`) → returns `filter_object` with `posGeneNames` / `negGeneNames`.
    A separate, strategy-based pipeline — `scoring_meta_integrator_filter.MetaIntegratorFilter` — also exists (standard / adaptive / combined-criteria); the two are not interchangeable, see [API Reference](api/overview.md#package-metaintegrator).
-4. **Score & evaluate**: `ScoreCalculator.calculate_score()` → `SampleLevelGeneDataProcessor` → ROC/AUC
+4. **Refine signature (optional)**: `GeneSearchOptimizer.forward_search()` / `.backward_search()` (in `gene_search_optimizer.py`) iteratively add/remove genes from `filter_object` based on their contribution to weighted AUC. See [User Guide: Gene Filtering](user_guide/filtering.md#metaintegrator_pys-built-in-gene-filtering).
+5. **Score & evaluate**: `ScoreCalculator.calculate_score()` → `SampleLevelGeneDataProcessor` → ROC/AUC
 
 ### Key data structures
 

@@ -117,6 +117,7 @@ nav:
   - Getting Started:
     - Installation: getting_started/installation.md
     - Quick Start: getting_started/quickstart.md
+    - Command-Line Interface: getting_started/cli.md
     - Tutorials Overview: getting_started/tutorials.md
   
   # NEW: COCONUT Section - Batch Normalization
@@ -158,7 +159,6 @@ nav:
     - R vs Python: comparison/r_vs_python.md
     - Migration Guide: comparison/migration_guide.md
     - Performance: comparison/performance.md
-    - Tutorials: comparison/tutorials.md
   
   - Contributing:
     - Development: contributing/development.md

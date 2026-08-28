@@ -147,7 +147,7 @@ those to a HUGO gene symbol:
 converter = GeneConverter()
 
 ensembl_ids = ["ENSG00000141510", "ENSG00000012048"]  # TP53, BRCA1
-symbols = [converter.convert(gid) for gid in ensembl_ids]
+symbols = [converter.to_gene_symbol(gid) for gid in ensembl_ids]
 print(symbols)  # ['TP53', 'BRCA1']
 ```
 

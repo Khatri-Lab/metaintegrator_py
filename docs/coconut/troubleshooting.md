@@ -197,7 +197,7 @@ for gse in gse_data:
 
 **Full Error:**
 ```
-ValueError: No common genes found between datasets
+ValueError: No common genes found across datasets
 ```
 
 **Cause:** Gene identifiers don't match across datasets.
@@ -256,7 +256,7 @@ for gse in gse_data:
 
 **Full Error:**
 ```
-ValueError: Dataset has < 1 control. Check your control column encoding.
+ValueError: Dataset at index 0 has < 1 control
 ```
 
 **Cause:** No samples marked as controls (value 0) in the specified column.
@@ -358,7 +358,7 @@ for gse in gse_data:
 
 **Full Error:**
 ```
-ValueError: platform_col must be provided when by_platform=True
+ValueError: platform_col must be provided if by_platform=True
 ```
 
 **Cause:** Enabled platform-specific normalization without specifying platform column.
@@ -400,7 +400,7 @@ for i, gse in enumerate(gse_data):
 
 **Full Error:**
 ```
-ValueError: At least 2 batches are required for batch correction
+ValueError: At least 2 batches are required for ComBat normalization. 1 batch(es) found.
 ```
 
 **Cause:** Only one dataset provided. COCONUT requires multiple studies.
@@ -480,12 +480,9 @@ for gse in gse_data:
 
 ---
 
-### Error: `Numerical instability detected`
+### Issue: Numerical instability (inf or NaN values)
 
-**Full Error:**
-```
-RuntimeError: Numerical instability: inf or nan values detected
-```
+**Symptom:** COCONUT doesn't explicitly check for `inf`/`NaN` values, so bad data here usually shows up as a NumPy `RuntimeWarning` (e.g. "invalid value encountered in ...") or NaN-filled results, not a single clean error message.
 
 **Cause:** Invalid numerical values (infinity or NaN) in data.
 
@@ -532,12 +529,9 @@ for i, gse in enumerate(gse_data):
 
 ---
 
-### Warning: `Very few samples in batch`
+### Issue: Very few samples in a batch
 
-**Full Warning:**
-```
-⚠️ Warning: Batch 2 has only 3 samples. Results may be unreliable.
-```
+**Symptom:** No explicit warning is raised for this -- but batch-effect estimates get less reliable when a batch has very few samples (typically <5), so it's worth checking batch sizes yourself.
 
 **Cause:** One batch has very few samples (typically <5).
 
@@ -765,17 +759,19 @@ common = _get_common_genes(gse_data)
 print(f"Common genes: {len(common)}")
 ```
 
-2. **Control samples used only for normalization:**
+2. **Controls are included in the combined output:**
 ```python
-# Controls are used to estimate batch effects but excluded from final output
-# This is expected behavior!
+# combine_coco_output() keeps both the normalized controls and the
+# normalized disease samples -- output_samples should equal the TOTAL
+# input sample count, not just the disease count. If it doesn't, the
+# real cause is usually sample-alignment during loading (see "Sample
+# mismatch" above), not controls being dropped here.
 
-# Count controls
 n_controls = sum(
     (gse['pheno']['control_col'] == 0).sum() 
     for gse in gse_data
 )
-print(f"Controls (excluded from output): {n_controls}")
+print(f"Controls (included in output): {n_controls}")
 ```
 
 3. **Phenotype column filtering:**
@@ -868,7 +864,7 @@ When asking for help, provide:
 1. **Error message** (full traceback)
 2. **Code that reproduces error**
 3. **Python version:** `python --version`
-4. **Package version:** `import coconut; print(coconut.__version__)`
+4. **Package version:** `import metaintegrator; print(metaintegrator.__version__)`
 5. **Data characteristics:**
    - Number of datasets
    - Samples per dataset

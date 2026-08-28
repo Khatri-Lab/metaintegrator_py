@@ -878,9 +878,7 @@ More studies = more power, but diminishing returns after ~10.
 ### Useful Resources
 
 - [GEO Database](https://www.ncbi.nlm.nih.gov/geo/)
-- [ArrayExpress](https://www.ebi.ac.uk/arrayexpress/)
-- [PRISMA Guidelines](http://www.prisma-statement.org/)
-- [MetaIntegrator-py Documentation](https://metaintegrator-py.readthedocs.io)
+- [MetaIntegrator-py Documentation](https://github.com/Khatri-Lab/metaintegrator_py/tree/main/docs)
 
 ---
 

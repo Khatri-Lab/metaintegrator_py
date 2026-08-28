@@ -249,7 +249,7 @@ Create a heatmap of effect sizes across studies.
 | meta_object | Dict | Meta-analysis results |
 | genes | List[str], optional | Specific genes to plot (None = auto-select) |
 | n_top_genes | int | Number of top genes if genes=None (default: 50) |
-| cluster | bool | Cluster genes (default: True) |
+| cluster | bool | Accepted but currently has no effect -- reserved for future hierarchical clustering of rows (default: True) |
 | save_path | str, optional | Path to save figure |
 
 **Returns**
@@ -269,7 +269,6 @@ my_genes = ["GAPDH", "TP53", "ACTB", "MYC"]
 fig = plotter.plot_heatmap(
     results,
     genes=my_genes,
-    cluster=False,
     save_path="heatmap.png"
 )
 ```
@@ -458,7 +457,6 @@ plt.show()
 fig = plotter.plot_heatmap(
     results,
     genes=sig_genes,
-    cluster=True
 )
 plt.savefig("05_heatmap.png", dpi=300)
 plt.show()

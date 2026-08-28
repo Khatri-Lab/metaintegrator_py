@@ -26,7 +26,7 @@ Welcome! We're excited to have you. Here's how to get started:
 1. ⭐ **Star the repository** to show your support
 2. 🍴 **Fork the repository** to your GitHub account
 3. 📖 **Read the documentation** to understand the project
-4. 🔍 **Browse open issues** labeled [`good first issue`](https://github.com/org/metaintegrator-py/labels/good%20first%20issue)
+4. 🔍 **Browse open issues** labeled [`good first issue`](https://github.com/Khatri-Lab/metaintegrator_py/labels/good%20first%20issue)
 5. 💬 **Ask questions** in GitHub Discussions
 6. 🚀 **Make your first contribution**
 
@@ -214,7 +214,7 @@ black --check src/
 ```toml
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310']
+target-version = ['py310', 'py311', 'py312']
 exclude = '''
 /(
     \.git
@@ -688,7 +688,7 @@ Full error traceback
 
 **Environment**
 - OS: [e.g., Ubuntu 22.04]
-- Python version: [e.g., 3.9.18]
+- Python version: [e.g., 3.10.12]
 - Package version: [e.g., 0.1.0]
 - NumPy version: [e.g., 1.24.3]
 ```
@@ -727,12 +727,6 @@ Include:
 - ✅ Examples provided
 - ✅ Comments for complex logic
 
-### Timeline
-
-- **Initial Review**: Within 3-5 business days
-- **Follow-up**: Within 2-3 business days
-- **Final Review**: Within 1-2 business days
-
 ### Feedback
 
 Feedback may include:
@@ -766,10 +760,10 @@ All contributors are recognized in:
 
 ### Resources
 
-- 📖 **Documentation**: [https://metaintegrator-py.readthedocs.io](https://metaintegrator-py.readthedocs.io)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/org/metaintegrator-py/discussions)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/org/metaintegrator-py/issues)
-- 📧 **Email**: maintainers@metaintegrator-py.org
+- 📖 **Documentation**: [docs/ in the repository](https://github.com/Khatri-Lab/metaintegrator_py/tree/main/docs)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/Khatri-Lab/metaintegrator_py/discussions)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/Khatri-Lab/metaintegrator_py/issues)
+- 📧 **Email**: khatrilab-support@stanford.edu
 
 ### Getting Help
 

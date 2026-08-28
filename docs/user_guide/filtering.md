@@ -6,7 +6,8 @@ This guide explains how to filter genes before meta-analysis to improve statisti
 
 - [Introduction](#introduction)
 - [Why Filter Genes?](#why-filter-genes)
-- [Core Filtering Methods](#core-filtering-methods)
+- [metaintegrator_py's Built-In Gene Filtering](#metaintegrator_pys-built-in-gene-filtering)
+- [Generic Pre-Analysis QC Techniques](#generic-pre-analysis-qc-techniques)
 - [Advanced Filtering Strategies](#advanced-filtering-strategies)
 - [FAQ](#faq)
 - [Troubleshooting](#troubleshooting)
@@ -22,6 +23,19 @@ Gene filtering removes uninformative or low-quality features before statistical 
 - Decreasing computation time and memory usage
 
 **Important:** Apply filters **consistently across all studies** to avoid bias.
+
+!!! note "What's actually built into metaintegrator_py?"
+    Only two things on this page are metaintegrator_py functions: the threshold
+    filters in [`filter_genes()`](#metaintegrator_pys-built-in-gene-filtering) (effect
+    size, FDR, number of studies, heterogeneity, leave-one-out consistency -- the
+    Python equivalent of R MetaIntegrator's `filterGenes()`), and the
+    [`forward_search()` / `backward_search()`](#metaintegrator_pys-built-in-gene-filtering)
+    signature-refinement functions. Everything under "Generic Pre-Analysis QC
+    Techniques" and "Advanced Filtering Strategies" below is standard,
+    library-agnostic data science practice for cleaning an expression matrix
+    (variance filtering, detection-rate filtering, and so on) -- useful, but not
+    something metaintegrator_py calls for you. You're welcome to apply it to your
+    raw data before building a `meta_object`, but it isn't part of the package API.
 
 ## Why Filter Genes?
 
@@ -72,6 +86,63 @@ Filtering reduces runtime and memory:
 | 20,000 | ~10 min | ~1.5 GB |
 | 10,000 | ~5 min | ~750 MB |
 | 5,000 | ~2 min | ~400 MB |
+
+## metaintegrator_py's Built-In Gene Filtering
+
+Before reaching for any of the generic techniques below, know what the package
+already gives you. These are the Python equivalents of R MetaIntegrator's own
+filtering functions, and they operate on meta-analysis *results* (effect sizes,
+FDRs, study counts) rather than on raw expression matrices.
+
+### Threshold-Based Filtering: `filter_genes()`
+
+Filters the pooled meta-analysis results down to a significant gene signature:
+
+```python
+from metaintegrator.analysis import MetaAnalyzer
+
+analyzer = MetaAnalyzer()
+results = analyzer.run_meta_analysis(meta_object)
+
+results = analyzer.filter_genes(
+    results,
+    effect_size_thresh=0.5,      # minimum |effect size|
+    fdr_thresh=0.05,             # maximum FDR (effect-size and Fisher)
+    number_studies_thresh=2,     # minimum contributing studies
+    heterogeneity_pval_thresh=0, # 0 disables this filter
+    is_leave_one_out=True,       # require consistent direction in LOO
+)
+
+print(results['filterResults'].pos_gene_names)
+```
+
+`number_studies_thresh` is the built-in equivalent of "keep genes present in at
+least N of my studies" -- if you've been thinking of that as a percentage, set
+it to the number of studies that percentage corresponds to.
+
+### Signature Refinement: `forward_search()` / `backward_search()`
+
+Once you have a candidate gene set from `filter_genes()`, these iteratively
+add (forward) or remove (backward) genes based on their contribution to the
+signature's overall weighted AUC:
+
+```python
+from metaintegrator.gene_search_optimizer import GeneSearchOptimizer
+
+optimizer = GeneSearchOptimizer()
+filter_object = results['filterResults'].to_dict()  # posGeneNames / negGeneNames
+
+refined = optimizer.forward_search(meta_object, filter_object, forward_thresh=0.0)
+refined = optimizer.backward_search(meta_object, refined, back_thresh=0.0)
+```
+
+## Generic Pre-Analysis QC Techniques
+
+The techniques below are common data-science practice for cleaning an
+expression matrix -- they are not metaintegrator_py functions, and none of the
+code on this page calls the package. Apply them (if at all) to your raw data
+**before** building your `meta_object`, using whatever tooling you're
+comfortable with (pandas/numpy, as shown, or otherwise).
 
 ## Core Filtering Methods
 

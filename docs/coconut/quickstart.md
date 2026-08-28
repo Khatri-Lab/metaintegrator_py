@@ -4,6 +4,36 @@ Get running with COCONUT in 5 minutes using the simplest possible workflow.
 
 ---
 
+## 🧪 Try It Right Now — No Data of Your Own Needed
+
+The repo ships real example data at `data/data_csv`: three GEO sepsis
+studies (GSE28750, GSE40012, GSE66099), pre-trimmed to 2,000 genes each so
+they run fast. Their phenotype columns already use this project's default
+column names, so nothing needs to be configured — from the repo root:
+
+```python
+from coconut.coconut_runner import runner
+
+runner(csv_dir='data/data_csv', output_dir='data/my_data_out')
+```
+
+This loads all three studies (10 samples each, 30 total), runs COCONUT, and
+writes the four combined CSVs to `data/my_data_out` — a normalized 2,000 × 30
+expression matrix with a balanced 15 control / 15 disease split. Same thing
+from the command line, with no arguments at all (`config/default.yaml`
+already points at this same directory — see the
+[Command-Line Interface guide](../getting_started/cli.md)):
+
+```bash
+python -m src coconut_batch_effect_removal
+```
+
+Once that works, swap in your own directory and column names — the rest of
+this guide covers what changes when your data doesn't look like the bundled
+example.
+
+---
+
 ## ⚡ The One-Command Workflow
 
 ### Installation
@@ -79,8 +109,8 @@ runner(csv_dir='./studies', output_dir='./results')
 ```
 
 **Output files created:**
-- `mcoco_combined_genes.csv` - Normalized expression (genes × samples)
-- `mcoco_combined_genes_samples.csv` - Transposed (samples × genes)
+- `mcoco_combined_genes_samples.csv` - Normalized expression (genes × samples)
+- `mcoco_combined_genes.csv` - Transposed (samples × genes)
 - `mcoco_combined_pheno.csv` - Sample metadata
 - `mcoco_combined_class_labels.csv` - Binary labels (0=control, 1=disease)
 
@@ -242,9 +272,12 @@ for i, gse in enumerate(gse_data):
 |-----------|-----------|---------|-------------|
 | `csv_dir` | ✅ Yes | - | Directory with CSV files |
 | `output_dir` | No | `None` | Where to save results |
-| `control_0_col` | ✅ Yes | - | Control column name |
+| `control_0_col` | No | `"Healthy0.Sepsis1"` | Control column name — override if your data uses a different one |
+| `disease_col` | No | `None` | Disease column name (`None` = all non-control samples) |
 | `by_platform` | No | `False` | Platform-specific normalization |
-| `platform_col` | Conditional | `None` | Required if `by_platform=True` |
+| `platform_col` | No | `"Platform_id"` | Platform column name, used when `by_platform=True` |
+| `par_prior` | No | `True` | Parametric priors in the Bayesian adjustment |
+| `it_conv` | No | `1e-04` | Convergence threshold for the iterative solution |
 
 ### Quick Commands
 
@@ -353,7 +386,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
-genes = pd.read_csv('./results/mcoco_combined_genes.csv', index_col=0)
+genes = pd.read_csv('./results/mcoco_combined_genes_samples.csv', index_col=0)
 labels = pd.read_csv('./results/mcoco_combined_class_labels.csv')
 
 # 3. PCA visualization
@@ -403,8 +436,3 @@ runner(csv_dir='./your_data', output_dir='./results')
 - Biomarker discovery
 
 **Next:** [Workflow Guide](workflow.md) for detailed tutorial
-
----
-
-*Last updated: 2026-04-24*  
-*Package: metaintegrator_py v0.1.0*
