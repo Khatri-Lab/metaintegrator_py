@@ -10,9 +10,9 @@ Pipeline stages
 1. **Download** — fetch GEO datasets via ``DataLoaderFactory``
 2. **Reformat** — build the ``meta_data`` dict expected by downstream code
 3. **Label** — assign binary case/control class vectors
-4. **Analyse** — run meta-analysis (with optional leave-one-out)
+4. **Analyze** — run meta-analysis (with optional leave-one-out)
 5. **Filter** — extract significant genes
-6. **Search** — backward and/or forward gene-set optimisation
+6. **Search** — backward and/or forward gene-set optimization
 7. **Score & Evaluate** — compute signature scores, ROC, PRC
 8. **Plot** — generate all requested figures
 9. **Export** — write CSVs and plots to the output directory
@@ -51,10 +51,10 @@ import pandas as pd
 
 # ── project imports ──────────────────────────────────────────────────
 from .meta_analysis_config import (
+    _DEFAULT_POSSIBLE_COLUMNS,
+    generate_template,
     load_config_file,
     validate_config,
-    generate_template,
-    _DEFAULT_POSSIBLE_COLUMNS,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ def run_pipeline(
     dict
         The final ``meta_object`` with all results attached.
 
-    Raises
+    Raises:
     SystemExit
         If the config is invalid (errors are printed to stderr).
     """
@@ -156,7 +156,7 @@ def run_pipeline(
     _report_filter_summary(meta_object)
 
     # ── 6. Gene search ───────────────────────────────────────────────
-    _banner("STAGE 6 / 8 — GENE SEARCH OPTIMISATION")
+    _banner("STAGE 6 / 8 — GENE SEARCH OPTIMIZATION")
     meta_object = _run_gene_search(meta_object, config)
 
     # ── 7. Score & evaluate ──────────────────────────────────────────
@@ -361,23 +361,76 @@ def _run_meta_analysis(meta_object: Dict, config: Dict) -> Dict:
 
 def _filter_genes(meta_object: Dict, config: Dict) -> Dict:
     """Stage 5: Filter significant genes."""
-    from .analysis import MetaAnalyzer
+    from .analysis import FilterResult, MetaAnalyzer
 
     f_cfg = config["filter"]
+    n_studies_thresh = _resolve_filter_presence_threshold(f_cfg, meta_object)
     analyzer = MetaAnalyzer()
     meta_object = analyzer.filter_genes(
         meta_object=meta_object,
         effect_size_thresh=f_cfg["effect_size_thresh"],
         fdr_thresh=f_cfg["fdr_thresh"],
-        number_studies_thresh=f_cfg["number_studies_thresh"],
+        number_studies_thresh=n_studies_thresh,
         heterogeneity_pval_thresh=f_cfg["heterogeneity_pval_thresh"],
         is_leave_one_out=f_cfg["is_leave_one_out"],
     )
+    # ``MetaAnalyzer.filter_genes()`` stores a ``FilterResult`` dataclass
+    # instance under ``meta_object["filterResults"]`` -- that's the correct,
+    # documented return type for direct library use (see FilterResult's
+    # docstring: ``meta['filterResults'].pos_gene_names``). Every later stage
+    # in *this* pipeline (reporting, plotting, gene search, scoring) instead
+    # treats ``filterResults`` as a plain R-style dict -- e.g. calling
+    # ``.get(...)`` / ``.copy()`` on it, or requiring
+    # ``isinstance(filter_object, dict)`` in ScoreCalculator and
+    # GeneSearchOptimizer's input validation. Normalize once, here, at the
+    # single hand-off point between the library's native return type and
+    # this pipeline's dict-based stages, via the conversion FilterResult
+    # already provides for exactly this purpose.
+    filter_results = meta_object.get("filterResults")
+    if isinstance(filter_results, FilterResult):
+        meta_object["filterResults"] = filter_results.to_dict()
     return meta_object
 
 
+def _resolve_filter_presence_threshold(f_cfg: Dict, meta_object: Dict) -> int:
+    """Resolve the config's presence-threshold setting into an absolute count.
+
+    ``MetaAnalyzer.filter_genes`` only understands a plain integer
+    ``number_studies_thresh``. This stage-local helper is what lets the
+    config additionally express that same threshold as a percentage of
+    the run's dataset count (``filter.presence_threshold_mode`` /
+    ``filter.presence_threshold_value`` -- see ``meta_analysis_config.
+    DEFAULTS["filter"]``'s docstring comment for the full contract).
+
+    Args:
+        f_cfg: The validated ``config["filter"]`` sub-dict.
+        meta_object: The pipeline's assembled meta-analysis object --
+            ``len(meta_object["originalData"])`` gives the actual number
+            of datasets contributing to this run (post multi-platform
+            expansion), used as the percentage's denominator.
+
+    Returns:
+        int
+            The absolute ``number_studies_thresh`` to pass to
+            :meth:`MetaAnalyzer.filter_genes`. Equal to
+            ``f_cfg["number_studies_thresh"]`` unchanged whenever
+            ``presence_threshold_value`` is unset (``None``, the
+            default) -- so a config written before this feature existed
+            behaves identically.
+    """
+    from .meta_analysis_config import resolve_presence_threshold
+
+    value = f_cfg.get("presence_threshold_value")
+    if value is None:
+        return max(1, int(f_cfg.get("number_studies_thresh", 1)))
+
+    mode = f_cfg.get("presence_threshold_mode", "count")
+    n_datasets = len(meta_object.get("originalData") or {})
+    return resolve_presence_threshold(mode=mode, value=value, n_datasets=n_datasets)
+
+
 def _run_gene_search(meta_object: Dict, config: Dict) -> Dict:
-    """Stage 6: Run backward and/or forward gene search optimisation."""
+    """Stage 6: Run backward and/or forward gene search optimization."""
     gs_cfg = config["gene_search"]
     run_backward = gs_cfg.get("run_backward", True)
     run_forward = gs_cfg.get("run_forward", True)
@@ -480,7 +533,19 @@ def _compute_scores_and_roc(meta_object: Dict, config: Dict) -> Dict:
                 if ds_obj.get("score") is None or ds_obj.get("class") is None:
                     continue
                 try:
-                    auc_val = roc_engine.calculate_roc_auc(ds_obj["score"], ds_obj["class"])
+                    # `ROCAnalysisEngine` has no `calculate_roc_auc` method — that
+                    # name never existed on the class (it exposes
+                    # `calculate_roc_curve`/`calculate_roc`, each returning a
+                    # dict that includes an "auc" key). The mismatched call
+                    # raised `AttributeError` for every dataset, which was
+                    # silently swallowed by the `except Exception` below and
+                    # surfaced only as "ROC failed for <dataset>: ..." warnings
+                    # (4 occurrences per no-gene-search run) — this is bug (b)
+                    # from the round-13 console log. `calculate_roc_curve` also
+                    # takes (y_true, y_scores) in that order, so the arguments
+                    # must be `class` then `score`, not `score` then `class`.
+                    roc_stats = roc_engine.calculate_roc_curve(ds_obj["class"], ds_obj["score"])
+                    auc_val = roc_stats["auc"]
                     roc_results[ds_name] = auc_val
                     logger.info(f"  AUC for {ds_name}: {auc_val:.4f}")
                 except Exception as exc:
@@ -627,6 +692,7 @@ def _safe_plot(fn_name: str, *args, **kwargs) -> None:
 
 
 def _plot_forest(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: int) -> None:
+    """Render and save a forest plot for the configured (or top-ranked) gene."""
     from visualization.enhanced_plotting import EnhancedMetaAnalysisPlotter
 
     plotter = EnhancedMetaAnalysisPlotter()
@@ -653,10 +719,18 @@ def _plot_forest(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dp
 
 
 def _plot_heatmap(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: int) -> None:
+    """Render and save a heatmap of effect sizes for the filtered genes."""
     from visualization.enhanced_plotting import EnhancedMetaAnalysisPlotter
 
+    fr = meta_object.get("filterResults")
+    if fr is None:
+        logger.warning("No filterResults for heatmap plot — skipping.")
+        return
+
     plotter = EnhancedMetaAnalysisPlotter()
-    fig = plotter.heatmap_plot(meta_object)
+    # EnhancedMetaAnalysisPlotter.heatmap_plot(meta_data, filter_object, ...)
+    # requires filter_object -- it was previously omitted here.
+    fig = plotter.heatmap_plot(meta_object, fr)
     if fig is not None:
         path = output_dir / f"heatmap_effect_sizes.{fmt}"
         fig.savefig(path, dpi=dpi, bbox_inches="tight")
@@ -664,6 +738,7 @@ def _plot_heatmap(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, d
 
 
 def _plot_violin(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: int) -> None:
+    """Render and save a violin plot of gene scores by class for each scored dataset."""
     from visualization.violin_plot import violin_plot
 
     fr = meta_object.get("filterResults")
@@ -682,10 +757,14 @@ def _plot_violin(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dp
         if ds_obj.get("score") is None or ds_obj.get("class") is None:
             continue
         try:
+            # violin_plot(filter_object, dataset_object, ..., title=...) --
+            # it takes the whole dataset object (and re-derives group labels
+            # from it) rather than bare score/class arrays, and reuses
+            # ds_obj["score"] instead of recomputing since it's already set.
             fig = violin_plot(
-                scores=ds_obj["score"],
-                classes=ds_obj["class"],
-                dataset_name=ds_name,
+                fr,
+                ds_obj,
+                title=ds_name,
             )
             if fig is not None:
                 safe_name = ds_name.replace("/", "_")
@@ -697,6 +776,7 @@ def _plot_violin(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dp
 
 
 def _plot_roc(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: int) -> None:
+    """Render and save a combined ROC curve across all datasets with scores and class labels."""
     from visualization.enhanced_plotting import multiple_roc_plot
 
     fr = meta_object.get("filterResults")
@@ -715,7 +795,13 @@ def _plot_roc(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: 
         return
 
     try:
-        fig = multiple_roc_plot(scorable, filter_object=fr)
+        # multiple_roc_plot(datasets: List[Dict], filter_object, ...) expects
+        # a *list* of dataset dicts, not the {name: dataset} mapping built
+        # above -- passing the dict directly made it iterate over the
+        # dataset names (strings) instead of the dataset objects. Each
+        # dataset's own "formattedName" (set during pipeline assembly)
+        # supplies the label, so no names are lost by dropping the dict.
+        fig = multiple_roc_plot(list(scorable.values()), filter_object=fr)
         if fig is not None:
             path = output_dir / f"roc_multiple.{fmt}"
             fig.savefig(path, dpi=dpi, bbox_inches="tight")
@@ -725,6 +811,7 @@ def _plot_roc(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: 
 
 
 def _plot_prc(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: int) -> None:
+    """Render and save a combined precision-recall curve across all datasets with scores and class labels."""
     from visualization.enhanced_plotting import multiple_prc_plot
 
     fr = meta_object.get("filterResults")
@@ -743,7 +830,9 @@ def _plot_prc(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: 
         return
 
     try:
-        fig = multiple_prc_plot(scorable, filter_object=fr)
+        # See the matching comment in _plot_roc(): multiple_prc_plot() also
+        # expects a list of dataset dicts, not the {name: dataset} mapping.
+        fig = multiple_prc_plot(list(scorable.values()), filter_object=fr)
         if fig is not None:
             path = output_dir / f"prc_multiple.{fmt}"
             fig.savefig(path, dpi=dpi, bbox_inches="tight")
@@ -753,6 +842,7 @@ def _plot_prc(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: 
 
 
 def _plot_regression(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: int) -> None:
+    """Render and save a regression plot of gene score against a configured covariate column."""
     reg_dataset = config["output"].get("regression_dataset")
     reg_column = config["output"].get("regression_column")
 
@@ -788,6 +878,7 @@ def _plot_regression(meta_object: Dict, config: Dict, output_dir: Path, fmt: str
 
 
 def _report_class_summary(meta_object: Dict) -> None:
+    """Log the case/control sample counts for each dataset in the meta-analysis."""
     for ds_name, ds_obj in meta_object["originalData"].items():
         cls = ds_obj.get("class")
         if cls is None:
@@ -800,6 +891,7 @@ def _report_class_summary(meta_object: Dict) -> None:
 
 
 def _report_meta_analysis_summary(meta_object: Dict) -> None:
+    """Log the pooled meta-analysis gene/significance counts and leave-one-out iteration count."""
     ma = meta_object.get("metaAnalysis")
     if ma is None:
         logger.warning("  Meta-analysis produced no results.")
@@ -817,6 +909,7 @@ def _report_meta_analysis_summary(meta_object: Dict) -> None:
 
 
 def _report_filter_summary(meta_object: Dict) -> None:
+    """Log the number of up- and down-regulated genes returned by the gene filter."""
     fr = meta_object.get("filterResults")
     if fr is None:
         logger.warning("  No filter results produced.")
@@ -832,6 +925,7 @@ def _report_filter_summary(meta_object: Dict) -> None:
 
 
 def _configure_logging(verbose: bool) -> None:
+    """Set up root logging (level and format) and quiet noisy third-party loggers."""
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
@@ -844,6 +938,7 @@ def _configure_logging(verbose: bool) -> None:
 
 
 def _banner(text: str) -> None:
+    """Log `text` inside a bordered banner to visually separate pipeline stages."""
     width = max(60, len(text) + 6)
     border = "=" * width
     logger.info("")
@@ -853,6 +948,7 @@ def _banner(text: str) -> None:
 
 
 def _print_errors(errors: List[str]) -> None:
+    """Print a numbered list of configuration errors to stderr."""
     sys.stderr.write("\n❌  Configuration errors:\n")
     for i, err in enumerate(errors, 1):
         sys.stderr.write(f"   {i}. {err}\n")

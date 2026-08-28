@@ -4,7 +4,7 @@ MetaIntegrator meta-analysis CLI runner.
 
 This module defines the canonical shape of a runner config, validates
 user-supplied configs against it, fills in defaults, and can emit a
-fully-documented JSON or YAML template that scientists can customise.
+fully-documented JSON or YAML template that scientists can customize.
 
 Design decisions
 ----------------
@@ -22,7 +22,7 @@ Design decisions
 Public API
 ----------
 ``validate_config(raw)``
-    Validate and normalise a user config dict.  Returns ``(config, errors)``.
+    Validate and normalize a user config dict.  Returns ``(config, errors)``.
 ``generate_template(fmt)``
     Return a string containing a documented example config.
 ``DEFAULTS``
@@ -34,6 +34,7 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import math
 import textwrap
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -44,6 +45,7 @@ __all__ = [
     "validate_config",
     "generate_template",
     "load_config_file",
+    "resolve_presence_threshold",
     "DEFAULTS",
 ]
 
@@ -78,6 +80,24 @@ DEFAULTS: Dict[str, Any] = {
         "number_studies_thresh": 1,
         "heterogeneity_pval_thresh": 0.0,
         "is_leave_one_out": True,
+        # Presence-threshold gene inclusion: an opt-in, alternative way to
+        # express "a gene must be measured in at least this many datasets
+        # to be included" as a *percentage* of the run's dataset count,
+        # instead of (or as well as) the plain integer count above.
+        # `presence_threshold_value` is `None` by default, meaning "not
+        # set" -- filtering then falls back entirely to
+        # `number_studies_thresh`, so every config written before this
+        # feature existed behaves exactly as it always has. When
+        # `presence_threshold_value` *is* set, it is resolved against the
+        # actual number of datasets that made it into the meta-analysis
+        # (post multi-platform expansion) via
+        # `resolve_presence_threshold()` below, and *that* resolved
+        # integer is what actually gets passed to `MetaAnalyzer.
+        # filter_genes(number_studies_thresh=...)`. See
+        # `meta_analysis_runner.py::_resolve_filter_presence_threshold`
+        # for the stage that performs this resolution.
+        "presence_threshold_mode": "count",  # "count" | "percent"
+        "presence_threshold_value": None,  # None = use number_studies_thresh as-is
     },
     # ---- Forward / backward gene search ----------------------------------
     "gene_search": {
@@ -199,6 +219,33 @@ def validate_config(raw: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     if not isinstance(es, (int, float)) or es < 0:
         errors.append(f"filter.effect_size_thresh must be >= 0 (got {es}).")
 
+    nst = filt.get("number_studies_thresh", 1)
+    if not isinstance(nst, int) or isinstance(nst, bool) or nst < 1:
+        errors.append(f"filter.number_studies_thresh must be an integer >= 1 (got {nst}).")
+
+    presence_mode = filt.get("presence_threshold_mode", "count")
+    if presence_mode not in ("count", "percent"):
+        errors.append(
+            f"filter.presence_threshold_mode must be 'count' or 'percent' "
+            f"(got '{presence_mode}')."
+        )
+    presence_value = filt.get("presence_threshold_value")
+    if presence_value is not None:
+        if not isinstance(presence_value, (int, float)) or isinstance(presence_value, bool):
+            errors.append(
+                f"filter.presence_threshold_value must be a number (got {presence_value!r})."
+            )
+        elif presence_mode == "percent" and not (0 < presence_value <= 100):
+            errors.append(
+                f"filter.presence_threshold_value must be in (0, 100] when "
+                f"presence_threshold_mode is 'percent' (got {presence_value})."
+            )
+        elif presence_mode == "count" and presence_value < 1:
+            errors.append(
+                f"filter.presence_threshold_value must be >= 1 when "
+                f"presence_threshold_mode is 'count' (got {presence_value})."
+            )
+
     # ---- output ----------------------------------------------------------
     out = config.get("output", {})
     valid_plots = {"forest", "heatmap", "violin", "roc", "prc", "regression"}
@@ -215,6 +262,88 @@ def validate_config(raw: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
         errors.append(f"output.plot_format must be 'png', 'pdf', or 'svg' (got '{fmt}').")
 
     return config, errors
+
+
+# =====================================================================
+# Presence-threshold resolution
+# =====================================================================
+
+
+def resolve_presence_threshold(
+    *,
+    mode: str,
+    value: float,
+    n_datasets: int,
+) -> int:
+    """Resolve a gene-presence threshold to an absolute dataset count.
+
+    A gene "present" in a dataset means the meta-analysis engine
+    computed a (non-NaN) effect size for it in that dataset -- exactly
+    what ``MetaAnalyzer.filter_genes``'s ``number_studies_thresh``
+    parameter already filters on via the pooled results' ``numStudies``
+    column. This function is the single place that turns a user-facing
+    threshold choice -- either a plain count ("must appear in at least 3
+    datasets") or a percentage ("must appear in at least 75% of
+    datasets") -- into the absolute integer that parameter expects.
+
+    Percentages are rounded **up** (``math.ceil``): a gene must actually
+    clear the requested percentage rather than falling just short of it.
+    For example, 75% of 3 datasets is 2.25, which resolves to 3 (not 2)
+    -- consistent with the exact case of 4 datasets at a 75% threshold
+    resolving to exactly 3, a rule that this rounding generalizes to the
+    non-exact cases too.
+
+    Args:
+        mode: ``"count"`` (``value`` is an absolute minimum number of
+            datasets) or ``"percent"`` (``value`` is a percentage of
+            ``n_datasets``, in ``(0, 100]``).
+        value: The threshold value, interpreted per ``mode``.
+        n_datasets: The actual number of datasets contributing to this
+            meta-analysis run (e.g. ``len(meta_object["originalData"])``
+            -- the count *after* any multi-platform expansion, matching
+            what ``numStudies`` is computed against).
+
+    Returns:
+        int
+            The resolved absolute threshold, clamped to
+            ``[1, max(1, n_datasets)]`` so it is always a satisfiable
+            minimum (never demands more datasets than the run actually
+            has, and never drops below "present in at least 1").
+
+    Raises:
+        ValueError: If ``mode`` is not ``"count"``/``"percent"``, or if
+            ``value`` is out of range for the given ``mode``.
+
+    Examples::
+
+        >>> resolve_presence_threshold(mode="count", value=3, n_datasets=4)
+        3
+        >>> resolve_presence_threshold(mode="percent", value=75, n_datasets=4)
+        3
+        >>> resolve_presence_threshold(mode="percent", value=75, n_datasets=3)
+        3
+        >>> resolve_presence_threshold(mode="count", value=99, n_datasets=4)
+        4
+    """
+    if mode not in ("count", "percent"):
+        raise ValueError(f"mode must be 'count' or 'percent' (got {mode!r}).")
+
+    if n_datasets < 1:
+        # Degenerate: nothing to compute a threshold against (e.g. a
+        # dry-run or an empty meta_object). "Present in at least 1
+        # dataset" is the only meaningful bound in that case.
+        return 1
+
+    if mode == "count":
+        if value < 1:
+            raise ValueError(f"value must be >= 1 in 'count' mode (got {value!r}).")
+        resolved = int(math.ceil(value))
+    else:  # mode == "percent"
+        if not (0 < value <= 100):
+            raise ValueError(f"value must be in (0, 100] in 'percent' mode (got {value!r}).")
+        resolved = int(math.ceil((value / 100.0) * n_datasets))
+
+    return max(1, min(resolved, n_datasets))
 
 
 # =====================================================================
@@ -236,7 +365,7 @@ def load_config_file(path: str) -> Dict[str, Any]:
     dict
         Parsed configuration dictionary.
 
-    Raises
+    Raises:
     FileNotFoundError
         If *path* does not exist.
     ValueError
@@ -264,7 +393,7 @@ def load_config_file(path: str) -> Dict[str, Any]:
         return yaml.safe_load(text) or {}
 
     raise ValueError(
-        f"Unrecognised config file extension '{suffix}'.  " f"Use .json, .yaml, or .yml."
+        f"Unrecognized config file extension '{suffix}'.  " f"Use .json, .yaml, or .yml."
     )
 
 
@@ -350,6 +479,12 @@ _TEMPLATE_YAML = textwrap.dedent("""\
       number_studies_thresh: 1
       heterogeneity_pval_thresh: 0.0
       is_leave_one_out: true
+      # Presence threshold: alternative to number_studies_thresh
+      # above, expressed as a percentage of this run's dataset count
+      # instead of a plain count. Leave presence_threshold_value unset
+      # (null) to use number_studies_thresh as-is (the default).
+      # presence_threshold_mode: percent   # "count" | "percent"
+      # presence_threshold_value: 75       # e.g. 75 = must appear in >=75% of datasets
 
     # ---------------------------------------------------------------------------
     # 5. GENE SEARCH — backward and forward selection
