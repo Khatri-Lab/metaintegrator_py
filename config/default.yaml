@@ -2,10 +2,17 @@ run_example:
   config: app.yaml
   verbose: false
 
-preprocess_batch_effect_removalt:
+coconut_batch_effect_removal:
   csv_dir: data/data_csv    # Directory that contains the input CSV files (default: 'data/data_csv')
-  output_dir: data/data_out # If omitted, results are only printed.
+  output_dir: data/my_data_out # If omitted, results are only printed.
   debug: false              # If set, the script prints additional debugging information.
+  control_0_col: Healthy0.Sepsis1  # Phenotype column indicating control samples (0 = control)
+  disease_col:               # Phenotype column indicating disease samples (blank = all non-control)
+  platform_col: Platform_id  # Phenotype column with platform info, used when by_platform is true
+  it_conv: 0.0001            # Convergence threshold for the iterative COCONUT solution
+  # by_platform and par_prior are not settable from this file — see the note in
+  # `python -m src coconut_batch_effect_removal --help` (or src/__main__.py's module
+  # docstring) about --by-platform / --no-par-prior always taking their CLI default.
 
 io_example:
   source: data
