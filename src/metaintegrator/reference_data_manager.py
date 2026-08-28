@@ -19,7 +19,7 @@ Example:
 
 import warnings
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -87,9 +87,8 @@ class ReferenceDataManager:
         cache_dir: Optional[Path] = None,
         validate_on_load: bool = True,
         allow_mock_data: bool = True,
-    ):
-        """
-        Initialize the reference data manager.
+    ) -> None:
+        """Initialize the reference data manager.
 
         Args:
             cache_dir: Directory for caching downloaded files (default: ~/.metaintegrator/reference_data)

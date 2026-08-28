@@ -31,6 +31,7 @@ from preprocessing.ncbi_fetcher import NCBIFetcher, _SimpleCache
 
 
 def _make_gz(lines: list[str]) -> bytes:
+    """Create gzipped bytes from a list of text lines."""
     text = "\n".join(lines)
     buf = io.BytesIO()
     with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
@@ -44,8 +45,10 @@ def _make_gz(lines: list[str]) -> bytes:
 
 
 class TestSimpleCacheAdditional:
+    """Additional stress and edge-case tests for _SimpleCache."""
 
     def test_key_collision_prevention(self, tmp_path):
+        """Similar keys (e.g. "GSE123" vs "GSE1234") don't collide in the cache."""
         c = _SimpleCache(tmp_path)
         c.set("GSE123", {"shape": (10, 3)})
         c.set("GSE1234", {"shape": (20, 5)})
@@ -53,6 +56,7 @@ class TestSimpleCacheAdditional:
         assert c.get("GSE123")["shape"] != c.get("GSE1234")["shape"]
 
     def test_large_value_roundtrip(self, tmp_path):
+        """A large DataFrame (50k x 200) round-trips through the cache intact."""
         c = _SimpleCache(tmp_path)
         big = pd.DataFrame(np.random.randn(50000, 200))
         c.set("big", big)
@@ -61,6 +65,7 @@ class TestSimpleCacheAdditional:
         assert loaded.shape == (50000, 200)
 
     def test_rapid_set_get_cycles(self, tmp_path):
+        """Many rapid set/get cycles on distinct keys all succeed."""
         c = _SimpleCache(tmp_path)
         data = {"x": 1}
         for i in range(50):
@@ -68,12 +73,14 @@ class TestSimpleCacheAdditional:
             assert c.get(f"k_{i}") is not None
 
     def test_none_value(self, tmp_path):
+        """Explicitly caching None as a value still returns None from get() (as it would for a miss)."""
         c = _SimpleCache(tmp_path)
         c.set("k", None)
         # pickle stores None fine, but get() should return None (which is the value)
         assert c.get("k") is None
 
     def test_list_value(self, tmp_path):
+        """Non-DataFrame values (e.g. a plain list) round-trip through the cache too."""
         c = _SimpleCache(tmp_path)
         c.set("k", [1, 2, 3])
         assert c.get("k") == [1, 2, 3]
@@ -85,8 +92,10 @@ class TestSimpleCacheAdditional:
 
 
 class TestParseSeriesMatrixCornerCases:
+    """Corner cases for _parse_series_matrix(): inf, empty, and mixed-validity values."""
 
     def test_inf_values(self):
+        """ "Inf" and "-Inf" tokens parse to IEEE infinity."""
         lines = [
             '"ID_REF"\t"S1"\t"S2"',
             '"P1"\t"Inf"\t"-Inf"',
@@ -100,6 +109,7 @@ class TestParseSeriesMatrixCornerCases:
         assert df.loc["P2", "S1"] == pytest.approx(5.0)
 
     def test_empty_string_values(self):
+        """An empty-string value parses as NaN."""
         lines = [
             '"ID_REF"\t"S1"\t"S2"',
             '"P1"\t""\t"6.0"',
@@ -111,6 +121,7 @@ class TestParseSeriesMatrixCornerCases:
         assert df.loc["P1", "S2"] == pytest.approx(6.0)
 
     def test_single_probe_single_sample(self):
+        """A 1x1 matrix (one probe, one sample) parses without error."""
         lines = [
             '!Series_platform_id\t"GPL96"',
             '"ID_REF"\t"GSM1"',
@@ -123,6 +134,7 @@ class TestParseSeriesMatrixCornerCases:
         assert platforms == ["GPL96"]
 
     def test_many_probes_few_samples(self):
+        """A wide-and-shallow matrix (1000 probes, 2 samples) parses to the right shape."""
         lines = ['!Series_platform_id\t"GPL96"']
         header = '"ID_REF"\t"S1"\t"S2"'
         lines.append(header)
@@ -152,6 +164,7 @@ class TestParseSeriesMatrixCornerCases:
         assert df.loc["P1", "S1"] == pytest.approx(5.0)
 
     def test_agilent_probe_ids(self):
+        """Agilent-style A_##_P###### probe IDs parse correctly."""
         lines = [
             '!Series_platform_id\t"GPL4133"',
             '"ID_REF"\t"S1"',
@@ -164,6 +177,7 @@ class TestParseSeriesMatrixCornerCases:
         assert "A_23_P12345" in df.index
 
     def test_mixed_valid_and_invalid_values(self):
+        """A row mixing a valid number, unparseable text, and "NA" resolves each independently."""
         lines = [
             '"ID_REF"\t"S1"\t"S2"\t"S3"',
             '"P1"\t"5.0"\t"abc"\t"NA"',
@@ -182,9 +196,11 @@ class TestParseSeriesMatrixCornerCases:
 
 
 class TestFetchMultiPlatform:
+    """Tests for fetch_series_matrix() when a series spans multiple platform files."""
 
     @patch("preprocessing.ncbi_fetcher.ftplib.FTP")
     def test_two_matrix_files(self, MockFTP, tmp_path):
+        """Two GSE-GPL matrix files for one series are fetched and keyed by their own platform."""
         fetcher = NCBIFetcher(cache_dir=tmp_path)
 
         mock_ftp = MagicMock()
@@ -229,6 +245,7 @@ class TestFetchMultiPlatform:
 
 
 class TestNCBIGeoSourceIntegration:
+    """Tests that NCBIGeoSource (the 'fast' strategy) correctly delegates to NCBIFetcher."""
 
     @patch("preprocessing.ncbi_fetcher.ftplib.FTP")
     def test_ncbi_geo_source_uses_fetcher(self, MockFTP, tmp_path):
@@ -261,6 +278,7 @@ class TestNCBIGeoSourceIntegration:
         assert raw_datasets[0].source_id == "GSE2034"
 
     def test_ncbi_geo_source_rejects_gsm(self, tmp_path):
+        """A GSM (sample) accession is rejected — NCBIGeoSource only fetches series."""
         from preprocessing.geo_sources import NCBIGeoSource
 
         source = NCBIGeoSource(cache_dir=tmp_path)
@@ -268,6 +286,7 @@ class TestNCBIGeoSourceIntegration:
             source.fetch("GSM12345")
 
     def test_ncbi_geo_source_rejects_gpl(self, tmp_path):
+        """A GPL (platform) accession is rejected — NCBIGeoSource only fetches series."""
         from preprocessing.geo_sources import NCBIGeoSource
 
         source = NCBIGeoSource(cache_dir=tmp_path)
@@ -281,6 +300,7 @@ class TestNCBIGeoSourceIntegration:
 
 
 class TestUnicodeEdgeCases:
+    """Tests that unicode text in metadata lines doesn't break data parsing."""
 
     def test_unicode_in_metadata_not_in_data(self):
         """Unicode in !-prefixed lines doesn't affect data parsing."""
@@ -303,6 +323,7 @@ class TestUnicodeEdgeCases:
 
 
 class TestPlatformFromFilenameAdditional:
+    """Additional filename patterns for _probe_platform_from_filename()."""
 
     @pytest.mark.parametrize(
         "filename,expected",
@@ -314,6 +335,7 @@ class TestPlatformFromFilenameAdditional:
         ],
     )
     def test_various_patterns(self, filename, expected):
+        """Each (filename, expected GPL ID) pair extracts as expected."""
         assert NCBIFetcher._probe_platform_from_filename(filename) == expected
 
 

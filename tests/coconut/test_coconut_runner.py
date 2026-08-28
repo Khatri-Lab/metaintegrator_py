@@ -15,12 +15,12 @@ Test Coverage:
 """
 
 import os
+import shutil
 import sys
 import tempfile
-import shutil
 from pathlib import Path
-from typing import List, Dict
-from unittest.mock import patch, MagicMock, mock_open, call
+from typing import Dict, List
+from unittest.mock import MagicMock, call, mock_open, patch
 
 import numpy as np
 import pandas as pd
@@ -32,17 +32,17 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 from coconut.coconut_runner import (
-    load_gse_data_from_csv_directory,
-    _group_files_by_dataset,
     _extract_dataset_name,
+    _group_files_by_dataset,
     _load_single_dataset,
     _print_dataset_summary,
-    load_and_run_coconut_example,
     _write_output_to_csv,
-    runner,
-    main,
-    debug_msg,
     debug_mode,
+    debug_msg,
+    load_and_run_coconut_example,
+    load_gse_data_from_csv_directory,
+    main,
+    runner,
 )
 
 # ==============================================================================
@@ -230,7 +230,7 @@ class TestGroupFilesByDataset:
 
         csv_files = [genes_only]
 
-        # FIXED: Function raises ValueError when no complete datasets found
+        # No pheno file means this dataset never becomes "complete".
         with pytest.raises(ValueError, match="No complete datasets found"):
             _group_files_by_dataset(csv_files, "_genes.csv", "_pheno.csv", "GSEs.test_")
 
@@ -598,6 +598,15 @@ class TestLoadAndRunCoconutExample:
         mock_load_data.assert_called_once()
         mock_coconut.assert_called_once()
 
+        # Default column names should be forwarded to coconut() unchanged.
+        _, kwargs = mock_coconut.call_args
+        assert kwargs["control_0_col"] == "Healthy0.Sepsis1"
+        assert kwargs["disease_col"] is None
+        assert kwargs["by_platform"] is False
+        assert kwargs["platform_col"] == "Platform_id"
+        assert kwargs["par_prior"] is True
+        assert kwargs["it_conv"] == 1e-04
+
     @patch("coconut.coconut_runner.load_gse_data_from_csv_directory")
     @patch("coconut.coconut_runner.coconut")
     def test_run_example_failure(self, mock_coconut, mock_load_data):
@@ -607,6 +616,36 @@ class TestLoadAndRunCoconutExample:
 
         with pytest.raises(Exception, match="COCONUT failed"):
             load_and_run_coconut_example("/fake/path")
+
+    @patch("coconut.coconut_runner.load_gse_data_from_csv_directory")
+    @patch("coconut.coconut_runner.coconut")
+    def test_run_example_custom_columns(self, mock_coconut, mock_load_data, gse_data_list):
+        """Test that custom column names are forwarded to coconut() instead of the
+        project's own defaults — this is the fix for the hardcoded-columns limitation."""
+        mock_load_data.return_value = gse_data_list
+        mock_coconut.return_value = {
+            "COCONUTList": [],
+            "rawDiseaseList": [],
+            "controlList": {},
+        }
+
+        load_and_run_coconut_example(
+            "/fake/path",
+            control_0_col="Group",
+            disease_col="Case",
+            by_platform=True,
+            platform_col="Batch",
+            par_prior=False,
+            it_conv=1e-03,
+        )
+
+        _, kwargs = mock_coconut.call_args
+        assert kwargs["control_0_col"] == "Group"
+        assert kwargs["disease_col"] == "Case"
+        assert kwargs["by_platform"] is True
+        assert kwargs["platform_col"] == "Batch"
+        assert kwargs["par_prior"] is False
+        assert kwargs["it_conv"] == 1e-03
 
 
 # ==============================================================================
@@ -643,6 +682,12 @@ class TestRunner:
         # Verify output directory was created
         assert os.path.exists(output_dir)
         mock_write.assert_called_once()
+
+        # runner() should forward its default column-name args to
+        # load_and_run_coconut_example() unchanged.
+        _, kwargs = mock_run.call_args
+        assert kwargs["control_0_col"] == "Healthy0.Sepsis1"
+        assert kwargs["platform_col"] == "Platform_id"
 
     @patch("coconut.coconut_runner.load_gse_data_from_csv_directory")
     @patch("coconut.coconut_runner.load_and_run_coconut_example")
@@ -685,7 +730,9 @@ class TestMain:
 
     @patch("coconut.coconut_runner.runner")
     def test_main_with_valid_args(self, mock_runner):
-        """Test main function with valid arguments."""
+        """Test main function with valid arguments. Column-name keys are absent from
+        `args`, so main() should fill in the same defaults load_and_run_coconut_example()
+        uses."""
         args = {
             "csv_dir": "/fake/path",
             "output_dir": "/fake/output",
@@ -693,7 +740,44 @@ class TestMain:
         }
 
         main(args)
-        mock_runner.assert_called_once_with(csv_dir="/fake/path", output_dir="/fake/output")
+        mock_runner.assert_called_once_with(
+            csv_dir="/fake/path",
+            output_dir="/fake/output",
+            control_0_col="Healthy0.Sepsis1",
+            disease_col=None,
+            by_platform=False,
+            platform_col="Platform_id",
+            par_prior=True,
+            it_conv=1e-04,
+        )
+
+    @patch("coconut.coconut_runner.runner")
+    def test_main_with_custom_columns(self, mock_runner):
+        """Test that column-name keys present in `args` (e.g. from --control-col or a
+        config file) are passed through to runner() instead of the defaults."""
+        args = {
+            "csv_dir": "/fake/path",
+            "output_dir": None,
+            "debug": False,
+            "control_0_col": "Group",
+            "disease_col": "Case",
+            "by_platform": True,
+            "platform_col": "Batch",
+            "par_prior": False,
+            "it_conv": 1e-03,
+        }
+
+        main(args)
+        mock_runner.assert_called_once_with(
+            csv_dir="/fake/path",
+            output_dir=None,
+            control_0_col="Group",
+            disease_col="Case",
+            by_platform=True,
+            platform_col="Batch",
+            par_prior=False,
+            it_conv=1e-03,
+        )
 
     @patch("coconut.coconut_runner.runner")
     def test_main_with_debug_mode(self, mock_runner):

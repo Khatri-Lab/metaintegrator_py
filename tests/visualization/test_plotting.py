@@ -16,7 +16,8 @@ import pytest
 # Set matplotlib to non-GUI backend for testing
 matplotlib.use("Agg")
 
-import os, sys
+import os
+import sys
 
 # Add the src directory to the path to import modules to be run with python instead of pytest
 current_dir = os.path.dirname(os.path.abspath(__file__))

@@ -27,19 +27,18 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
+from metaintegrator.scoring_core import (
+    ExportFormat,
+    ScoringCalculationError,
+    SummaryConfig,
+    ValidationError,
+)
+from metaintegrator.scoring_export_engine import ExportConfig
 from metaintegrator.scoring_results_summarizer import (
-    EnhancedSummaryConfig,
     EnhancedResultSummarizer,
+    EnhancedSummaryConfig,
     ResultSummarizer,
 )
-from metaintegrator.scoring_core import (
-    SummaryConfig,
-    ExportFormat,
-    ValidationError,
-    ScoringCalculationError,
-)
-
-from metaintegrator.scoring_export_engine import ExportConfig
 
 # ==================================================================
 # FIXTURES
@@ -286,6 +285,7 @@ class TestSummarizeResults:
     """Test the main summarize_results method."""
 
     def get_enhanced_result_summarizer_obj_with_output(self):
+        """Build an EnhancedResultSummarizer pointed at a scratch output directory."""
         export_config = ExportConfig(base_output_dir=Path("/tmp/unittest_metaintegrator"))
 
         summarizer = EnhancedResultSummarizer(export_config=export_config)
@@ -1052,6 +1052,7 @@ class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
     def get_enhanced_result_summarizer_obj_with_output(self):
+        """Build an EnhancedResultSummarizer pointed at a scratch output directory."""
         export_config = ExportConfig(base_output_dir=Path("/tmp/unittest_metaintegrator"))
 
         summarizer = EnhancedResultSummarizer(export_config=export_config)

@@ -23,32 +23,25 @@ print(">>> PYTHONPATH (sys.path) at import time:")
 print("\n".join(f"  {i:02d}: {p}" for i, p in enumerate(sys.path)))
 
 # Import the classes and functions to test
-from metaintegrator.validation import (
-    # Enums and Constants
-    ObjectType,
-    ObjectStage,
-    ValidationConstants,
-    # Custom Exceptions
-    ValidationError,
-    NullValueError,
-    TypeValidationError,
-    DataMismatchError,
-    ValueRangeError,
-    # Data Classes
-    ValidationIssue,
-    ValidationResult,
-    # Type Checker
-    TypeChecker,
-    # Validators
+from metaintegrator.validation import (  # Enums and Constants; Custom Exceptions; Data Classes; Type Checker; Validators; Reporter; Convenience Functions
     BaseValidator,
+    DataMismatchError,
+    DataObjectValidator,
     DatasetValidator,
     MetaAnalysisValidator,
     MetaFilterValidator,
     MetaObjectValidator,
-    DataObjectValidator,
-    # Reporter
+    NullValueError,
+    ObjectStage,
+    ObjectType,
+    TypeChecker,
+    TypeValidationError,
+    ValidationConstants,
+    ValidationError,
+    ValidationIssue,
     ValidationReporter,
-    # Convenience Functions
+    ValidationResult,
+    ValueRangeError,
     check_data_object,
     validate_and_report,
 )
@@ -217,8 +210,8 @@ class TestTypeChecker:
         assert type_checker.is_numeric(np.array([1, 2, 3])) == True
         assert type_checker.is_numeric(pd.Series([1, 2, 3])) == True
 
-        # Fixed: The original validation logic converts string numbers to floats,
-        # so ["1", "2", "3"] actually returns True. Let's test with non-numeric strings.
+        # String numbers ("1", "2", "3") coerce to floats and count as numeric;
+        # only genuinely non-numeric strings should fail this check.
         assert type_checker.is_numeric(["a", "b", "c"]) == False
         assert type_checker.is_numeric([1, "abc", 3]) == False
 
@@ -970,7 +963,7 @@ class TestEdgeCasesAndErrorHandling:
         assert type_checker.is_numeric(None) == False
         assert type_checker.is_integer_type(None) == False
         assert type_checker.is_string_array(None) == False
-        # Fixed: Handle the is_in_range with None properly
+        # is_in_range(None) is False too, consistent with the checks above.
         assert type_checker.is_in_range(None) == False
         assert type_checker.has_infinite_values(None) == False
 
@@ -979,7 +972,7 @@ class TestEdgeCasesAndErrorHandling:
         type_checker = TypeChecker()
 
         assert type_checker.is_numeric([]) == True
-        # Fixed: Handle empty arrays properly in validation logic
+        # Empty arrays are vacuously valid for these checks, same as is_numeric([]) above.
         assert type_checker.is_integer_type([]) == True
         assert type_checker.is_string_array([]) == True
         assert type_checker.is_in_range([]) == True

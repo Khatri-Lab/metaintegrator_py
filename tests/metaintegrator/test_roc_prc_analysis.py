@@ -20,12 +20,11 @@ sys.path.insert(0, os.path.normpath(project_root))
 
 from metaintegrator.prc_analysis import (
     PRCAnalyzer,
-    plot_roc_curve,
-    plot_prc_curve,
     calculate_auc_ci,
     calculate_auprc_ci,
+    plot_prc_curve,
+    plot_roc_curve,
 )
-
 from metaintegrator.roc_analysis_engine import ROCAnalysisEngine
 
 

@@ -4,10 +4,10 @@ Coverage Debug Script for COCONUT Tests
 Helps diagnose why coverage is 0% and provides fixes.
 """
 
-import os
-import sys
 import importlib.util
+import os
 import subprocess
+import sys
 
 
 def check_python_path():

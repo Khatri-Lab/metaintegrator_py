@@ -16,12 +16,11 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
+from metaintegrator.core_analysis import FisherCombination, MetaAnalysisCore
 from metaintegrator.enhanced_core_analysis import (
-    EnhancedMetaAnalysis,
     EnhancedFisherCombination,
+    EnhancedMetaAnalysis,
 )
-from metaintegrator.core_analysis import MetaAnalysisCore, FisherCombination
-
 from tests.metaintegrator.test_data_generators import (
     TestDataGenerator,
 )
@@ -678,8 +677,8 @@ class TestRegressionValidation:
 
     def test_fisher_combination_mathematical_properties(self, significance_matrices):
         """Test mathematical properties of Fisher's combination method."""
-        from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
         from metaintegrator.core_analysis import FisherCombination
+        from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 
         # Combine significances
         combined = EnhancedMetaAnalysis.combine_significances(significance_matrices)

@@ -21,31 +21,36 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 
-# Import the classes and functions to test
-from metaintegrator.scoring_meta_integrator_filter import (
-    EnhancedFilterConfig,
-    EnhancedFilterResults,
-    FilteringStrategy,
-    StandardFilteringStrategy,
-    AdaptiveFilteringStrategy,
-    CombinedCriteriaFilteringStrategy,
-    EnhancedMetaIntegratorFilter,
-    MetaIntegratorFilter,
-)
+import sys
 
 # Mock imports from scoring_core
 from unittest.mock import MagicMock
-import sys
+
+# Import the classes and functions to test
+from metaintegrator.scoring_meta_integrator_filter import (
+    AdaptiveFilteringStrategy,
+    CombinedCriteriaFilteringStrategy,
+    EnhancedFilterConfig,
+    EnhancedFilterResults,
+    EnhancedMetaIntegratorFilter,
+    FilteringStrategy,
+    MetaIntegratorFilter,
+    StandardFilteringStrategy,
+)
 
 
 # Create a more comprehensive mock for scoring_core
 class MockFilterResults:
+    """Stand-in for the real FilterResults object: stores any kwargs as attributes."""
+
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
 
 class MockFilterConfig:
+    """Stand-in for the real FilterConfig object: stores any kwargs as attributes."""
+
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)

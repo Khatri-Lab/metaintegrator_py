@@ -28,16 +28,16 @@ sys.path.insert(0, os.path.normpath(project_root))
 # Import the module under test
 # Note: These imports may need to be adjusted based on your actual module structure
 try:
-    from metaintegrator.scoring_filter_manager import (
-        FilterValidator,
-        FilterExtractor,
-        OverlapCalculator,
-        FilterManager,
-        create_filter_manager,
-    )
-
     # Mock the core dependencies since they're imported from scoring_core
     from unittest.mock import Mock
+
+    from metaintegrator.scoring_filter_manager import (
+        FilterExtractor,
+        FilterManager,
+        FilterValidator,
+        OverlapCalculator,
+        create_filter_manager,
+    )
 
     FilterSummary = Mock
     OverlapAnalysis = Mock

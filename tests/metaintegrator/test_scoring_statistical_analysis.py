@@ -18,23 +18,23 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
-# Import the modules we're testing
-from metaintegrator.scoring_statistical_analysis import (
-    StatisticalAnalyzer,
-    DistributionAnalyzer,
-)
-
 # Import dependencies from scoring_core
 from metaintegrator.scoring_core import (
-    StatisticalSummary,
-    SummaryConfig,
-    StatisticType,
-    ValidationError,
-    ScoringCalculationError,
-    MetaAnalysisValidator,
-    StatisticalUtils,
     DataFrameUtils,
     LoggerMixin,
+    MetaAnalysisValidator,
+    ScoringCalculationError,
+    StatisticalSummary,
+    StatisticalUtils,
+    StatisticType,
+    SummaryConfig,
+    ValidationError,
+)
+
+# Import the modules we're testing
+from metaintegrator.scoring_statistical_analysis import (
+    DistributionAnalyzer,
+    StatisticalAnalyzer,
 )
 
 # ==================================================================

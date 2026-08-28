@@ -14,9 +14,10 @@ The matrix is suitable for:
 Note: This is synthetic data. For actual research, use the real immunoStates matrix.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 
 
 def create_realistic_immunostates_matrix(

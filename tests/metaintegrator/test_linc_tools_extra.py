@@ -32,17 +32,17 @@ sys.path.insert(0, os.path.normpath(project_root))
 # Import the classes and functions to test
 try:
     from metaintegrator.linc_tools import (
-        LincsDataManager,
         LincsAnalyzer,
-        lincs_interactors,
+        LincsDataManager,
         LincsReporter,
         LincsVisualizer,
-        lincs_tools,
-        lincs_correlate,
+        _prepare_signature_frame,
         lincs_bait_corr,
+        lincs_correlate,
+        lincs_interactors,
         lincs_qc_access,
         lincs_report,
-        _prepare_signature_frame,
+        lincs_tools,
     )
 except ImportError as e:
     print(f"Import error: {e}")

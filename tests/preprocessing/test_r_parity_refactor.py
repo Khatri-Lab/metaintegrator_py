@@ -13,6 +13,8 @@ Tests:
 from __future__ import annotations
 
 import gzip
+import os
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 from unittest.mock import MagicMock, patch
@@ -20,10 +22,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
-
-
-import os
-import sys
 
 # Add the src directory to the path to import modules to be run with python instead of pytest
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -36,6 +34,7 @@ sys.path.insert(0, os.path.normpath(project_root))
 
 
 def _make_expr_df(n_probes: int = 10, n_samples: int = 3):
+    """Build a small random expression matrix indexed by probe ID."""
     probes = [f"{int(1000 + i)}_at" for i in range(n_probes)]
     samples = [f"GSM{100 + i}" for i in range(n_samples)]
     rng = np.random.RandomState(42)
@@ -44,12 +43,14 @@ def _make_expr_df(n_probes: int = 10, n_samples: int = 3):
 
 
 def _make_gpl_table(probes: List[str], genes: Optional[List[str]] = None):
+    """Build a minimal GPL annotation table mapping probes to gene symbols."""
     if genes is None:
         genes = [f"GENE{i}" for i in range(len(probes))]
     return pd.DataFrame({"ID": probes, "Gene Symbol": genes})
 
 
 def _make_mock_gse(platform_ids, sample_ids):
+    """Build a mock GEOparse GSE object with the given platforms and samples."""
     gse = MagicMock()
     gpls = {}
     for pid in platform_ids:
@@ -80,9 +81,11 @@ def _make_mock_gse(platform_ids, sample_ids):
 
 
 class TestHybridGeoSource:
+    """Tests for HybridGeoSource.fetch() producing RawDataset objects."""
 
     @patch("preprocessing.hybrid_source.GEOparse")
     def test_source_name(self, _):
+        """source_name identifies this as the Hybrid strategy."""
         from preprocessing.hybrid_source import HybridGeoSource
 
         source = HybridGeoSource.__new__(HybridGeoSource)
@@ -90,8 +93,9 @@ class TestHybridGeoSource:
 
     @patch("preprocessing.hybrid_source.GEOparse")
     def test_fetch_returns_raw_datasets(self, _, tmp_path):
-        from preprocessing.hybrid_source import HybridGeoSource
+        """fetch() returns one RawDataset per platform, carrying expr/gpl/gse metadata."""
         from preprocessing.base import RawDataset
+        from preprocessing.hybrid_source import HybridGeoSource
 
         expr_df = _make_expr_df()
         gse = _make_mock_gse(["GPL96"], list(expr_df.columns))
@@ -109,6 +113,7 @@ class TestHybridGeoSource:
 
     @patch("preprocessing.hybrid_source.GEOparse")
     def test_fetch_multi_platform(self, _, tmp_path):
+        """A series spanning two platforms yields one RawDataset per platform."""
         from preprocessing.hybrid_source import HybridGeoSource
 
         expr96 = _make_expr_df()
@@ -128,6 +133,7 @@ class TestHybridGeoSource:
 
     @patch("preprocessing.hybrid_source.GEOparse")
     def test_fetch_skips_unmatched_platform(self, _, tmp_path):
+        """If the downloaded matrix's platform has no matching GPL in the GSE, fetch() raises."""
         from preprocessing.hybrid_source import HybridGeoSource
 
         expr_df = _make_expr_df()
@@ -142,6 +148,7 @@ class TestHybridGeoSource:
             source.fetch("GSE11909")
 
     def test_parse_series_matrix(self, tmp_path):
+        """A gzipped series matrix file parses into its platform ID and expression DataFrame."""
         from preprocessing.hybrid_source import HybridGeoSource
 
         lines = [
@@ -166,8 +173,10 @@ class TestHybridGeoSource:
 
 
 class TestHybridMicroarrayHandler:
+    """Tests for HybridMicroarrayHandler.parse() producing ProcessedDataset objects."""
 
     def _make_raw(self, n_probes=10, genes=None):
+        """Build a RawDataset with a random expression matrix and matching GPL/GSE mocks."""
         from preprocessing.base import RawDataset
 
         expr_df = _make_expr_df(n_probes=n_probes)
@@ -196,15 +205,17 @@ class TestHybridMicroarrayHandler:
         )
 
     def test_data_type(self):
+        """data_type identifies this as the Hybrid handler."""
         from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
         h = HybridMicroarrayHandler()
         assert "Hybrid" in h.data_type
 
     def test_parse_produces_processed_dataset(self):
-        from preprocessing.hybrid_handler import HybridMicroarrayHandler
+        """parse() returns a ProcessedDataset with the expected shape, ID, and gene keys."""
         from preprocessing.base import ProcessedDataset
         from preprocessing.gene_annotator import GeneAnnotator
+        from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
         h = HybridMicroarrayHandler(annotator=GeneAnnotator(), validator=None)
         h._validator_loaded = True
@@ -217,8 +228,9 @@ class TestHybridMicroarrayHandler:
         assert "Hybrid" in ds.metadata["handler"]
 
     def test_keys_aligned_with_expr(self):
-        from preprocessing.hybrid_handler import HybridMicroarrayHandler
+        """The number of gene keys always matches the number of expression rows."""
         from preprocessing.gene_annotator import GeneAnnotator
+        from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
         h = HybridMicroarrayHandler(annotator=GeneAnnotator(), validator=None)
         h._validator_loaded = True
@@ -226,8 +238,9 @@ class TestHybridMicroarrayHandler:
         assert len(ds.keys) == len(ds.expr)
 
     def test_pheno_matches_expr_columns(self):
-        from preprocessing.hybrid_handler import HybridMicroarrayHandler
+        """The pheno table's row index matches the expression matrix's sample columns."""
         from preprocessing.gene_annotator import GeneAnnotator
+        from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
         h = HybridMicroarrayHandler(annotator=GeneAnnotator(), validator=None)
         h._validator_loaded = True
@@ -235,8 +248,9 @@ class TestHybridMicroarrayHandler:
         assert list(ds.pheno.index) == list(ds.expr.columns)
 
     def test_normalize_is_noop(self):
-        from preprocessing.hybrid_handler import HybridMicroarrayHandler
+        """normalize() returns the same dataset object unchanged (parse() already normalized)."""
         from preprocessing.gene_annotator import GeneAnnotator
+        from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
         h = HybridMicroarrayHandler(annotator=GeneAnnotator(), validator=None)
         h._validator_loaded = True
@@ -244,6 +258,7 @@ class TestHybridMicroarrayHandler:
         assert h.normalize(ds) is ds
 
     def test_auto_log2_skips_log_scale(self):
+        """Data already on a log2-like scale is left unchanged."""
         from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
         df = pd.DataFrame(np.random.normal(8.0, 1.5, (5, 3)), columns=["A", "B", "C"])
@@ -251,6 +266,7 @@ class TestHybridMicroarrayHandler:
         np.testing.assert_array_almost_equal(result.values, df.values)
 
     def test_auto_log2_transforms_raw(self):
+        """Data on a raw (non-log) scale is log2-transformed."""
         from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
         df = pd.DataFrame(np.random.uniform(100, 1000, (5, 3)), columns=["A", "B", "C"])
@@ -258,6 +274,7 @@ class TestHybridMicroarrayHandler:
         assert np.median(result.values[np.isfinite(result.values)]) < 20
 
     def test_validator_lazy_loading(self):
+        """The Ensembl validator is constructed on first use only, then reused."""
         from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
         h = HybridMicroarrayHandler(validator=None)
@@ -283,20 +300,24 @@ class TestHybridMicroarrayHandler:
 
 
 class TestBackwardCompatAliases:
+    """Tests that the old r_parity names are aliases for the renamed hybrid classes."""
 
     def test_r_parity_geo_source_is_hybrid(self):
-        from preprocessing.r_parity_source import RParityGeoSource
+        """RParityGeoSource is literally HybridGeoSource, not a separate copy."""
         from preprocessing.hybrid_source import HybridGeoSource
+        from preprocessing.r_parity_source import RParityGeoSource
 
         assert RParityGeoSource is HybridGeoSource
 
     def test_r_parity_handler_is_hybrid(self):
-        from preprocessing.r_parity_handler import RParityMicroarrayHandler
+        """RParityMicroarrayHandler is literally HybridMicroarrayHandler."""
         from preprocessing.hybrid_handler import HybridMicroarrayHandler
+        from preprocessing.r_parity_handler import RParityMicroarrayHandler
 
         assert RParityMicroarrayHandler is HybridMicroarrayHandler
 
     def test_init_exports_both_names(self):
+        """Both the hybrid and legacy r_parity names are importable from the package root."""
         from preprocessing import HybridGeoSource, RParityGeoSource
 
         assert HybridGeoSource is RParityGeoSource
@@ -312,9 +333,11 @@ class TestBackwardCompatAliases:
 
 
 class TestThinWrapper:
+    """Tests for the legacy load_geo_datasets_r_parity() wrapper around the factory."""
 
     @patch("preprocessing.loader_factory.DataLoaderFactory")
     def test_wrapper_delegates_to_factory(self, MockFactory):
+        """The wrapper asks the factory for a "hybrid"-strategy loader."""
         from preprocessing.r_parity_loader import load_geo_datasets_r_parity
 
         mock_loader = MagicMock()
@@ -330,6 +353,7 @@ class TestThinWrapper:
 
     @patch("preprocessing.loader_factory.DataLoaderFactory")
     def test_wrapper_passes_stop_on_error(self, MockFactory):
+        """The wrapper forwards stop_on_error through to the loader's load_multiple()."""
         from preprocessing.r_parity_loader import load_geo_datasets_r_parity
 
         mock_loader = MagicMock()
@@ -341,12 +365,14 @@ class TestThinWrapper:
 
 
 class TestFactoryStrategies:
+    """Tests for DataLoaderFactory's "hybrid" strategy and its aliases."""
 
     @patch("preprocessing.loader_factory.HybridMicroarrayHandler")
     @patch("preprocessing.loader_factory.HybridGeoSource")
     def test_hybrid_strategy(self, MockSource, MockHandler):
-        from preprocessing.loader_factory import DataLoaderFactory
+        """strategy="hybrid" builds a DataLoader wired to HybridGeoSource."""
         from preprocessing.base import DataLoader
+        from preprocessing.loader_factory import DataLoaderFactory
 
         loader = DataLoaderFactory.create_geo_loader(strategy="hybrid", cache_dir="/tmp/t")
         assert isinstance(loader, DataLoader)
@@ -356,8 +382,8 @@ class TestFactoryStrategies:
     @patch("preprocessing.loader_factory.HybridGeoSource")
     def test_r_parity_alias(self, MockSource, MockHandler):
         """'r_parity' is accepted as alias for 'hybrid'."""
-        from preprocessing.loader_factory import DataLoaderFactory
         from preprocessing.base import DataLoader
+        from preprocessing.loader_factory import DataLoaderFactory
 
         loader = DataLoaderFactory.create_geo_loader(strategy="r_parity")
         assert isinstance(loader, DataLoader)
@@ -366,6 +392,7 @@ class TestFactoryStrategies:
     @patch("preprocessing.loader_factory.HybridMicroarrayHandler")
     @patch("preprocessing.loader_factory.HybridGeoSource")
     def test_geo_hybrid_source_type(self, MockSource, MockHandler):
+        """source_type="geo_hybrid" builds a working microarray loader."""
         from preprocessing.loader_factory import DataLoaderFactory
 
         loader = DataLoaderFactory.create_microarray_loader(source_type="geo_hybrid")
@@ -375,6 +402,7 @@ class TestFactoryStrategies:
     @patch("preprocessing.loader_factory.HybridMicroarrayHandler")
     @patch("preprocessing.loader_factory.HybridGeoSource")
     def test_geo_r_parity_alias(self, MockSource, MockHandler):
+        """source_type="geo_r_parity" is accepted as an alias for "geo_hybrid"."""
         from preprocessing.loader_factory import DataLoaderFactory
 
         loader = DataLoaderFactory.create_microarray_loader(source_type="geo_r_parity")
@@ -383,9 +411,11 @@ class TestFactoryStrategies:
 
 
 class TestLoadGeoDatasetsProcessed:
+    """Tests for load_geo_datasets_processed()'s default strategy and return type."""
 
     @patch("preprocessing.loader_factory.DataLoaderFactory.create_geo_loader")
     def test_defaults_to_hybrid(self, mock_create):
+        """With no strategy argument, the "hybrid" strategy is used."""
         from preprocessing.loader_factory import load_geo_datasets_processed
 
         mock_loader = MagicMock()
@@ -400,8 +430,9 @@ class TestLoadGeoDatasetsProcessed:
 
     @patch("preprocessing.loader_factory.DataLoaderFactory.create_geo_loader")
     def test_returns_processed_datasets(self, mock_create):
-        from preprocessing.loader_factory import load_geo_datasets_processed
+        """The function returns the loader's ProcessedDataset results unmodified."""
         from preprocessing.base import ProcessedDataset
+        from preprocessing.loader_factory import load_geo_datasets_processed
 
         mock_ds = MagicMock(spec=ProcessedDataset)
         mock_loader = MagicMock()

@@ -51,8 +51,10 @@ def _keys(n):
 
 
 class TestRawDataset:
+    """Tests for RawDataset construction and default values."""
 
     def test_defaults(self):
+        """Constructing with only source_id leaves everything else at its default."""
         rd = RawDataset(source_id="GSE123")
         assert rd.source_id == "GSE123"
         assert rd.platform_id is None
@@ -60,12 +62,14 @@ class TestRawDataset:
         assert rd.metadata == {}
 
     def test_metadata_default_not_shared(self):
+        """Each instance gets its own metadata dict, not a shared mutable default."""
         rd1 = RawDataset(source_id="A")
         rd2 = RawDataset(source_id="B")
         rd1.metadata["x"] = 1
         assert "x" not in rd2.metadata
 
     def test_full_construction(self):
+        """All fields are set correctly when fully specified."""
         rd = RawDataset(
             source_id="GSE11909",
             platform_id="GPL96",
@@ -83,8 +87,10 @@ class TestRawDataset:
 
 
 class TestProcessedDataset:
+    """Tests for ProcessedDataset's expr/pheno/keys validation."""
 
     def test_valid_construction(self):
+        """A well-formed expr/pheno/keys combination constructs successfully."""
         expr = _expr()
         pheno = _pheno(list(expr.columns))
         keys = _keys(len(expr))
@@ -101,6 +107,7 @@ class TestProcessedDataset:
         assert len(ds.keys) == 5
 
     def test_sample_mismatch_raises(self):
+        """Mismatched sample IDs between expr and pheno raise ValueError."""
         expr = _expr(n_probes=3, n_samples=3)
         pheno = _pheno(["X", "Y"])  # 2 samples ≠ 3 expr columns
 
@@ -114,6 +121,7 @@ class TestProcessedDataset:
             )
 
     def test_keys_wrong_type_raises(self):
+        """A non-list keys argument raises TypeError."""
         expr = _expr(n_probes=3, n_samples=2)
         pheno = _pheno(list(expr.columns))
 
@@ -127,6 +135,7 @@ class TestProcessedDataset:
             )
 
     def test_keys_wrong_length_raises(self):
+        """keys whose length doesn't match the number of probes raises ValueError."""
         expr = _expr(n_probes=3, n_samples=2)
         pheno = _pheno(list(expr.columns))
 
@@ -140,6 +149,7 @@ class TestProcessedDataset:
             )
 
     def test_keys_with_na(self):
+        """The literal string "NA" is preserved as a gene key, not treated as missing."""
         expr = _expr(n_probes=3, n_samples=2)
         pheno = _pheno(list(expr.columns))
         keys = ["TP53", "NA", "BRCA1"]
@@ -154,6 +164,7 @@ class TestProcessedDataset:
         assert ds.keys[1] == "NA"
 
     def test_empty_dataset(self):
+        """An entirely empty expr/pheno/keys combination is accepted."""
         expr = pd.DataFrame(dtype="float64")
         pheno = pd.DataFrame()
 
@@ -231,13 +242,16 @@ class _FailingHandler(DataHandler):
 
 
 class TestDataLoader:
+    """Tests for DataLoader's load/load_multiple orchestration."""
 
     def _make_loader(self, raw_datasets=None, handler=None):
+        """Build a DataLoader wired to a fake source and handler."""
         source = _FakeSource(raw_datasets or [])
         handler = handler or _FakeHandler()
         return DataLoader(source, handler)
 
     def test_load_single(self):
+        """Loading one dataset ID returns one parsed ProcessedDataset."""
         rd = RawDataset(source_id="GSE1", platform_id="GPL96")
         loader = self._make_loader([rd])
 
@@ -246,11 +260,13 @@ class TestDataLoader:
         assert datasets[0].geo_id == "GSE1_GPL96"
 
     def test_load_no_results(self):
+        """Loading an ID the source has no data for returns an empty list."""
         loader = self._make_loader([])
         datasets = loader.load("GSE_MISSING")
         assert datasets == []
 
     def test_load_multiple(self):
+        """Loading several IDs returns one dataset per ID."""
         rds = [
             RawDataset(source_id="GSE1", platform_id="GPL96"),
             RawDataset(source_id="GSE2", platform_id="GPL570"),
@@ -263,6 +279,7 @@ class TestDataLoader:
         assert ids == {"GSE1_GPL96", "GSE2_GPL570"}
 
     def test_load_multiple_skip_errors(self):
+        """With stop_on_error=False, per-dataset failures are swallowed, not raised."""
         rds = [
             RawDataset(source_id="GSE1", platform_id="GPL96"),
             RawDataset(source_id="GSE2", platform_id="GPL570"),
@@ -273,6 +290,7 @@ class TestDataLoader:
         assert datasets == []  # all failed but didn't raise
 
     def test_load_multiple_stop_on_error(self):
+        """With stop_on_error=True, the first failure's original exception propagates."""
         rds = [RawDataset(source_id="GSE1", platform_id="GPL96")]
         loader = self._make_loader(rds, handler=_FailingHandler())
 
@@ -281,6 +299,7 @@ class TestDataLoader:
             loader.load_multiple(["GSE1"], stop_on_error=True)
 
     def test_load_error_wraps_original(self):
+        """load() wraps a handler failure in a RuntimeError, preserving the original message."""
         rd = RawDataset(source_id="GSE1", platform_id="GPL96")
         loader = self._make_loader([rd], handler=_FailingHandler())
 
@@ -288,12 +307,14 @@ class TestDataLoader:
             loader.load("GSE1")
 
     def test_repr(self):
+        """repr() includes the source and handler class names."""
         loader = self._make_loader()
         r = repr(loader)
         assert "FakeSource" in r
         assert "FakeHandler" in r
 
     def test_process_calls_parse_then_normalize(self):
+        """load() invokes the handler's process(), not parse()/normalize() directly."""
         handler = MagicMock(spec=DataHandler)
         handler.data_type = "MockHandler"
 
@@ -321,8 +342,10 @@ class TestDataLoader:
 
 
 class TestHandlerProcessTemplate:
+    """Tests for DataHandler.process()'s template-method call order."""
 
     def test_process_calls_parse_then_normalize(self):
+        """The base process() template method calls parse() then normalize(), in that order."""
         handler = _FakeHandler()
         rd = RawDataset(source_id="GSE1", platform_id="GPL96")
 
@@ -356,8 +379,10 @@ class TestHandlerProcessTemplate:
 
 
 class TestGeoValidation:
+    """Tests for geo_sources.validate_geo_id and validate_series_id."""
 
     def test_validate_geo_id_gse(self):
+        """Recognizes a lowercase GSE accession and normalizes its case."""
         from preprocessing.geo_sources import validate_geo_id
 
         t, i = validate_geo_id("gse11909")
@@ -365,12 +390,14 @@ class TestGeoValidation:
         assert i == "GSE11909"
 
     def test_validate_geo_id_gsm(self):
+        """Recognizes a GSM accession."""
         from preprocessing.geo_sources import validate_geo_id
 
         t, i = validate_geo_id("GSM12345")
         assert t == "GSM"
 
     def test_validate_geo_id_gpl(self):
+        """Recognizes a lowercase GPL accession and normalizes its case."""
         from preprocessing.geo_sources import validate_geo_id
 
         t, i = validate_geo_id("gpl570")
@@ -378,40 +405,47 @@ class TestGeoValidation:
         assert i == "GPL570"
 
     def test_validate_geo_id_invalid(self):
+        """An unrecognized accession prefix raises ValueError."""
         from preprocessing.geo_sources import validate_geo_id
 
         with pytest.raises(ValueError, match="Invalid GEO ID"):
             validate_geo_id("INVALID123")
 
     def test_validate_geo_id_empty(self):
+        """An empty string raises ValueError."""
         from preprocessing.geo_sources import validate_geo_id
 
         with pytest.raises(ValueError):
             validate_geo_id("")
 
     def test_validate_series_id_accepts_gse(self):
+        """A GSE accession passes through unchanged."""
         from preprocessing.geo_sources import validate_series_id
 
         assert validate_series_id("GSE2034") == "GSE2034"
 
     def test_validate_series_id_rejects_gsm(self):
+        """A GSM accession is rejected -- only GSE is a valid series ID."""
         from preprocessing.geo_sources import validate_series_id
 
         with pytest.raises(ValueError, match="Expected GSE"):
             validate_series_id("GSM12345")
 
     def test_validate_series_id_rejects_gpl(self):
+        """A GPL accession is rejected -- only GSE is a valid series ID."""
         from preprocessing.geo_sources import validate_series_id
 
         with pytest.raises(ValueError, match="Expected GSE"):
             validate_series_id("GPL570")
 
     def test_validate_series_id_lowercased(self):
+        """A lowercase GSE accession is uppercased."""
         from preprocessing.geo_sources import validate_series_id
 
         assert validate_series_id("gse2034") == "GSE2034"
 
     def test_validate_series_id_with_whitespace(self):
+        """Leading/trailing whitespace is stripped."""
         from preprocessing.geo_sources import validate_series_id
 
         assert validate_series_id("  GSE2034  ") == "GSE2034"
@@ -423,20 +457,24 @@ class TestGeoValidation:
 
 
 class TestFactoryCornerCases:
+    """Tests for DataLoaderFactory's error paths and legacy-format loading."""
 
     def test_unknown_strategy_raises(self):
+        """An unrecognized source_type raises ValueError."""
         from preprocessing.loader_factory import DataLoaderFactory
 
         with pytest.raises(ValueError, match="Unknown"):
             DataLoaderFactory.create_microarray_loader(source_type="nonexistent")
 
     def test_rnaseq_not_implemented(self):
+        """RNA-seq loading is not yet implemented."""
         from preprocessing.loader_factory import DataLoaderFactory
 
         with pytest.raises(NotImplementedError):
             DataLoaderFactory.create_rnaseq_loader()
 
     def test_single_cell_not_implemented(self):
+        """Single-cell loading is not yet implemented."""
         from preprocessing.loader_factory import DataLoaderFactory
 
         with pytest.raises(NotImplementedError):
@@ -445,6 +483,7 @@ class TestFactoryCornerCases:
     @patch("preprocessing.loader_factory.HybridMicroarrayHandler")
     @patch("preprocessing.loader_factory.HybridGeoSource")
     def test_load_geo_datasets_legacy_format(self, MockSource, MockHandler):
+        """load_geo_datasets() converts ProcessedDataset objects to the legacy dict format."""
         from preprocessing.loader_factory import load_geo_datasets
 
         expr = _expr(n_probes=3, n_samples=2)

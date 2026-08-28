@@ -54,6 +54,7 @@ def standard_dataset():
 # Canonical import path
 # ------------------------------------------------------------------
 class TestCanonicalImport:
+    """Tests that subset_original_data (and its R-compat alias) import cleanly."""
 
     def test_subset_original_data_importable(self):
         """subset_original_data is importable from metaintegrator.sample_ops."""
@@ -74,6 +75,7 @@ class TestCanonicalImport:
 # Class vector type handling
 # ------------------------------------------------------------------
 class TestClassVectorTypes:
+    """Tests that subset_original_data() accepts class vectors of different types."""
 
     def test_series_class_vector(self, standard_dataset):
         """pd.Series class vector is converted to numpy array."""
@@ -98,6 +100,7 @@ class TestClassVectorTypes:
 # Pheno edge cases
 # ------------------------------------------------------------------
 class TestPhenoHandling:
+    """Edge cases for how subset_original_data() handles the pheno table."""
 
     def test_pheno_index_mismatch_falls_back_to_iloc(self, standard_dataset):
         """When pheno index doesn't match sample names, iloc is used."""
@@ -122,6 +125,7 @@ class TestPhenoHandling:
 # numpy array keep_samples
 # ------------------------------------------------------------------
 class TestNumpyArrayKeepSamples:
+    """Tests for passing a numpy array (integer or boolean) as keep_samples."""
 
     def test_numpy_integer_array(self, standard_dataset):
         """numpy array of integers is treated as indices."""
@@ -147,6 +151,7 @@ class TestNumpyArrayKeepSamples:
 # Type error paths
 # ------------------------------------------------------------------
 class TestTypeErrors:
+    """Tests that invalid input types raise TypeError with a clear message."""
 
     def test_non_dict_dataset_raises(self):
         """Non-dict dataset raises TypeError."""
@@ -169,6 +174,7 @@ class TestTypeErrors:
 # Data independence (deep copy)
 # ------------------------------------------------------------------
 class TestDataIndependence:
+    """Tests that subset_original_data() returns deep copies, not views."""
 
     def test_subset_expr_is_independent_copy(self, standard_dataset):
         """Modifying subset expr doesn't affect original."""

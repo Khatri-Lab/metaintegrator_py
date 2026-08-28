@@ -22,10 +22,10 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 from preprocessing.utils.normalization import (
-    quantile_normalize,
     check_log_scale,
-    remove_infinite_values,
     normalize_and_check,
+    quantile_normalize,
+    remove_infinite_values,
 )
 
 # ============================================================================

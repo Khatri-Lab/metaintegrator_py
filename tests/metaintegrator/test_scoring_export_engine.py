@@ -22,17 +22,17 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
+from metaintegrator.scoring_core import (
+    ExportFormat,
+    StatisticalSummary,
+)
+
 # Import the module under test and dependencies
 from metaintegrator.scoring_export_engine import (
     ExportConfig,
     ExportEngine,
-    ReportExporter,
     PlotExporter,
-)
-
-from metaintegrator.scoring_core import (
-    ExportFormat,
-    StatisticalSummary,
+    ReportExporter,
 )
 
 # ==================================================================

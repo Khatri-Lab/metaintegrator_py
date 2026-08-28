@@ -26,43 +26,41 @@ import pytest
 # Import all refactored modules
 try:
     from metaintegrator.scoring_core import (
-        ScoringMethod,
         AggregationMethod,
-        ExportFormat,
-        ValidationError,
         ConfigurationError,
+        ExportFormat,
         ScoringCalculationError,
+        ScoringMethod,
+        ValidationError,
     )
+    from metaintegrator.scoring_export_engine import ExportConfig, ExportEngine
     from metaintegrator.scoring_filter_manager import FilterManager
-    from metaintegrator.scoring_statistical_analysis import (
-        StatisticalAnalyzer,
-        DistributionAnalyzer,
-    )
-    from metaintegrator.scoring_export_engine import ExportEngine, ExportConfig
-    from metaintegrator.scoring_results_summarizer import (
-        EnhancedResultSummarizer,
-        EnhancedSummaryConfig,
-    )
     from metaintegrator.scoring_gene_scorer import (
         EnhancedGeneScorer,
         EnhancedScoringConfig,
+        GeneScorer,
     )
     from metaintegrator.scoring_meta_integrator_filter import (
-        EnhancedMetaIntegratorFilter,
         EnhancedFilterConfig,
+        EnhancedMetaIntegratorFilter,
+        MetaIntegratorFilter,
     )
     from metaintegrator.scoring_meta_integrator_orchestrator import (
         EnhancedMetaIntegratorOrchestrator,
-        OrchestratorConfig,
+        MetaIntegratorOrchestrator,
         OrchestrationResults,
+        OrchestratorConfig,
     )
 
     # Also import legacy compatibility classes
-    from metaintegrator.scoring_results_summarizer import ResultSummarizer
-    from metaintegrator.scoring_gene_scorer import GeneScorer
-    from metaintegrator.scoring_meta_integrator_filter import MetaIntegratorFilter
-    from metaintegrator.scoring_meta_integrator_orchestrator import (
-        MetaIntegratorOrchestrator,
+    from metaintegrator.scoring_results_summarizer import (
+        EnhancedResultSummarizer,
+        EnhancedSummaryConfig,
+        ResultSummarizer,
+    )
+    from metaintegrator.scoring_statistical_analysis import (
+        DistributionAnalyzer,
+        StatisticalAnalyzer,
     )
 
     IMPORTS_SUCCESSFUL = True

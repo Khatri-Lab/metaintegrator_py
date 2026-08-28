@@ -2,6 +2,7 @@ import importlib
 import logging
 import multiprocessing as mp
 import os
+import pickle
 import sys
 import warnings
 from types import SimpleNamespace
@@ -18,12 +19,13 @@ sys.path.insert(0, os.path.normpath(project_root))
 # Import the module under test
 from metaintegrator.analysis import (
     EffectSizeResult,
-    MetaAnalyzer,
+    FixedEffectsEngine,
+    InverseVarianceEngine,
     MetaAnalysisEngine,
     MetaAnalysisFactory,
-    InverseVarianceEngine,
+    MetaAnalyzer,
     RandomEffectsEngine,
-    FixedEffectsEngine,
+    _run_loo_subset,
     run_meta_analysis,
 )
 
@@ -459,6 +461,199 @@ def test_run_leave_one_out_sequential(monkeypatch):
     assert results[0] == [{"index": 1}, {"index": 2}]
     assert results[1] == [{"index": 0}, {"index": 2}]
     assert results[2] == [{"index": 0}, {"index": 1}]
+
+
+# ===================================================================
+# TESTS — run_leave_one_out_analysis: ProcessPoolExecutor pickling
+# ===================================================================
+# Regression coverage for: "Can't pickle local object
+# 'MetaAnalyzer.run_leave_one_out_analysis.<locals>.analyze_subset'"
+#
+# Root cause: the per-subset callable was a closure nested inside
+# run_leave_one_out_analysis(). ProcessPoolExecutor must pickle every
+# callable it submits, and pickle can only resolve a function "by name"
+# (its module path) — a nested function has none. Every subset raised
+# the exception, the method silently returned four None results, and
+# filter_genes()'s leave-one-out filter was silently skipped even though
+# is_leave_one_out=True was requested. Fix: hoist the per-subset logic to
+# a module-level function (_run_loo_subset), which pickle can resolve.
+#
+# NOTE: the SimpleNamespace mocks used elsewhere in this file
+# (_make_mock_core, etc.) hold lambdas, which are also unpicklable —
+# fine for the sequential (max_cores=1) test above, but would mask the
+# real fix in a parallel test for an unrelated reason. The tests below
+# use plain module-level classes instead, so they exercise a genuine
+# ProcessPoolExecutor round trip like the original bug.
+
+
+class _RecordingLooEngine(MetaAnalysisEngine):
+    """Minimal MetaAnalysisEngine that records which dataset names it was
+    asked to combine, so a caller can assert exactly which dataset was
+    excluded from each leave-one-out subset -- without needing genuine
+    GEO-shaped statistical input data. Defined at module level (not
+    inside a test function) so it -- and any MetaAnalyzer holding it --
+    can actually be pickled and sent to a ProcessPoolExecutor worker."""
+
+    def compute_effect_sizes(self, original_data):
+        names = tuple(sorted(d["name"] for d in original_data))
+        pooled = pd.DataFrame({"_names": [names]})
+        empty = pd.DataFrame()
+        return EffectSizeResult(g=empty, se_g=empty, pooled_estimates=pooled)
+
+    def compute_fisher_results(self, original_data, use_old_method):
+        return pd.DataFrame()
+
+    def format_results(self, combined_results, output_fisher):
+        return {"remaining_datasets": combined_results.pooled_estimates["_names"].iloc[0]}
+
+    @property
+    def description(self):
+        return "recording stub engine for LOO pickling tests"
+
+
+class _NoOpLooProcessor:
+    """Stand-in annotation processor that skips combined-annotation-table creation entirely."""
+
+    @staticmethod
+    def create_combined_annotation_table(original_data):
+        return None
+
+
+def _make_picklable_loo_analyzer(max_cores):
+    """Like _make_test_analyzer(), but with plain picklable module-level
+    collaborators instead of SimpleNamespace/lambda mocks -- required for
+    the real-ProcessPoolExecutor tests below."""
+    return MetaAnalyzer(
+        max_cores=max_cores,
+        engine=_RecordingLooEngine(),
+        processor=_NoOpLooProcessor,
+    )
+
+
+def test_run_loo_subset_is_picklable():
+    """Direct regression test for the root cause: pickle must be able to
+    resolve the callable ProcessPoolExecutor submits, by qualified name."""
+    dumped = pickle.dumps(_run_loo_subset)
+    restored = pickle.loads(dumped)
+    assert restored is _run_loo_subset
+
+
+def test_picklable_analyzer_instance_pickles():
+    """The worker process also pickles `self` (passed as _run_loo_subset's
+    first argument) -- confirm an analyzer built from picklable
+    collaborators doesn't itself block pickling."""
+    analyzer = _make_picklable_loo_analyzer(max_cores=2)
+    restored = pickle.loads(pickle.dumps(analyzer))
+    assert isinstance(restored, MetaAnalyzer)
+    assert isinstance(restored._engine, _RecordingLooEngine)
+
+
+def test_run_leave_one_out_analysis_parallel_path_does_not_raise():
+    """max_cores>1 exercises the real ProcessPoolExecutor path -- the
+    exact scenario the reported bug occurred in."""
+    analyzer = _make_picklable_loo_analyzer(max_cores=3)
+    original_data = [{"name": "A"}, {"name": "B"}, {"name": "C"}]
+
+    # Previously: every subset raised "Can't pickle local object
+    # '...analyze_subset'", caught internally and logged as an error,
+    # leaving every entry None.
+    results = analyzer.run_leave_one_out_analysis(original_data, use_old_method=False)
+
+    assert len(results) == 3
+    assert all(r is not None for r in results), (
+        "One or more leave-one-out subsets returned None -- this is "
+        "exactly the failure mode the pickling fix addresses."
+    )
+    assert sorted(r["remaining_datasets"] for r in results) == sorted(
+        [("B", "C"), ("A", "C"), ("A", "B")]
+    )
+
+
+def test_run_leave_one_out_analysis_parallel_and_sequential_agree():
+    """Same input through both branches should produce the same logical
+    result, confirming the fix changed only how per-subset work gets
+    dispatched, not the leave-one-out semantics themselves."""
+    original_data = [{"name": "A"}, {"name": "B"}, {"name": "C"}, {"name": "D"}]
+
+    seq = _make_picklable_loo_analyzer(max_cores=1).run_leave_one_out_analysis(
+        original_data, use_old_method=False
+    )
+    par = _make_picklable_loo_analyzer(max_cores=4).run_leave_one_out_analysis(
+        original_data, use_old_method=False
+    )
+
+    seq_sets = sorted(r["remaining_datasets"] for r in seq)
+    par_sets = sorted(r["remaining_datasets"] for r in par)
+    assert seq_sets == par_sets
+
+
+# ===================================================================
+# TESTS — run_meta_analysis: leave-one-out failures are no longer silent
+# ===================================================================
+# filter_genes()'s leave-one-out consistency step only runs
+# `if meta_object.get("leaveOneOutAnalysis")`, which is falsy for an
+# *empty* dict -- so when every LOO subset fails (as happened for the
+# pickling bug above), that step is silently skipped even with
+# is_leave_one_out=True in the config, with nothing in the log to say so.
+# run_meta_analysis() now logs a warning whenever one or more subsets
+# fail, so that silent skip can never be a surprise.
+
+
+def test_run_meta_analysis_warns_when_all_loo_subsets_fail(monkeypatch, caplog):
+    """When every leave-one-out subset fails, a warning logs the full failure count."""
+    analyzer = _make_test_analyzer()
+    monkeypatch.setattr(analyzer, "run_meta_analysis_core", lambda data, use_old: {"meta": "core"})
+    monkeypatch.setattr(
+        analyzer,
+        "run_leave_one_out_analysis",
+        lambda data, use_old: [None, None, None],
+    )
+    meta_obj = {"originalData": {"ds1": {"dummy": 1}, "ds2": {"dummy": 2}, "ds3": {"dummy": 3}}}
+
+    with caplog.at_level(logging.WARNING):
+        result = analyzer.run_meta_analysis(meta_obj, run_leave_one_out=True)
+
+    assert result["leaveOneOutAnalysis"] == {}
+    assert "leave-one-out subset(s) failed" in caplog.text
+    assert "3/3" in caplog.text
+
+
+def test_run_meta_analysis_warns_with_correct_counts_on_partial_loo_failure(monkeypatch, caplog):
+    """When only some leave-one-out subsets fail, the warning reports the correct fraction."""
+    analyzer = _make_test_analyzer()
+    monkeypatch.setattr(analyzer, "run_meta_analysis_core", lambda data, use_old: {"meta": "core"})
+    monkeypatch.setattr(
+        analyzer,
+        "run_leave_one_out_analysis",
+        lambda data, use_old: [{"a": 1}, None, {"c": 3}],
+    )
+    meta_obj = {"originalData": {"ds1": {"dummy": 1}, "ds2": {"dummy": 2}, "ds3": {"dummy": 3}}}
+
+    with caplog.at_level(logging.WARNING):
+        result = analyzer.run_meta_analysis(meta_obj, run_leave_one_out=True)
+
+    assert set(result["leaveOneOutAnalysis"].keys()) == {"removed_ds1", "removed_ds3"}
+    assert caplog.text.count("leave-one-out subset(s) failed") == 1
+    assert "1/3" in caplog.text
+
+
+def test_run_meta_analysis_no_warning_when_all_loo_subsets_succeed(monkeypatch, caplog):
+    """Companion to test_run_meta_analysis_leave_one_out above: same happy
+    path, plus confirming the new warning stays silent when it should."""
+    analyzer = _make_test_analyzer()
+    meta_obj = {"originalData": {"ds1": {"dummy": 1}, "ds2": {"dummy": 2}, "ds3": {"dummy": 3}}}
+    monkeypatch.setattr(analyzer, "run_meta_analysis_core", lambda data, use_old: {"meta": "core"})
+    monkeypatch.setattr(
+        analyzer,
+        "run_leave_one_out_analysis",
+        lambda data, use_old: [{"a": 1}, {"b": 2}, {"c": 3}],
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = analyzer.run_meta_analysis(meta_obj, run_leave_one_out=True)
+
+    assert len(result["leaveOneOutAnalysis"]) == 3
+    assert "leave-one-out subset(s) failed" not in caplog.text
 
 
 # ===================================================================
@@ -1333,12 +1528,15 @@ class TestEngineHierarchy:
     """Tests for the class hierarchy relationships."""
 
     def test_random_extends_iv(self):
+        """RandomEffectsEngine is a subclass of InverseVarianceEngine."""
         assert issubclass(RandomEffectsEngine, InverseVarianceEngine)
 
     def test_fixed_extends_iv(self):
+        """FixedEffectsEngine is a subclass of InverseVarianceEngine."""
         assert issubclass(FixedEffectsEngine, InverseVarianceEngine)
 
     def test_iv_extends_abc(self):
+        """InverseVarianceEngine is a subclass of the MetaAnalysisEngine ABC."""
         assert issubclass(InverseVarianceEngine, MetaAnalysisEngine)
 
     def test_random_and_fixed_share_format_results(self):

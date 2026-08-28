@@ -6,7 +6,7 @@ Tests cover all classes, methods, and edge cases for meta-analysis power calcula
 import os
 import sys
 import warnings
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -17,9 +17,9 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 from metaintegrator.power_calculation import (
-    PowerAnalysisResult,
     MetaAnalysisPowerCalculator,
     PowerAnalysisPlotter,
+    PowerAnalysisResult,
     PowerAnalysisSummary,
     calc_meta_power,
     print_power_summary,

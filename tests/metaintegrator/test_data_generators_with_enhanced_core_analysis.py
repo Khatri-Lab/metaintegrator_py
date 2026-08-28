@@ -206,8 +206,8 @@ class TestRegressionValidation:
 
     def test_effect_size_calculation_precision(self, standard_study):
         """Test effect size calculations against known statistical properties."""
-        from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
         from metaintegrator.core_analysis import MetaAnalysisCore
+        from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 
         # Calculate effect sizes
         effect_sizes = MetaAnalysisCore.calculate_effect_sizes(standard_study)
@@ -252,8 +252,8 @@ class TestRegressionValidation:
 
     def test_fisher_combination_mathematical_properties(self, significance_matrices):
         """Test mathematical properties of Fisher's combination method."""
-        from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
         from metaintegrator.core_analysis import FisherCombination
+        from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 
         # Combine significances
         combined = EnhancedMetaAnalysis.combine_significances(significance_matrices)
@@ -372,8 +372,8 @@ class TestNumericalStability:
 
     def test_precision_preservation(self, standard_study):
         """Test that numerical precision is preserved through calculations."""
-        from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
         from metaintegrator.core_analysis import MetaAnalysisCore
+        from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 
         # Run calculation multiple times
         result1 = EnhancedMetaAnalysis.calculate_ttest_qvalues(standard_study)

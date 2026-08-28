@@ -71,6 +71,7 @@ def multi_disease_dataset():
 # Basic functionality
 # ------------------------------------------------------------------
 class TestBasicLabeling:
+    """Tests for assign_class_labels()'s default two-class disease/control split."""
 
     def test_simple_two_class(self, sle_dataset):
         """Disease vs control labeling with default control_terms=None."""
@@ -127,6 +128,7 @@ class TestBasicLabeling:
 # Explicit control terms
 # ------------------------------------------------------------------
 class TestExplicitControlTerms:
+    """Tests for assign_class_labels() when control_terms is explicitly given."""
 
     def test_explicit_control_terms(self, multi_disease_dataset):
         """With control_terms, only matching samples become controls."""
@@ -160,6 +162,7 @@ class TestExplicitControlTerms:
 # Edge cases and error paths
 # ------------------------------------------------------------------
 class TestEdgeCases:
+    """Edge cases and error paths for assign_class_labels()."""
 
     def test_whitespace_stripping(self):
         """Leading/trailing whitespace in pheno values is stripped."""
@@ -212,6 +215,7 @@ class TestEdgeCases:
 # Logging
 # ------------------------------------------------------------------
 class TestLogging:
+    """Tests for assign_class_labels()'s INFO-level logging."""
 
     def test_logs_class_counts(self, sle_dataset, caplog):
         """INFO-level log includes case and control counts."""

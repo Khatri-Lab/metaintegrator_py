@@ -20,13 +20,13 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 from preprocessing.utils.validation import (
-    validate_expression_matrix,
-    validate_phenotype_data,
-    validate_geo_dataset,
-    validate_platform_annotation,
     check_data_compatibility,
-    quick_validate_download,
     print_validation_report,
+    quick_validate_download,
+    validate_expression_matrix,
+    validate_geo_dataset,
+    validate_phenotype_data,
+    validate_platform_annotation,
 )
 
 # ============================================================================

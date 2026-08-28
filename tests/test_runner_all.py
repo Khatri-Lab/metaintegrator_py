@@ -29,10 +29,11 @@ import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 def _which(cmd: str) -> bool:
+    """Return True if `cmd` is found on PATH."""
     return shutil.which(cmd) is not None
 
 
@@ -744,6 +745,7 @@ def print_console_summary(results: List[Dict[str, Any]]):
 
 
 def run_unittest(args) -> int:
+    """Run the suite via `unittest discover` and return its exit code."""
     cmd = [sys.executable, "-m", "unittest", "discover", args.input_dir]
     if args.verbosity:
         cmd.extend(["-v"])
@@ -838,6 +840,7 @@ def run_pytest_with_dashboard(args) -> int:
 
 
 def parse_args():
+    """Parse this script's CLI arguments (see --help / the epilog for usage examples)."""
     parser = argparse.ArgumentParser(
         description="Production-grade test runner with interactive dashboard",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -896,6 +899,8 @@ Examples:
 
 
 def main() -> int:
+    """CLI entry point: validate args, then dispatch to run_unittest or
+    run_pytest_with_dashboard."""
     args = parse_args()
 
     if not os.path.isdir(args.input_dir):

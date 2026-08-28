@@ -19,11 +19,11 @@ sys.path.insert(0, os.path.normpath(project_root))
 
 from metaintegrator.phenotype_processing import (
     PhenotypeProcessor,
-    clean_up_pheno,
-    class_function,
+    analyze_phenotype_columns,
     auto_detect_disease_terms,
     batch_process_phenotypes,
-    analyze_phenotype_columns,
+    class_function,
+    clean_up_pheno,
 )
 
 

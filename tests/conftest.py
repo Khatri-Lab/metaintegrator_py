@@ -16,15 +16,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
 from tests.metaintegrator.test_data_generators import (
     TestDataGenerator,
-    TestValidationUtils,
     TestPerformanceUtils,
+    TestValidationUtils,
 )
-
-# Add these fixtures to your existing conftest.py
-# (they complement your existing GEO-focused fixtures with general meta-analysis fixtures)
 
 
 @pytest.fixture
@@ -92,10 +88,6 @@ def performance_test_data():
 def large_performance_data():
     """Large dataset for performance benchmarking."""
     return TestPerformanceUtils.create_performance_test_data("large")
-
-
-# Add these helper functions to complement your existing ones
-# (add these after your existing helper functions)
 
 
 def assert_valid_effect_sizes(effect_sizes_df):

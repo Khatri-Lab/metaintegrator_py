@@ -19,10 +19,10 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 from metaintegrator.coconut_integration import (
-    COCONUTIntegrator,
-    SampleLevelGeneExtractor,
     COCONUTDataProcessor,
+    COCONUTIntegrator,
     MetaIntegratorToCOCONUT,
+    SampleLevelGeneExtractor,
     coconut_meta_integrator,
     gene_level_meta,
     get_sample_level_gene_data,

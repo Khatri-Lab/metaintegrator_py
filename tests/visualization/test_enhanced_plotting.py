@@ -11,11 +11,11 @@ import pandas as pd
 import pytest
 
 matplotlib.use("Agg")  # Use non-interactive backend for testing
-import warnings
+import os
+import sys
 import tempfile
+import warnings
 from pathlib import Path
-
-import os, sys
 
 # Add the src directory to the path to import modules to be run with python instead of pytest
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,17 +23,71 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 from visualization.enhanced_plotting import (
+    DEFAULT_HEATMAP_MAX_GENES,
     EnhancedMetaAnalysisPlotter,
     forest_plot,
     gg_forest_plot,
     heatmap_plot,
     manhattan_plot,
-    predictive_value_plot,
-    multiple_roc_plot,
     multiple_prc_plot,
-    roc_plot,
+    multiple_roc_plot,
     prc_plot,
+    predictive_value_plot,
+    roc_plot,
 )
+
+
+class TestApplyEqualUnitAxes:
+    """Unit tests for ``EnhancedMetaAnalysisPlotter._apply_equal_unit_axes``.
+
+    Isolated from the full ``roc_plot``/``prc_plot``/``multiple_roc_plot``/
+    ``multiple_prc_plot`` tests below (which assert ``get_aspect() == 1.0``
+    as one check among many) so the helper's own contract -- equal aspect
+    plus evenly-spaced ticks at a configurable step -- has direct,
+    dedicated coverage.
+    """
+
+    def _axes(self):
+        fig, ax = plt.subplots()
+        ax.set_xlim([0, 1])
+        ax.set_ylim([0, 1])
+        return fig, ax
+
+    def test_sets_equal_aspect(self):
+        fig, ax = self._axes()
+        EnhancedMetaAnalysisPlotter._apply_equal_unit_axes(ax)
+        assert ax.get_aspect() == 1.0
+        plt.close(fig)
+
+    def test_default_step_produces_eleven_ticks(self):
+        fig, ax = self._axes()
+        EnhancedMetaAnalysisPlotter._apply_equal_unit_axes(ax)
+        assert list(ax.get_xticks()) == [round(0.1 * i, 1) for i in range(11)]
+        assert list(ax.get_yticks()) == list(ax.get_xticks())
+        plt.close(fig)
+
+    def test_custom_step_is_respected(self):
+        fig, ax = self._axes()
+        EnhancedMetaAnalysisPlotter._apply_equal_unit_axes(ax, step=0.25)
+        assert list(ax.get_xticks()) == [0.0, 0.25, 0.5, 0.75, 1.0]
+        plt.close(fig)
+
+    def test_does_not_change_axis_limits(self):
+        fig, ax = self._axes()
+        EnhancedMetaAnalysisPlotter._apply_equal_unit_axes(ax)
+        assert ax.get_xlim() == (0, 1)
+        assert ax.get_ylim() == (0, 1)
+        plt.close(fig)
+
+    def test_callable_as_a_static_method_without_an_instance(self):
+        # Confirms the four call sites (roc_plot/prc_plot/multiple_roc_
+        # plot/multiple_prc_plot) can invoke it as `self._apply_equal_
+        # unit_axes(ax)` regardless of instance state.
+        fig, ax = self._axes()
+        plotter = EnhancedMetaAnalysisPlotter()
+        plotter._apply_equal_unit_axes(ax)
+        assert ax.get_aspect() == 1.0
+        plt.close(fig)
 
 
 class TestEnhancedMetaAnalysisPlotter:
@@ -457,6 +511,113 @@ class TestEnhancedMetaAnalysisPlotter:
 
         plt.close(fig)
 
+    @pytest.fixture
+    def huge_meta_and_filter(self):
+        """A gene set well beyond DEFAULT_HEATMAP_MAX_GENES (100) -- the
+        raw/un-optimized scale that used to OOM-kill the process at
+        savefig() time (unbounded figure height ~= n_genes * 0.3 inches;
+        ~5,000 genes -> ~1,500 inches -> SIGKILL, exit code 137)."""
+        n_genes = 5000
+        genes = [f"gene{i}" for i in range(n_genes)]
+        rng = np.random.RandomState(7)
+        meta = {
+            "metaAnalysis": {
+                "datasetEffectSizes": pd.DataFrame(
+                    {"study1": rng.uniform(-2, 2, n_genes), "study2": rng.uniform(-2, 2, n_genes)},
+                    index=genes,
+                ),
+                "pooledResults": pd.DataFrame(
+                    {"effectSize": rng.uniform(-2, 2, n_genes)}, index=genes
+                ),
+            },
+            "originalData": {},
+        }
+        filter_object = {
+            "posGeneNames": genes[: n_genes // 2],
+            "negGeneNames": genes[n_genes // 2 :],
+        }
+        return meta, filter_object
+
+    def test_prepare_heatmap_data_caps_to_default_max_genes(self, plotter, huge_meta_and_filter):
+        """Regression test for the heatmap OOM crash: an un-capped gene set
+        of several thousand genes must be reduced to at most
+        DEFAULT_HEATMAP_MAX_GENES rows."""
+        meta, filter_object = huge_meta_and_filter
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = plotter._prepare_heatmap_data(meta, filter_object, True, False)
+            assert len(result) == DEFAULT_HEATMAP_MAX_GENES
+            assert any("dropped" in str(warning.message) for warning in w)
+
+    def test_prepare_heatmap_data_caps_to_custom_max_genes(self, plotter, huge_meta_and_filter):
+        meta, filter_object = huge_meta_and_filter
+        result = plotter._prepare_heatmap_data(meta, filter_object, True, False, max_genes=25)
+        assert len(result) == 25
+
+    def test_prepare_heatmap_data_cap_keeps_highest_effect_size_genes(
+        self, plotter, huge_meta_and_filter
+    ):
+        """The cap should keep the most informative genes (by |effect
+        size|), not an arbitrary subset."""
+        meta, filter_object = huge_meta_and_filter
+        pooled = meta["metaAnalysis"]["pooledResults"]
+
+        result = plotter._prepare_heatmap_data(meta, filter_object, True, False, max_genes=10)
+
+        top_10_by_effect_size = pooled["effectSize"].abs().sort_values(ascending=False).index[:10]
+        assert set(result.index) == set(top_10_by_effect_size)
+
+    def test_prepare_heatmap_data_max_genes_none_disables_cap(self, plotter, huge_meta_and_filter):
+        meta, filter_object = huge_meta_and_filter
+        result = plotter._prepare_heatmap_data(meta, filter_object, True, False, max_genes=None)
+        assert len(result) == 5000
+
+    def test_prepare_heatmap_data_explicit_gene_order_bypasses_cap(
+        self, plotter, huge_meta_and_filter
+    ):
+        """A caller-supplied gene_order list is an explicit request for
+        those exact genes and must not be silently trimmed."""
+        meta, filter_object = huge_meta_and_filter
+        explicit_order = [f"gene{i}" for i in range(500)]
+
+        result = plotter._prepare_heatmap_data(meta, filter_object, True, explicit_order)
+
+        assert len(result) == 500
+        assert list(result.index) == explicit_order
+
+    def test_prepare_heatmap_data_small_gene_set_unaffected_by_cap(
+        self, plotter, sample_meta_object, sample_filter_object
+    ):
+        """A gene set already well under the cap must behave exactly as
+        before (no genes dropped, no cap warning)."""
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = plotter._prepare_heatmap_data(
+                sample_meta_object, sample_filter_object, True, False
+            )
+            expected_genes = set(
+                sample_filter_object["posGeneNames"] + sample_filter_object["negGeneNames"]
+            )
+            assert set(result.index) == expected_genes
+            assert not any("dropped" in str(warning.message) for warning in w)
+
+    def test_calculate_heatmap_figsize_backstop_clamps_extreme_input(self, plotter):
+        """Defense-in-depth: even if _prepare_heatmap_data's gene cap is
+        bypassed (max_genes=None or an explicit huge gene_order),
+        _calculate_heatmap_figsize must never itself return a figure size
+        large enough to reproduce the OOM crash at savefig() time."""
+        huge_data = pd.DataFrame(np.random.RandomState(3).randn(20000, 4))
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            width, height = plotter._calculate_heatmap_figsize(huge_data)
+            assert width <= plotter._MAX_HEATMAP_DIMENSION_INCHES
+            assert height <= plotter._MAX_HEATMAP_DIMENSION_INCHES
+            assert any("exceeds" in str(warning.message) for warning in w) or any(
+                "clamped" in str(getattr(rec, "message", "")) for rec in w
+            )
+
     def test_manhattan_plot(self, plotter, sample_meta_object):
         """Test Manhattan plot generation."""
         fig = plotter.manhattan_plot(sample_meta_object)
@@ -563,42 +724,42 @@ class TestEnhancedMetaAnalysisPlotter:
         with pytest.raises(ValueError, match="Sensitivity and specificity must be provided"):
             plotter.predictive_value_plot(0.8, None)
 
-    def test_calculate_auc_confidence_interval(self, plotter):
+    def test_calculate_auc_ci(self, plotter):
         """Test AUC confidence interval calculation."""
         y_true = np.array([0, 0, 1, 1])
-        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true, 0.75)
+        ci_lower, ci_upper = plotter._calculate_auc_ci(y_true, 0.75)
 
         assert 0 <= ci_lower <= 1
         assert 0 <= ci_upper <= 1
         assert ci_lower <= ci_upper
         assert ci_lower <= 0.75 <= ci_upper
 
-    def test_calculate_auc_confidence_interval_edge_cases(self, plotter):
+    def test_calculate_auc_ci_edge_cases(self, plotter):
         """Test AUC CI calculation with edge cases."""
         # No positive samples
         y_true_no_pos = np.array([0, 0, 0, 0])
-        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true_no_pos, 0.5)
+        ci_lower, ci_upper = plotter._calculate_auc_ci(y_true_no_pos, 0.5)
         assert ci_lower == 0.0
         assert ci_upper == 0.0
 
         # No negative samples
         y_true_no_neg = np.array([1, 1, 1, 1])
-        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true_no_neg, 0.5)
+        ci_lower, ci_upper = plotter._calculate_auc_ci(y_true_no_neg, 0.5)
         assert ci_lower == 0.0
         assert ci_upper == 0.0
 
         # Single sample of each class
         y_true_single = np.array([0, 1])
-        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true_single, 0.5)
+        ci_lower, ci_upper = plotter._calculate_auc_ci(y_true_single, 0.5)
         assert 0 <= ci_lower <= 1
         assert 0 <= ci_upper <= 1
 
-    def test_calculate_roc_stats(self, plotter):
+    def test_calculate_roc_data(self, plotter):
         """Test ROC statistics calculation."""
         y_true = np.array([0, 0, 1, 1])
         y_scores = np.array([0.1, 0.4, 0.6, 0.9])
 
-        fpr, tpr, roc_auc = plotter._calculate_roc_stats(y_true, y_scores)
+        fpr, tpr, roc_auc = plotter._calculate_roc_data(y_true, y_scores)
 
         assert len(fpr) > 0
         assert len(tpr) > 0
@@ -631,6 +792,10 @@ class TestEnhancedMetaAnalysisPlotter:
         # Check axis limits
         assert ax.get_xlim() == (0, 1)
         assert ax.get_ylim() == (0, 1)
+
+        # Equal-scaled axes so the plot renders as a true square,
+        # not stretched by the figure's own aspect ratio.
+        assert ax.get_aspect() == 1.0
 
         plt.close(fig)
 
@@ -722,6 +887,9 @@ class TestEnhancedMetaAnalysisPlotter:
 
         # Should have at least 2 lines (PRC curve + baseline)
         assert len(ax.lines) >= 2
+
+        # Equal-scaled axes, same convention as roc_plot above.
+        assert ax.get_aspect() == 1.0
 
         plt.close(fig)
 
@@ -816,6 +984,72 @@ class TestEnhancedMetaAnalysisPlotter:
         assert len(scores) == 5
         assert np.allclose(scores, 0.0)
 
+    def test_calculate_scores_delegates_to_score_calculator(
+        self, plotter, sample_filter_object, sample_dataset
+    ):
+        """20260825dev: _calculate_scores() was consolidated onto
+        metaintegrator.score_calculation.ScoreCalculator -- the R-parity,
+        geometric-mean-based "gold standard" scorer already used by the CLI
+        (stage 7) and by violin_plot.py -- instead of independently
+        recomputing a simple mean-difference score. This is a direct
+        regression test for that consolidation: the two must produce
+        identical output for the same inputs, and the result must differ
+        from the old mean-difference formula (proving real delegation
+        happened, not just a docstring update)."""
+        from metaintegrator.score_calculation import ScoreCalculator
+
+        scores = plotter._calculate_scores(sample_filter_object, sample_dataset)
+
+        dataset_as_df = dict(sample_dataset)
+        dataset_as_df["expr"] = pd.DataFrame(sample_dataset["expr"])
+        expected = ScoreCalculator.calculate_score(
+            sample_filter_object, dataset_as_df, suppress_messages=True
+        )
+        assert np.allclose(scores, expected, equal_nan=True)
+
+        pos_idx = [0, 3]  # gene1, gene4 in sample_dataset's expr matrix
+        neg_idx = [2, 4]  # gene3, gene5
+        old_mean_difference_scores = sample_dataset["expr"][pos_idx, :].mean(
+            axis=0
+        ) - sample_dataset["expr"][neg_idx, :].mean(axis=0)
+        assert not np.allclose(scores, old_mean_difference_scores), (
+            "Scores match the old simple mean-difference formula -- "
+            "_calculate_scores() does not appear to be delegating to "
+            "ScoreCalculator.calculate_score() as intended."
+        )
+
+    def test_calculate_scores_reuses_precomputed_score(self, plotter, sample_dataset):
+        """If dataset['score'] is already populated (as it is after CLI
+        stage 7's _compute_scores_and_roc), _calculate_scores() must reuse
+        it rather than recomputing -- the same short-circuit already used
+        by violin_plot.py's _get_or_compute_scores(). This is what keeps
+        ROC/PRC AUCs consistent with the exported scores_<dataset>.csv for
+        a given run."""
+        cached_scores = np.array([9.0, 8.0, 7.0, 6.0, 5.0])
+        dataset_with_score = dict(sample_dataset)
+        dataset_with_score["score"] = cached_scores
+
+        result = plotter._calculate_scores(
+            {"posGeneNames": [], "negGeneNames": []}, dataset_with_score
+        )
+
+        assert np.array_equal(result, cached_scores)
+
+    def test_calculate_scores_accepts_dataframe_expr_directly(
+        self, plotter, sample_filter_object, sample_dataset
+    ):
+        """A dataset whose 'expr' is already a DataFrame (the shape real
+        CLI/pipeline datasets use) must work without the ndarray->DataFrame
+        conversion path, and must produce the exact same scores as the
+        ndarray form of the same data."""
+        dataset_df_expr = dict(sample_dataset)
+        dataset_df_expr["expr"] = pd.DataFrame(sample_dataset["expr"])
+
+        scores_from_df = plotter._calculate_scores(sample_filter_object, dataset_df_expr)
+        scores_from_ndarray = plotter._calculate_scores(sample_filter_object, sample_dataset)
+
+        assert np.allclose(scores_from_df, scores_from_ndarray, equal_nan=True)
+
     def test_multiple_roc_plot(self, plotter, sample_filter_object):
         """Test multiple ROC plot generation."""
         # Create multiple datasets
@@ -839,6 +1073,10 @@ class TestEnhancedMetaAnalysisPlotter:
 
         # Should have multiple ROC curves + diagonal
         assert len(ax.lines) >= len(datasets) + 1
+
+        # Equal-scaled axes, same convention as the single-dataset
+        # roc_plot above.
+        assert ax.get_aspect() == 1.0
 
         plt.close(fig)
 
@@ -865,6 +1103,10 @@ class TestEnhancedMetaAnalysisPlotter:
 
         # Should have multiple PRC curves
         assert len(ax.lines) >= len(datasets)
+
+        # Equal-scaled axes, same convention as the single-dataset
+        # prc_plot above.
+        assert ax.get_aspect() == 1.0
 
         plt.close(fig)
 
@@ -1024,7 +1266,7 @@ class TestEdgeCasesAndErrorHandling:
         y_scores = np.array([])
 
         with pytest.raises((ValueError, IndexError)):
-            plotter._calculate_roc_stats(y_true, y_scores)
+            plotter._calculate_roc_data(y_true, y_scores)
 
     def test_single_class_roc_stats(self):
         """Test ROC stats with single class data."""
@@ -1034,7 +1276,7 @@ class TestEdgeCasesAndErrorHandling:
 
         # This should handle gracefully or raise appropriate error
         try:
-            fpr, tpr, roc_auc = plotter._calculate_roc_stats(y_true, y_scores)
+            fpr, tpr, roc_auc = plotter._calculate_roc_data(y_true, y_scores)
             # If it succeeds, check that arrays are valid
             assert len(fpr) > 0
             assert len(tpr) > 0
@@ -1049,7 +1291,7 @@ class TestEdgeCasesAndErrorHandling:
         y_scores = np.array([0.1, 0.9, 0.5])  # Different length
 
         with pytest.raises((ValueError, IndexError)):
-            plotter._calculate_roc_stats(y_true, y_scores)
+            plotter._calculate_roc_data(y_true, y_scores)
 
     def test_invalid_probability_scores(self):
         """Test with invalid probability scores."""
@@ -1059,7 +1301,7 @@ class TestEdgeCasesAndErrorHandling:
 
         # sklearn ROC is tolerant of scores outside [0,1]
         try:
-            fpr, tpr, roc_auc = plotter._calculate_roc_stats(y_true, y_scores)
+            fpr, tpr, roc_auc = plotter._calculate_roc_data(y_true, y_scores)
             assert isinstance(roc_auc, float)
             assert 0 <= roc_auc <= 1
         except ValueError:
@@ -1072,7 +1314,7 @@ class TestEdgeCasesAndErrorHandling:
         y_scores = np.array([0.1, np.nan, 0.2, 0.8])  # NaN score
 
         with pytest.raises((ValueError, TypeError)):
-            plotter._calculate_roc_stats(y_true, y_scores)
+            plotter._calculate_roc_data(y_true, y_scores)
 
     def test_inf_values_in_data(self):
         """Test handling of infinite values in prediction data."""
@@ -1081,7 +1323,7 @@ class TestEdgeCasesAndErrorHandling:
         y_scores = np.array([0.1, np.inf, 0.2, 0.8])  # Infinite score
 
         with pytest.raises((ValueError, TypeError)):
-            plotter._calculate_roc_stats(y_true, y_scores)
+            plotter._calculate_roc_data(y_true, y_scores)
 
     def test_nan_values_in_meta_data(self):
         """Test handling of NaN values in meta-analysis data."""
@@ -1116,7 +1358,7 @@ class TestEdgeCasesAndErrorHandling:
         plotter = EnhancedMetaAnalysisPlotter()
         # Test with valid data but edge case SE
         y_true = np.array([0, 0, 1, 1])
-        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true, 0.5)
+        ci_lower, ci_upper = plotter._calculate_auc_ci(y_true, 0.5)
 
         assert ci_lower <= ci_upper
         assert 0 <= ci_lower <= 1
@@ -1126,7 +1368,7 @@ class TestEdgeCasesAndErrorHandling:
         """Test with extremely small standard error."""
         plotter = EnhancedMetaAnalysisPlotter()
         y_true = np.array([0] * 1000 + [1] * 1000)  # Large balanced dataset
-        ci_lower, ci_upper = plotter._calculate_auc_confidence_interval(y_true, 0.75)
+        ci_lower, ci_upper = plotter._calculate_auc_ci(y_true, 0.75)
 
         # With large sample, CI should be narrow
         assert ci_upper - ci_lower < 0.1

@@ -6,7 +6,7 @@ and LincsVisualizer classes, as well as utility functions.
 """
 
 import sys
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, mock_open, patch
 
 import numpy as np
 import pandas as pd
@@ -15,7 +15,8 @@ import pytest
 print(">>> PYTHONPATH (sys.path) at import time:")
 print("\n".join(f"  {i:02d}: {p}" for i, p in enumerate(sys.path)))
 
-import os, sys
+import os
+import sys
 
 # Add the src directory to the path to import modules to be run with python instead of pytest
 # sys.path.insert(0, os.path.join(os.path.dirname(__file__),  "../..", "src"))
@@ -28,13 +29,13 @@ sys.path.insert(0, os.path.normpath(project_root))
 # Import the classes and functions to test
 try:
     from metaintegrator.linc_tools import (
-        LincsDataManager,
         LincsAnalyzer,
+        LincsDataManager,
         LincsVisualizer,
-        lincs_tools,
-        lincs_correlate,
-        lincs_bait_corr,
         _prepare_signature_frame,
+        lincs_bait_corr,
+        lincs_correlate,
+        lincs_tools,
     )
 except ImportError as e:
     print(f"Import error: {e}")

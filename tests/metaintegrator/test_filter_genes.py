@@ -144,6 +144,7 @@ class TestFilterResult:
     """Tests for the FilterResult dataclass."""
 
     def _make_result(self, **overrides):
+        """Build a FilterResult with sensible defaults, overridable per test."""
         defaults = dict(
             pos_gene_names=["A", "B"],
             neg_gene_names=["C"],
@@ -160,6 +161,7 @@ class TestFilterResult:
         return FilterResult(**defaults)
 
     def test_basic_construction(self):
+        """Fields are stored as given at construction."""
         fr = self._make_result()
         assert fr.pos_gene_names == ["A", "B"]
         assert fr.neg_gene_names == ["C"]
@@ -167,16 +169,19 @@ class TestFilterResult:
         assert fr.n_neg == 1
 
     def test_total_genes_property(self):
+        """total_genes is the sum of n_pos and n_neg."""
         fr = self._make_result(n_pos=5, n_neg=3)
         assert fr.total_genes == 8
 
     def test_total_genes_zero(self):
+        """total_genes is 0 when both gene lists are empty."""
         fr = self._make_result(pos_gene_names=[], neg_gene_names=[], n_pos=0, n_neg=0)
         assert fr.total_genes == 0
 
     # -- dict-like access via R-style aliases -----------------------
 
     def test_getitem_r_style_aliases(self):
+        """__getitem__ accepts the original R-style camelCase field names."""
         fr = self._make_result()
         assert fr["posGeneNames"] == ["A", "B"]
         assert fr["negGeneNames"] == ["C"]
@@ -187,21 +192,25 @@ class TestFilterResult:
         assert fr["filterDescription"] == "test filter"
 
     def test_getitem_python_style(self):
+        """__getitem__ also accepts the Python-style snake_case field names."""
         fr = self._make_result()
         assert fr["pos_gene_names"] == ["A", "B"]
         assert fr["fdr_thresh"] == 0.05
 
     def test_getitem_invalid_key_raises_keyerror(self):
+        """An unrecognized key raises KeyError."""
         fr = self._make_result()
         with pytest.raises(KeyError):
             _ = fr["nonExistentKey"]
 
     def test_contains_r_style(self):
+        """`in` recognizes R-style camelCase field names."""
         fr = self._make_result()
         assert "posGeneNames" in fr
         assert "negGeneNames" in fr
 
     def test_contains_python_style(self):
+        """`in` recognizes Python-style snake_case field names too."""
         fr = self._make_result()
         assert "pos_gene_names" in fr
         assert "fdr_thresh" in fr
@@ -209,6 +218,7 @@ class TestFilterResult:
     # -- to_dict() --------------------------------------------------
 
     def test_to_dict_keys(self):
+        """to_dict() produces exactly the expected set of R-style keys."""
         fr = self._make_result()
         d = fr.to_dict()
         expected_keys = {
@@ -243,11 +253,13 @@ class TestFilterResult:
             assert d[alias] == fr[alias], f"Mismatch for key '{alias}'"
 
     def test_to_dict_total_genes(self):
+        """to_dict()'s totalGenes reflects n_pos + n_neg."""
         fr = self._make_result(n_pos=4, n_neg=6)
         d = fr.to_dict()
         assert d["totalGenes"] == 10
 
     def test_to_dict_returns_plain_dict(self):
+        """to_dict() returns a plain dict, not a dict subclass."""
         fr = self._make_result()
         d = fr.to_dict()
         assert type(d) is dict
@@ -269,41 +281,50 @@ class TestFilterGenesValidation:
     """Test that bad inputs produce clear ValueErrors."""
 
     def setup_method(self):
+        """Give each test a fresh MetaAnalyzer."""
         self.analyzer = MetaAnalyzer()
 
     def test_missing_meta_analysis_key(self):
+        """A meta_object with no "metaAnalysis" key raises ValueError."""
         with pytest.raises(ValueError, match="metaAnalysis"):
             self.analyzer.filter_genes({})
 
     def test_meta_analysis_is_none(self):
+        """A "metaAnalysis" value of None raises ValueError."""
         with pytest.raises(ValueError, match="metaAnalysis"):
             self.analyzer.filter_genes({"metaAnalysis": None})
 
     def test_missing_pooled_results(self):
+        """A metaAnalysis dict with no "pooledResults" key raises ValueError."""
         with pytest.raises(ValueError, match="pooledResults"):
             self.analyzer.filter_genes({"metaAnalysis": {}})
 
     def test_fdr_thresh_negative(self):
+        """A negative fdr_thresh raises ValueError."""
         meta = _make_meta_object(_make_pooled(5))
         with pytest.raises(ValueError, match="fdr_thresh"):
             self.analyzer.filter_genes(meta, fdr_thresh=-0.1)
 
     def test_fdr_thresh_above_one(self):
+        """An fdr_thresh greater than 1.0 raises ValueError."""
         meta = _make_meta_object(_make_pooled(5))
         with pytest.raises(ValueError, match="fdr_thresh"):
             self.analyzer.filter_genes(meta, fdr_thresh=1.5)
 
     def test_effect_size_thresh_negative(self):
+        """A negative effect_size_thresh raises ValueError."""
         meta = _make_meta_object(_make_pooled(5))
         with pytest.raises(ValueError, match="effect_size_thresh"):
             self.analyzer.filter_genes(meta, effect_size_thresh=-0.1)
 
     def test_number_studies_thresh_zero(self):
+        """A number_studies_thresh of 0 raises ValueError."""
         meta = _make_meta_object(_make_pooled(5))
         with pytest.raises(ValueError, match="number_studies_thresh"):
             self.analyzer.filter_genes(meta, number_studies_thresh=0)
 
     def test_heterogeneity_thresh_out_of_range(self):
+        """A heterogeneity_pval_thresh outside [0, 1] raises ValueError."""
         meta = _make_meta_object(_make_pooled(5))
         with pytest.raises(ValueError, match="heterogeneity_pval_thresh"):
             self.analyzer.filter_genes(meta, heterogeneity_pval_thresh=1.5)
@@ -318,11 +339,13 @@ class TestFilterGenesThresholds:
     """Test each filter step independently and in combination."""
 
     def setup_method(self):
+        """Give each test a fresh MetaAnalyzer."""
         self.analyzer = MetaAnalyzer()
 
     # -- FDR filter -------------------------------------------------
 
     def test_fdr_filter_removes_high_fdr_genes(self):
+        """Genes with effectSizeFDR above the threshold are dropped."""
         pooled = _make_pooled(10, base_fdr=0.01, include_fisher=True)
         # Set half the genes above FDR threshold
         pooled.iloc[5:, pooled.columns.get_loc("effectSizeFDR")] = 0.9
@@ -344,6 +367,7 @@ class TestFilterGenesThresholds:
     # -- Effect size filter ----------------------------------------
 
     def test_effect_size_filter(self):
+        """Only genes with |effectSize| above the threshold survive."""
         pooled = _make_pooled(10, base_fdr=0.001, include_fisher=False)
         # Set all effect sizes small
         pooled["effectSize"] = 0.1
@@ -370,6 +394,7 @@ class TestFilterGenesThresholds:
     # -- Number of studies filter ----------------------------------
 
     def test_num_studies_filter(self):
+        """Genes backed by fewer than number_studies_thresh studies are dropped."""
         pooled = _make_pooled(10, base_fdr=0.001, include_fisher=False)
         pooled["numStudies"] = [1, 1, 1, 2, 2, 3, 3, 4, 5, 5]
         meta = _make_meta_object(pooled)
@@ -381,6 +406,7 @@ class TestFilterGenesThresholds:
         assert fr.total_genes == 5  # genes with numStudies >= 3
 
     def test_num_studies_thresh_1_disables(self):
+        """number_studies_thresh=1 effectively disables the study-count filter."""
         pooled = _make_pooled(6, base_fdr=0.001, include_fisher=False)
         pooled["numStudies"] = 1
         meta = _make_meta_object(pooled)
@@ -392,6 +418,7 @@ class TestFilterGenesThresholds:
     # -- Heterogeneity filter --------------------------------------
 
     def test_heterogeneity_filter(self):
+        """Only genes with heterogeneityPval at or above the threshold survive."""
         pooled = _make_pooled(10, base_fdr=0.001, include_fisher=False, include_het=True)
         pooled["heterogeneityPval"] = [
             0.01,
@@ -418,6 +445,7 @@ class TestFilterGenesThresholds:
         assert fr.total_genes == 6
 
     def test_heterogeneity_thresh_zero_disables(self):
+        """heterogeneity_pval_thresh=0.0 effectively disables the heterogeneity filter."""
         pooled = _make_pooled(5, base_fdr=0.001, include_fisher=False, include_het=True)
         pooled["heterogeneityPval"] = 0.001
         meta = _make_meta_object(pooled)
@@ -439,6 +467,7 @@ class TestFilterGenesFisher:
     """Test Fisher FDR Up/Down directional filtering."""
 
     def setup_method(self):
+        """Give each test a fresh MetaAnalyzer."""
         self.analyzer = MetaAnalyzer()
 
     def test_fisher_fdr_up_filters_positive_genes(self):
@@ -484,6 +513,7 @@ class TestFilterGenesLOO:
     """Test leave-one-out consistency checking."""
 
     def setup_method(self):
+        """Give each test a fresh MetaAnalyzer."""
         self.analyzer = MetaAnalyzer()
 
     def test_loo_removes_inconsistent_gene(self):
@@ -516,6 +546,7 @@ class TestFilterGenesLOO:
         ), "GeneFlip should be removed: it flips sign in LOO"
 
     def test_loo_disabled_keeps_inconsistent_gene(self):
+        """With is_leave_one_out=False, a sign-flipping gene is kept regardless of LOO data."""
         genes = ["GenePos", "GeneFlip"]
         pooled = pd.DataFrame(
             {
@@ -547,6 +578,7 @@ class TestFilterGenesLOO:
         assert result["filterResults"].total_genes == 5
 
     def test_loo_empty_dict_skips(self):
+        """An empty leaveOneOutAnalysis dict skips the consistency check gracefully."""
         pooled = _make_pooled(4, base_fdr=0.001, include_fisher=False)
         meta = _make_meta_object(pooled, loo={})
         result = self.analyzer.filter_genes(meta, fdr_thresh=1.0, is_leave_one_out=True)
@@ -584,6 +616,7 @@ class TestFilterGenesEdgeCases:
     """Edge and corner cases."""
 
     def setup_method(self):
+        """Give each test a fresh MetaAnalyzer."""
         self.analyzer = MetaAnalyzer()
 
     def test_empty_pooled_results(self):
@@ -643,6 +676,7 @@ class TestFilterGenesEdgeCases:
         assert isinstance(result["filterResults"], FilterResult)
 
     def test_filter_description_captures_thresholds(self):
+        """filter_description mentions every threshold value that was passed in."""
         pooled = _make_pooled(5, base_fdr=0.001, include_fisher=False)
         meta = _make_meta_object(pooled)
         result = self.analyzer.filter_genes(
@@ -669,6 +703,7 @@ class TestFilterGenesEdgeCases:
         assert len(meta["metaAnalysis"]["pooledResults"]) == original_len
 
     def test_single_gene_passes(self):
+        """A single-gene pooledResults table filters correctly, not just multi-gene ones."""
         pooled = pd.DataFrame(
             {
                 "effectSize": [1.5],
@@ -719,18 +754,22 @@ class TestLOOConsistentGenesHelper:
     """Direct tests for the static helper method."""
 
     def test_empty_gene_list(self):
+        """An empty candidate gene list returns an empty result."""
         result = MetaAnalyzer._loo_consistent_genes([], {}, "pos")
         assert result == []
 
     def test_empty_loo_results(self):
+        """An empty LOO results dict leaves every gene passing (nothing to check against)."""
         result = MetaAnalyzer._loo_consistent_genes(["G1"], {}, "pos")
         assert result == ["G1"]
 
     def test_none_loo_results(self):
+        """LOO results of None is treated the same as an empty dict."""
         result = MetaAnalyzer._loo_consistent_genes(["G1"], None, "pos")
         assert result == ["G1"]
 
     def test_consistent_pos_gene_kept(self):
+        """A positive gene that stays positive across every LOO sub-analysis is kept."""
         loo = {
             "r1": {"pooledResults": pd.DataFrame({"effectSize": [0.5]}, index=["G1"])},
             "r2": {"pooledResults": pd.DataFrame({"effectSize": [1.2]}, index=["G1"])},
@@ -739,6 +778,7 @@ class TestLOOConsistentGenesHelper:
         assert result == ["G1"]
 
     def test_inconsistent_pos_gene_removed(self):
+        """A positive gene that flips to negative in any LOO sub-analysis is removed."""
         loo = {
             "r1": {"pooledResults": pd.DataFrame({"effectSize": [0.5]}, index=["G1"])},
             "r2": {"pooledResults": pd.DataFrame({"effectSize": [-0.3]}, index=["G1"])},
@@ -747,6 +787,7 @@ class TestLOOConsistentGenesHelper:
         assert result == []
 
     def test_consistent_neg_gene_kept(self):
+        """A negative gene that stays negative across every LOO sub-analysis is kept."""
         loo = {
             "r1": {"pooledResults": pd.DataFrame({"effectSize": [-0.5]}, index=["N1"])},
             "r2": {"pooledResults": pd.DataFrame({"effectSize": [-1.0]}, index=["N1"])},
@@ -755,6 +796,7 @@ class TestLOOConsistentGenesHelper:
         assert result == ["N1"]
 
     def test_inconsistent_neg_gene_removed(self):
+        """A negative gene that flips to positive in any LOO sub-analysis is removed."""
         loo = {
             "r1": {"pooledResults": pd.DataFrame({"effectSize": [-0.5]}, index=["N1"])},
             "r2": {"pooledResults": pd.DataFrame({"effectSize": [0.1]}, index=["N1"])},
@@ -789,6 +831,7 @@ class TestStandaloneFilterGenes:
     """Test the module-level filter_genes() convenience wrapper."""
 
     def test_convenience_function_works(self):
+        """The standalone function returns the same shape of result as the analyzer method."""
         pooled = _make_pooled(8, base_fdr=0.001, include_fisher=False)
         meta = _make_meta_object(pooled)
         result = filter_genes(meta, fdr_thresh=1.0, is_leave_one_out=False)
@@ -796,6 +839,7 @@ class TestStandaloneFilterGenes:
         assert isinstance(result["filterResults"], FilterResult)
 
     def test_convenience_function_passes_thresholds(self):
+        """Threshold keyword arguments are forwarded through to the underlying filter logic."""
         pooled = _make_pooled(10, base_fdr=0.001, include_fisher=False)
         meta = _make_meta_object(pooled)
         result = filter_genes(meta, effect_size_thresh=5.0, fdr_thresh=1.0, is_leave_one_out=False)
@@ -812,6 +856,7 @@ class TestFilterGenesCombined:
     """Tests that exercise multiple filters together."""
 
     def setup_method(self):
+        """Give each test a fresh MetaAnalyzer."""
         self.analyzer = MetaAnalyzer()
 
     def test_fdr_plus_effect_size_plus_fisher(self):

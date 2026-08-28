@@ -14,20 +14,21 @@ Fixed issues:
 - Improved warning capture and validation
 """
 
-import pytest
+import warnings
+from unittest.mock import patch
+
 import numpy as np
 import pandas as pd
-from unittest.mock import patch
-import warnings
+import pytest
 
 # Import our implementations
 from metaintegrator.clinical_metrics_analyzer import (
-    YoudenJAnalyzer,
     ClinicalParametersAnalyzer,
     NamedArray,
+    YoudenJAnalyzer,
+    calculate_multi_study_clinical_parameters,
     calculate_optimal_cutoff,
     print_optimal_cutoff_summary,
-    calculate_multi_study_clinical_parameters,
 )
 
 

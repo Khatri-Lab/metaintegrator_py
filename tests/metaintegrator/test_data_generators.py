@@ -3,9 +3,10 @@ Test data generators and utilities for MetaIntegrator testing.
 This module provides utilities for generating synthetic datasets with controllable properties.
 """
 
+from typing import Dict, List, Optional
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional
 
 
 class TestDataGenerator:

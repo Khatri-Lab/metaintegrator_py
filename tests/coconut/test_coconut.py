@@ -76,7 +76,7 @@ def test_debug_coconut_steps(multiple_gse_data):
 
 import os
 import sys
-from typing import List, Dict
+from typing import Dict, List
 from unittest.mock import patch
 
 import numpy as np
@@ -95,23 +95,23 @@ try:
 
     # Import the functions to test (assuming they're in a module called coconut)
     from coconut.coconut import (
+        BayesParams,
+        GeneExpressionData,
+        _apply_quantile_normalization,
+        _combat_apply_params_no_cov,
+        _combat_custom,
+        _combat_get_params_no_cov,
+        _compute_gene_weighted_estimates,
+        _get_common_genes,
+        _get_data_subset,
+        _int_eprior,
+        _it_sol,
+        _prepare_batch_labels,
+        _split_combat_data,
         coconut,
         combine_coco_output,
         get_a_prior,
         get_b_prior,
-        _prepare_batch_labels,
-        _split_combat_data,
-        _combat_custom,
-        _combat_get_params_no_cov,
-        _combat_apply_params_no_cov,
-        _it_sol,
-        _int_eprior,
-        _compute_gene_weighted_estimates,
-        _get_common_genes,
-        _get_data_subset,
-        _apply_quantile_normalization,
-        BayesParams,
-        GeneExpressionData,
     )
 
 except ImportError:
@@ -123,13 +123,16 @@ except ImportError:
         ImportWarning,
     )
 
-    # Create mock functions for testing the test structure
+    # Fallback stubs so the test module still imports if COCONUT itself
+    # failed to import; calling either one fails the test with a clear message.
     def coconut(*args, **kwargs):
-        raise NotImplementedError("COCONUT functions coconut() not imported. Please fix imports.")
+        """Stand-in for an unavailable `coconut()` import."""
+        raise NotImplementedError("COCONUT function coconut() not imported. Please fix imports.")
 
     def combine_coco_output(*args, **kwargs):
+        """Stand-in for an unavailable `combine_coco_output()` import."""
         raise NotImplementedError(
-            "COCONUT functions combin_coco_output()  not imported. Please fix imports."
+            "COCONUT function combine_coco_output() not imported. Please fix imports."
         )
 
     # Mock other functions similarly...
@@ -321,6 +324,7 @@ class TestCoconutMainFunction:
         assert np.allclose(sub[0]["class_labels"], np.ndarray([1, 1]))
 
     def test_apply_quantile_normalization(self):
+        """Quantile-normalize a small expression matrix grouped by platform label."""
         df = pd.DataFrame(
             [[5.0, 1.0, 3.0], [2.0, 4.0, 6.0]],
             index=["G1", "G2"],
@@ -1130,8 +1134,9 @@ class TestPerformanceAndStress:
 
     def test_memory_usage(self, multiple_gse_data):
         """Test memory usage doesn't explode."""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss

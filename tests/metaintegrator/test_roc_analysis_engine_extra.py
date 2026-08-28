@@ -18,15 +18,16 @@ Test Coverage Added:
 Author: MetaIntegrator Team
 """
 
-import pytest
+import logging
+import os
+import sys
+import warnings
+from unittest.mock import MagicMock, Mock, patch
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import warnings
-import logging
-import sys
-import os
-from unittest.mock import Mock, patch, MagicMock
-import matplotlib.pyplot as plt
+import pytest
 
 # Add the src directory to the path to import the module
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -34,15 +35,15 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 from metaintegrator.roc_analysis_engine import (
+    KesterBuntinxEngine,
+    MetaAnalysisUtilities,
     ROCAnalysisEngine,
     SignatureScoringEngine,
-    KesterBuntinxEngine,
     UnifiedROCAnalyzer,
-    MetaAnalysisUtilities,
     analyze_roc_curve,
     pooled_roc_plot,
-    summary_roc_plot,
     summary_roc_calc,
+    summary_roc_plot,
 )
 
 

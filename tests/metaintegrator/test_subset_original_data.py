@@ -3,8 +3,6 @@ Comprehensive test suite for subset_original_data function.
 
 This tests the Python port of R's subsetOriginalData() function,
 ensuring parity with the original R implementation.
-
-FIXED: test_mixed_case_sample_names() now correctly tests case sensitivity
 """
 
 import os

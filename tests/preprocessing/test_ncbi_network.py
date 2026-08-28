@@ -43,30 +43,35 @@ class TestGeoSeriesFtpPath:
     """Tests for the static path builder."""
 
     def test_standard_gse(self):
+        """A 5-digit GSE ID buckets into its GSE11nnn directory."""
         from preprocessing.ncbi_network import NCBINetwork
 
         path = NCBINetwork.geo_series_ftp_path("GSE11909", "matrix")
         assert path == "geo/series/GSE11nnn/GSE11909/matrix"
 
     def test_five_digit_gse(self):
+        """A different 5-digit GSE ID buckets correctly with a "soft" subpath."""
         from preprocessing.ncbi_network import NCBINetwork
 
         path = NCBINetwork.geo_series_ftp_path("GSE50635", "soft")
         assert path == "geo/series/GSE50nnn/GSE50635/soft"
 
     def test_six_digit_gse(self):
+        """A 6-digit GSE ID buckets into its GSE123nnn directory."""
         from preprocessing.ncbi_network import NCBINetwork
 
         path = NCBINetwork.geo_series_ftp_path("GSE123456", "matrix")
         assert path == "geo/series/GSE123nnn/GSE123456/matrix"
 
     def test_default_subpath(self):
+        """Omitting the subpath argument defaults to "matrix"."""
         from preprocessing.ncbi_network import NCBINetwork
 
         path = NCBINetwork.geo_series_ftp_path("GSE11909")
         assert path.endswith("/matrix")
 
     def test_suppl_subpath(self):
+        """The "suppl" subpath is passed through unchanged."""
         from preprocessing.ncbi_network import NCBINetwork
 
         path = NCBINetwork.geo_series_ftp_path("GSE11909", "suppl")
@@ -83,6 +88,7 @@ class TestListFtpDirectory:
 
     @patch("preprocessing.ncbi_network.ftplib.FTP")
     def test_returns_filtered_files(self, MockFTP):
+        """Only filenames matching the given suffix are returned."""
         from preprocessing.ncbi_network import NCBINetwork
 
         mock_ftp = MagicMock()
@@ -105,6 +111,7 @@ class TestListFtpDirectory:
 
     @patch("preprocessing.ncbi_network.ftplib.FTP")
     def test_returns_all_files_without_suffix(self, MockFTP):
+        """With no suffix filter, every listed file is returned."""
         from preprocessing.ncbi_network import NCBINetwork
 
         mock_ftp = MagicMock()
@@ -118,6 +125,7 @@ class TestListFtpDirectory:
 
     @patch("preprocessing.ncbi_network.ftplib.FTP")
     def test_retries_on_failure(self, MockFTP):
+        """A transient FTP failure is retried and succeeds on the next attempt."""
         from preprocessing.ncbi_network import NCBINetwork
 
         mock_ftp = MagicMock()
@@ -138,6 +146,7 @@ class TestListFtpDirectory:
 
     @patch("preprocessing.ncbi_network.ftplib.FTP")
     def test_raises_after_max_retries(self, MockFTP):
+        """A persistent FTP failure raises ConnectionError once retries are exhausted."""
         from preprocessing.ncbi_network import NCBINetwork
 
         mock_ftp = MagicMock()
@@ -328,6 +337,7 @@ class TestValidateGzip:
     """Tests for gzip validation helper."""
 
     def test_valid_gzip(self):
+        """Well-formed gzip bytes pass validation without raising."""
         from preprocessing.ncbi_network import NCBINetwork
 
         gz = _make_gz_bytes("good data")
@@ -335,12 +345,14 @@ class TestValidateGzip:
         NCBINetwork._validate_gzip(gz, "test")
 
     def test_invalid_gzip(self):
+        """Non-gzip bytes raise ValueError."""
         from preprocessing.ncbi_network import NCBINetwork
 
         with pytest.raises(ValueError, match="Invalid gzip"):
             NCBINetwork._validate_gzip(b"not gzip data", "test")
 
     def test_empty_gzip(self):
+        """A gzip stream wrapping zero bytes of content raises ValueError."""
         from preprocessing.ncbi_network import NCBINetwork
 
         # Create gzip with empty content

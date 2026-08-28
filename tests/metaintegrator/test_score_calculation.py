@@ -4,11 +4,12 @@ Unit tests for score_calculation.py
 Tests for the ScoreCalculator class and calculateScore function.
 """
 
-import pytest
+import os
+import sys
+
 import numpy as np
 import pandas as pd
-import sys
-import os
+import pytest
 
 # Add the src directory to the path to import modules to be run with python instead of pytest
 current_dir = os.path.dirname(os.path.abspath(__file__))

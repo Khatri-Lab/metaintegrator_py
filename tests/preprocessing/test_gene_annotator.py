@@ -26,6 +26,7 @@ from preprocessing.gene_annotator import GeneAnnotator
 
 @pytest.fixture
 def annotator():
+    """Provide a fresh GeneAnnotator instance for each test."""
     return GeneAnnotator()
 
 
@@ -38,6 +39,7 @@ class FakeValidator:
     """Minimal stand-in for EnsemblGeneValidator."""
 
     def __init__(self, valid: set):
+        """Store the set of gene symbols this validator considers valid."""
         self.valid_genes = valid
 
 
@@ -50,15 +52,19 @@ class TestCleanSymbolDirect:
     """Test clean_symbol() for direct Gene Symbol columns."""
 
     def test_simple_gene(self, annotator):
+        """A single gene symbol passes through unchanged."""
         assert annotator.clean_symbol("CD6", is_assignment=False) == "CD6"
 
     def test_triple_slash_separator(self, annotator):
+        """Triple-slash (///) separated symbols become comma-joined."""
         assert annotator.clean_symbol("CD6 /// IL2RG", is_assignment=False) == "CD6,IL2RG"
 
     def test_semicolon_separator(self, annotator):
+        """Semicolon-separated symbols become comma-joined."""
         assert annotator.clean_symbol("BRCA1;TP53", is_assignment=False) == "BRCA1,TP53"
 
     def test_mixed_separators(self, annotator):
+        """Triple-slash and semicolon separators can mix in the same value."""
         result = annotator.clean_symbol("A /// B;C", is_assignment=False)
         assert result == "A,B,C"
 
@@ -67,25 +73,32 @@ class TestCleanSymbolDirect:
         assert annotator.clean_symbol("NM_001234", is_assignment=False) == "NA"
 
     def test_accession_mixed_with_gene(self, annotator):
+        """An accession entry mixed with a real gene symbol is dropped, keeping the gene."""
         result = annotator.clean_symbol("ENST00000396160 /// TP53", is_assignment=False)
         assert result == "TP53"
 
     def test_dash_sentinel(self, annotator):
+        """The "---" sentinel value maps to NA."""
         assert annotator.clean_symbol("---", is_assignment=False) == "NA"
 
     def test_empty_string(self, annotator):
+        """An empty string maps to NA."""
         assert annotator.clean_symbol("", is_assignment=False) == "NA"
 
     def test_none(self, annotator):
+        """A None value maps to NA."""
         assert annotator.clean_symbol(None, is_assignment=False) == "NA"
 
     def test_nan(self, annotator):
+        """A float NaN value maps to NA."""
         assert annotator.clean_symbol(float("nan"), is_assignment=False) == "NA"
 
     def test_na_string(self, annotator):
+        """The literal string "NA" maps to itself."""
         assert annotator.clean_symbol("NA", is_assignment=False) == "NA"
 
     def test_whitespace_only(self, annotator):
+        """A whitespace-only value maps to NA."""
         assert annotator.clean_symbol("   ", is_assignment=False) == "NA"
 
     def test_double_slash_within_entry(self, annotator):
@@ -103,10 +116,12 @@ class TestCleanSymbolAssignment:
     """Test clean_symbol() for gene_assignment / mrna_assignment columns."""
 
     def test_standard_assignment(self, annotator):
+        """The gene symbol is the second field in a standard `//`-delimited assignment string."""
         raw = "NM_001004195 // OR4F4 // olfactory receptor, family 4, subfamily F, member 4 // 1p36.33 // 79501"
         assert annotator.clean_symbol(raw, is_assignment=True) == "OR4F4"
 
     def test_ensembl_transcript_assignment(self, annotator):
+        """The same second-field extraction works when the first field is an Ensembl transcript ID."""
         raw = "ENST00000328113 // OR4G2P // olfactory receptor, family 4, subfamily G, member 2"
         assert annotator.clean_symbol(raw, is_assignment=True) == "OR4G2P"
 
@@ -127,6 +142,7 @@ class TestCleanSymbolAssignment:
         assert annotator.clean_symbol(raw, is_assignment=True) == "TP53"
 
     def test_assignment_dash_value(self, annotator):
+        """The "---" sentinel maps to NA in assignment columns too."""
         assert annotator.clean_symbol("---", is_assignment=True) == "NA"
 
 
@@ -136,12 +152,15 @@ class TestCleanSymbolAssignment:
 
 
 class TestFindSymbolColumn:
+    """Tests for find_symbol_column()'s column-name detection."""
 
     def test_gene_symbol_column(self, annotator):
+        """A "Gene Symbol" column is recognized."""
         df = pd.DataFrame({"ID": [1], "Gene Symbol": ["TP53"], "Description": ["x"]})
         assert annotator.find_symbol_column(df) == "Gene Symbol"
 
     def test_gene_assignment_column(self, annotator):
+        """A "gene_assignment" column is recognized when no direct symbol column exists."""
         df = pd.DataFrame({"ID": [1], "gene_assignment": ["NM_1 // TP53 // x"]})
         assert annotator.find_symbol_column(df) == "gene_assignment"
 
@@ -157,6 +176,7 @@ class TestFindSymbolColumn:
         assert annotator.find_symbol_column(df) == "Gene Symbol"
 
     def test_no_match(self, annotator):
+        """A table with no recognized symbol column returns None."""
         df = pd.DataFrame({"ID": [1], "probe_sequence": ["ATCG"]})
         assert annotator.find_symbol_column(df) is None
 
@@ -170,6 +190,7 @@ class TestBuildProbeMapping:
     """Regression tests for the GPL6244 probe-ID type mismatch bug."""
 
     def test_int_ids_coerced_to_str(self, annotator):
+        """Integer probe IDs in the GPL table are coerced to strings."""
         table = pd.DataFrame(
             {
                 "ID": [7892501, 7892502, 7892503],
@@ -181,6 +202,7 @@ class TestBuildProbeMapping:
         assert mapping["7892501"] == "TP53"
 
     def test_str_ids_preserved(self, annotator):
+        """String probe IDs pass through unchanged."""
         table = pd.DataFrame(
             {
                 "ID": ["200000_s_at", "200001_at"],
@@ -207,8 +229,10 @@ class TestBuildProbeMapping:
 
 
 class TestAnnotate:
+    """Tests for annotate()'s end-to-end probe-to-gene mapping."""
 
     def test_basic_annotation(self, annotator):
+        """Probes map to their gene symbols, with an unrecognized symbol becoming NA."""
         table = _make_gpl_table(
             id_col=["P1", "P2", "P3"],
             gene_col=["TP53", "BRCA1", "---"],
@@ -240,6 +264,7 @@ class TestAnnotate:
         assert keys == ["TP53", "BRCA1"]
 
     def test_assignment_column(self, annotator):
+        """annotate() extracts symbols from a gene_assignment column, not just a direct one."""
         table = pd.DataFrame(
             {
                 "ID": ["P1", "P2"],
@@ -254,6 +279,7 @@ class TestAnnotate:
         assert keys == ["OR4F4", "NA"]
 
     def test_with_ensembl_validator(self, annotator):
+        """An invalid gene symbol is replaced with NA when a validator rejects it."""
         table = _make_gpl_table(
             id_col=["P1", "P2", "P3"],
             gene_col=["TP53", "FAKE_GENE", "BRCA1"],
@@ -275,11 +301,13 @@ class TestAnnotate:
         assert keys == ["TP53,FAKE"]
 
     def test_no_symbol_column_falls_back_to_probe_ids(self, annotator):
+        """With no recognizable symbol column, the probe IDs themselves are used as keys."""
         table = pd.DataFrame({"ID": ["P1"], "probe_seq": ["ATCG"]})
         keys = annotator.annotate(table, pd.Index(["P1"]))
         assert keys == ["P1"]
 
     def test_empty_table(self, annotator):
+        """An empty GPL table with an empty probe index returns an empty key list."""
         table = pd.DataFrame({"ID": [], "Gene Symbol": []})
         keys = annotator.annotate(table, pd.Index([]))
         assert keys == []
@@ -317,10 +345,12 @@ class TestRealWorldEdgeCases:
         assert annotator.clean_symbol(raw, is_assignment=True) == "OR4F5"
 
     def test_gpl6244_mitochondrial(self, annotator):
+        """GPL6244-style mitochondrial gene assignment (MT-TM) is extracted correctly."""
         raw = "ENST00000387377 // MT-TM // mitochondrially encoded tRNA methionine // --- // ---"
         assert annotator.clean_symbol(raw, is_assignment=True) == "MT-TM"
 
     def test_gpl570_na_value(self, annotator):
+        """GPL570-style literal "NA" values map to NA."""
         assert annotator.clean_symbol("NA", is_assignment=False) == "NA"
 
     def test_gpl6244_multiple_assignments(self, annotator):

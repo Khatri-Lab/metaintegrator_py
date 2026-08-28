@@ -15,8 +15,8 @@ project_root = Path(__file__).parent
 src_path = project_root / "src"
 sys.path.insert(0, str(src_path))
 
-from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 from metaintegrator.core_analysis import FisherCombination
+from metaintegrator.enhanced_core_analysis import EnhancedMetaAnalysis
 
 
 class Colors:

@@ -18,7 +18,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
-from metaintegrator.core_analysis import MetaAnalysisCore, FisherCombination
+from metaintegrator.core_analysis import FisherCombination, MetaAnalysisCore
 
 # =============================================================================
 # Test Fixtures
@@ -1085,7 +1085,7 @@ class TestQuickSanityChecks:
 
     def test_imports_work(self):
         """Test that imports work correctly."""
-        from metaintegrator.core_analysis import MetaAnalysisCore, FisherCombination
+        from metaintegrator.core_analysis import FisherCombination, MetaAnalysisCore
 
         assert MetaAnalysisCore is not None
         assert FisherCombination is not None

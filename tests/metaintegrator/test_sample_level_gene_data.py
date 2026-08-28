@@ -3,11 +3,12 @@ Unit tests for sample_level_gene_data module.
 Tests the Python implementation against expected R behavior.
 """
 
-import pytest
+import os
+import sys
+
 import numpy as np
 import pandas as pd
-import sys
-import os
+import pytest
 
 # Add the src directory to the path to import modules to be run with python instead of pytest
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,11 +17,11 @@ sys.path.insert(0, os.path.normpath(project_root))
 
 from metaintegrator.sample_level_gene_data import (
     SampleLevelGeneDataProcessor,
-    getSampleLevelGeneData,
     extractDataFromGEM,
-    replaceValues,
+    getSampleLevelGeneData,
     replaceNaNs,
     replaceNAs,
+    replaceValues,
 )
 
 

@@ -17,45 +17,38 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 # Import all classes and functions from scoring_core
-from metaintegrator.scoring_core import (
-    # Exceptions
-    ScoringError,
-    ValidationError,
-    ConfigurationError,
-    FilteringError,
-    ScoringCalculationError,
-    # Enumerations
-    ExportFormat,
-    StatisticType,
-    ScoringMethod,
+from metaintegrator.scoring_core import (  # Exceptions; Enumerations; Configuration classes; Data structures; Validators; Utilities; Factory functions
     AggregationMethod,
-    # Configuration classes
     BaseConfig,
-    FilterConfig,
-    ScoringConfig,
-    PathwayConfig,
-    SummaryConfig,
-    # Data structures
-    OverlapAnalysis,
-    FilterSummary,
-    StatisticalSummary,
-    ScoringResults,
-    # Validators
     BaseValidator,
-    MetaAnalysisValidator,
-    FilterResultsValidator,
-    MetaObjectValidator,
-    # Utilities
-    LoggerMixin,
+    ConfigurationError,
     DataFrameUtils,
+    ExportFormat,
+    FilterConfig,
+    FilteringError,
+    FilterResultsValidator,
+    FilterSummary,
+    LoggerMixin,
+    MetaAnalysisValidator,
+    MetaObjectValidator,
     NormalizationUtils,
+    OverlapAnalysis,
+    PathwayConfig,
+    ScoringCalculationError,
+    ScoringConfig,
+    ScoringError,
+    ScoringMethod,
+    ScoringResults,
+    StatisticalSummary,
     StatisticalUtils,
-    # Factory functions
+    StatisticType,
+    SummaryConfig,
+    ValidationError,
     create_default_filter_config,
-    create_strict_filter_config,
-    create_default_scoring_config,
     create_default_pathway_config,
+    create_default_scoring_config,
     create_default_summary_config,
+    create_strict_filter_config,
 )
 
 # ==================================================================

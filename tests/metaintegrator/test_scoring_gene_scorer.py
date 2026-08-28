@@ -29,16 +29,16 @@ sys.path.insert(0, os.path.normpath(project_root))
 # Note: These imports may need to be adjusted based on your actual module structure
 try:
     from metaintegrator.scoring_gene_scorer import (
-        EnhancedScoringConfig,
-        ScoringStrategy,
-        ZScoreStrategy,
         CombinedStrategy,
         EffectSizeStrategy,
+        EnhancedGeneScorer,
+        EnhancedScoringConfig,
         FDRInverseStrategy,
         FisherMinStrategy,
-        PathwayAggregator,
-        EnhancedGeneScorer,
         GeneScorer,
+        PathwayAggregator,
+        ScoringStrategy,
+        ZScoreStrategy,
     )
 
     # Mock the core dependencies since they're imported from scoring_core

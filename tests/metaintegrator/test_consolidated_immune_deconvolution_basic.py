@@ -8,7 +8,7 @@ import os
 import sys
 import tempfile
 import warnings
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
@@ -21,8 +21,8 @@ project_root = os.path.join(current_dir, "..", "..", "src")
 sys.path.insert(0, os.path.normpath(project_root))
 
 from metaintegrator.consolidated_immune_deconvolution import (
-    ImmunoStatesDeconvolver,
     ImmunoStatesCorrectionAnalyzer,
+    ImmunoStatesDeconvolver,
     ImmunoStatesMetaAnalyzer,
     ImmunoStatesUtils,
     immunostates_deconv,
