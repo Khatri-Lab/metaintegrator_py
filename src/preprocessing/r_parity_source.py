@@ -1,5 +1,5 @@
 """
-Backward-compatibility alias — use :mod:`hybrid_source` instead.
+Backward-compatibility alias: use :mod:`hybrid_source` instead.
 
 .. deprecated::
     Import :class:`HybridGeoSource` from ``preprocessing.hybrid_source``.

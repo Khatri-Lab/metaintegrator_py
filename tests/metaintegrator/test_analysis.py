@@ -29,13 +29,13 @@ from metaintegrator.analysis import (
     run_meta_analysis,
 )
 
-# Module reference — used only by tests that legitimately need to
+# Module reference: used only by tests that legitimately need to
 # patch module-level names (e.g. testing the convenience function).
 meta_analysis = importlib.import_module("metaintegrator.analysis")
 
 
 # ===================================================================
-# Helper factories — data builders
+# Helper factories: data builders
 # ===================================================================
 
 
@@ -97,7 +97,7 @@ def make_es_result(pooled=None, g=None, se_g=None):
 
 
 # ===================================================================
-# Helper factories — mock collaborators
+# Helper factories: mock collaborators
 # ===================================================================
 
 
@@ -155,7 +155,7 @@ def _make_mock_processor():
 
 
 # ===================================================================
-# DI helpers — build fully-injected objects for tests
+# DI helpers: build fully-injected objects for tests
 # ===================================================================
 # These replace the old autouse monkeypatch fixture.  Each test now
 # declares its dependencies explicitly via constructor injection.
@@ -198,7 +198,7 @@ def _make_test_analyzer(**overrides):
 
 
 # ===================================================================
-# TESTS — MetaAnalyzer.__init__
+# TESTS: MetaAnalyzer.__init__
 # ===================================================================
 
 
@@ -226,7 +226,7 @@ def test_init_with_custom(monkeypatch):
 
 
 # ===================================================================
-# TESTS — run_meta_analysis_core
+# TESTS: run_meta_analysis_core
 # ===================================================================
 
 
@@ -264,7 +264,7 @@ def test_run_meta_analysis_core_calls(monkeypatch):
 
 
 # ===================================================================
-# TESTS — engine.compute_effect_sizes
+# TESTS: engine.compute_effect_sizes
 # ===================================================================
 
 
@@ -293,7 +293,7 @@ def test_compute_effect_sizes(monkeypatch):
 
 
 # ===================================================================
-# TESTS — engine.compute_fisher_results
+# TESTS: engine.compute_fisher_results
 # ===================================================================
 
 
@@ -313,7 +313,7 @@ def test_compute_fisher_results_new(monkeypatch):
 
 
 # ===================================================================
-# TESTS — engine.format_results
+# TESTS: engine.format_results
 # ===================================================================
 
 
@@ -365,7 +365,7 @@ def test_format_final_results():
 
 
 # ===================================================================
-# TESTS — combine_effect_sizes
+# TESTS: combine_effect_sizes
 # ===================================================================
 
 
@@ -394,7 +394,7 @@ def test_combine_effect_sizes_success():
 
 
 # ===================================================================
-# TESTS — _multimerge_effect_sizes (static method — no DI needed)
+# TESTS: _multimerge_effect_sizes (static method: no DI needed)
 # ===================================================================
 
 
@@ -414,7 +414,7 @@ def test_multimerge_effect_sizes():
 
 
 # ===================================================================
-# TESTS — _adjust_fisher (static method — no DI needed)
+# TESTS: _adjust_fisher (static method: no DI needed)
 # ===================================================================
 
 
@@ -431,7 +431,7 @@ def test_adjust_fisher():
 
 
 # ===================================================================
-# TESTS — run_leave_one_out_analysis
+# TESTS: run_leave_one_out_analysis
 # ===================================================================
 
 
@@ -464,7 +464,7 @@ def test_run_leave_one_out_sequential(monkeypatch):
 
 
 # ===================================================================
-# TESTS — run_leave_one_out_analysis: ProcessPoolExecutor pickling
+# TESTS: run_leave_one_out_analysis: ProcessPoolExecutor pickling
 # ===================================================================
 # Regression coverage for: "Can't pickle local object
 # 'MetaAnalyzer.run_leave_one_out_analysis.<locals>.analyze_subset'"
@@ -472,7 +472,7 @@ def test_run_leave_one_out_sequential(monkeypatch):
 # Root cause: the per-subset callable was a closure nested inside
 # run_leave_one_out_analysis(). ProcessPoolExecutor must pickle every
 # callable it submits, and pickle can only resolve a function "by name"
-# (its module path) — a nested function has none. Every subset raised
+# (its module path): a nested function has none. Every subset raised
 # the exception, the method silently returned four None results, and
 # filter_genes()'s leave-one-out filter was silently skipped even though
 # is_leave_one_out=True was requested. Fix: hoist the per-subset logic to
@@ -588,7 +588,7 @@ def test_run_leave_one_out_analysis_parallel_and_sequential_agree():
 
 
 # ===================================================================
-# TESTS — run_meta_analysis: leave-one-out failures are no longer silent
+# TESTS: run_meta_analysis: leave-one-out failures are no longer silent
 # ===================================================================
 # filter_genes()'s leave-one-out consistency step only runs
 # `if meta_object.get("leaveOneOutAnalysis")`, which is falsy for an
@@ -657,10 +657,10 @@ def test_run_meta_analysis_no_warning_when_all_loo_subsets_succeed(monkeypatch, 
 
 
 # ===================================================================
-# TESTS — module-level run_meta_analysis convenience function
+# TESTS: module-level run_meta_analysis convenience function
 # ===================================================================
 # The convenience function creates a MetaAnalyzer internally, so we
-# need module-level patching here — this is the one legitimate use.
+# need module-level patching here: this is the one legitimate use.
 
 
 def test_run_meta_analysis_wrapper(monkeypatch):
@@ -681,7 +681,7 @@ def test_run_meta_analysis_wrapper(monkeypatch):
 
 
 # ===================================================================
-# TESTS — run_meta_analysis edge cases
+# TESTS: run_meta_analysis edge cases
 # ===================================================================
 
 
@@ -717,7 +717,7 @@ def test_run_meta_analysis_leave_one_out(monkeypatch):
 
 
 # ===================================================================
-# TESTS — integration: complete pipeline
+# TESTS: integration: complete pipeline
 # ===================================================================
 
 
@@ -788,7 +788,7 @@ def test_meta_analysis_complete_output_structure():
 
 
 # ===================================================================
-# Phase 3 TESTS — ABC, Engine, Factory, Pipeline, Gene Count
+# Phase 3 TESTS: ABC, Engine, Factory, Pipeline, Gene Count
 # ===================================================================
 
 
@@ -1332,7 +1332,7 @@ class TestBackwardCompatibility:
 
 
 # ===================================================================
-# Phase 4 TESTS — EffectSizeResult, InverseVarianceEngine, FixedEffects
+# Phase 4 TESTS: EffectSizeResult, InverseVarianceEngine, FixedEffects
 # ===================================================================
 
 

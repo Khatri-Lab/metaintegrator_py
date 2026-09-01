@@ -4,7 +4,7 @@ Low-level NCBI network operations with retry, timeout, and disk caching.
 Encapsulates FTP directory listing, HTTPS file download (with FTP
 fallback), and GEO-specific path construction.  Designed for
 dependency injection so that callers (e.g. :class:`RParityGeoSource`)
-can be unit-tested with a mock network layer — no live connections
+can be unit-tested with a mock network layer: no live connections
 required.
 
 Usage

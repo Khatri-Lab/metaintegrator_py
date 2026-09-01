@@ -7,7 +7,7 @@
 # Prerequisites (one-time, done by a repo admin):
 #   1. Go to repo Settings → Pages
 #   2. Under "Build and deployment → Source", select "GitHub Actions"
-#   3. That's it — no need to pick a branch or create gh-pages manually.
+#   3. That's it: no need to pick a branch or create gh-pages manually.
 # ==========================================================================
 
 name: Deploy Documentation

@@ -174,7 +174,7 @@ from metaintegrator.labeling import assign_class_labels
 def download_with_validation(gse_ids):
     """
     Download GEO data with comprehensive validation. There's no built-in
-    check_geo_log_scale() — this uses a simple max-value heuristic instead
+    check_geo_log_scale(): this uses a simple max-value heuristic instead
     (log2 microarray data is rarely above ~25-30).
     """
     loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir="./geo_cache")
@@ -373,12 +373,12 @@ with open('analysis_plan.json', 'w') as f:
 ```python
 from metaintegrator.analysis import MetaAnalyzer
 
-# ✅ RECOMMENDED: run_meta_analysis() — always uses random-effects pooling
+# ✅ RECOMMENDED: run_meta_analysis(): always uses random-effects pooling
 # and also runs leave-one-out automatically (3+ datasets)
 analyzer = MetaAnalyzer()
 results = analyzer.run_meta_analysis(meta_object)
 
-# There is no "fixed-effects" toggle on run_meta_analysis() itself — the
+# There is no "fixed-effects" toggle on run_meta_analysis() itself: the
 # lower-level MetaAnalysisCore.pool_inverse_variance(method=...) does
 # support 'fixed', but the recommended, R-parity entry point is random-effects.
 ```
@@ -766,7 +766,7 @@ pooled_fixed = MetaAnalysisCore.pool_inverse_variance(g_matrix, se_matrix, metho
 results = analyzer.run_meta_analysis(meta_object)
 pooled = results['metaAnalysis']['pooledResults']
 high_het = pooled[pooled['heterogeneityPval'] < 0.05]
-print(f"{len(high_het)} genes with significant heterogeneity — investigate these")
+print(f"{len(high_het)} genes with significant heterogeneity: investigate these")
 ```
 
 ### 4. Selective Reporting

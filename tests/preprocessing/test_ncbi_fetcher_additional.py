@@ -40,7 +40,7 @@ def _make_gz(lines: list[str]) -> bytes:
 
 
 # ============================================================================
-# _SimpleCache — additional edge cases
+# _SimpleCache: additional edge cases
 # ============================================================================
 
 
@@ -87,7 +87,7 @@ class TestSimpleCacheAdditional:
 
 
 # ============================================================================
-# _parse_series_matrix — corner cases
+# _parse_series_matrix: corner cases
 # ============================================================================
 
 
@@ -191,7 +191,7 @@ class TestParseSeriesMatrixCornerCases:
 
 
 # ============================================================================
-# fetch_series_matrix — multi-platform
+# fetch_series_matrix: multi-platform
 # ============================================================================
 
 
@@ -278,7 +278,7 @@ class TestNCBIGeoSourceIntegration:
         assert raw_datasets[0].source_id == "GSE2034"
 
     def test_ncbi_geo_source_rejects_gsm(self, tmp_path):
-        """A GSM (sample) accession is rejected — NCBIGeoSource only fetches series."""
+        """A GSM (sample) accession is rejected: NCBIGeoSource only fetches series."""
         from preprocessing.geo_sources import NCBIGeoSource
 
         source = NCBIGeoSource(cache_dir=tmp_path)
@@ -286,7 +286,7 @@ class TestNCBIGeoSourceIntegration:
             source.fetch("GSM12345")
 
     def test_ncbi_geo_source_rejects_gpl(self, tmp_path):
-        """A GPL (platform) accession is rejected — NCBIGeoSource only fetches series."""
+        """A GPL (platform) accession is rejected: NCBIGeoSource only fetches series."""
         from preprocessing.geo_sources import NCBIGeoSource
 
         source = NCBIGeoSource(cache_dir=tmp_path)
@@ -318,7 +318,7 @@ class TestUnicodeEdgeCases:
 
 
 # ============================================================================
-# _probe_platform_from_filename — more patterns
+# _probe_platform_from_filename: more patterns
 # ============================================================================
 
 

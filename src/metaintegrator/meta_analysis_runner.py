@@ -7,15 +7,15 @@ suitable for unattended, reproducible, and scriptable execution.
 
 Pipeline stages
 ---------------
-1. **Download** — fetch GEO datasets via ``DataLoaderFactory``
-2. **Reformat** — build the ``meta_data`` dict expected by downstream code
-3. **Label** — assign binary case/control class vectors
-4. **Analyze** — run meta-analysis (with optional leave-one-out)
-5. **Filter** — extract significant genes
-6. **Search** — backward and/or forward gene-set optimization
-7. **Score & Evaluate** — compute signature scores, ROC, PRC
-8. **Plot** — generate all requested figures
-9. **Export** — write CSVs and plots to the output directory
+1. **Download**: fetch GEO datasets via ``DataLoaderFactory``
+2. **Reformat**: build the ``meta_data`` dict expected by downstream code
+3. **Label**: assign binary case/control class vectors
+4. **Analyze**: run meta-analysis (with optional leave-one-out)
+5. **Filter**: extract significant genes
+6. **Search**: backward and/or forward gene-set optimization
+7. **Score & Evaluate**: compute signature scores, ROC, PRC
+8. **Plot**: generate all requested figures
+9. **Export**: write CSVs and plots to the output directory
 
 Usage
 -----
@@ -31,8 +31,8 @@ Programmatically::
 
 See Also
 --------
-``meta_analysis_config.py`` — config validation and template generation.
-``coconut/coconut_runner.py`` — the analogous runner for COCONUT.
+``meta_analysis_config.py``: config validation and template generation.
+``coconut/coconut_runner.py``: the analogous runner for COCONUT.
 """
 
 from __future__ import annotations
@@ -128,12 +128,12 @@ def run_pipeline(
     t0 = time.time()
 
     # ── 1. Download datasets ─────────────────────────────────────────
-    _banner("STAGE 1 / 8 — DOWNLOADING GEO DATASETS")
+    _banner("STAGE 1 / 8: DOWNLOADING GEO DATASETS")
     datasets = _download_datasets(config)
     logger.info(f"Downloaded {len(datasets)} dataset(s).")
 
     # ── 2. Build meta-analysis dict ──────────────────────────────────
-    _banner("STAGE 2 / 8 — BUILDING META-ANALYSIS DATA STRUCTURE")
+    _banner("STAGE 2 / 8: BUILDING META-ANALYSIS DATA STRUCTURE")
     meta_object = _build_meta_object(datasets)
     logger.info(
         f"Meta object contains {len(meta_object['originalData'])} dataset(s): "
@@ -141,30 +141,30 @@ def run_pipeline(
     )
 
     # ── 3. Label samples ─────────────────────────────────────────────
-    _banner("STAGE 3 / 8 — ASSIGNING CLASS LABELS")
+    _banner("STAGE 3 / 8: ASSIGNING CLASS LABELS")
     meta_object = _label_samples(meta_object, config)
     _report_class_summary(meta_object)
 
     # ── 4. Run meta-analysis ─────────────────────────────────────────
-    _banner("STAGE 4 / 8 — RUNNING META-ANALYSIS")
+    _banner("STAGE 4 / 8: RUNNING META-ANALYSIS")
     meta_object = _run_meta_analysis(meta_object, config)
     _report_meta_analysis_summary(meta_object)
 
     # ── 5. Filter genes ──────────────────────────────────────────────
-    _banner("STAGE 5 / 8 — FILTERING GENES")
+    _banner("STAGE 5 / 8: FILTERING GENES")
     meta_object = _filter_genes(meta_object, config)
     _report_filter_summary(meta_object)
 
     # ── 6. Gene search ───────────────────────────────────────────────
-    _banner("STAGE 6 / 8 — GENE SEARCH OPTIMIZATION")
+    _banner("STAGE 6 / 8: GENE SEARCH OPTIMIZATION")
     meta_object = _run_gene_search(meta_object, config)
 
     # ── 7. Score & evaluate ──────────────────────────────────────────
-    _banner("STAGE 7 / 8 — COMPUTING SCORES & EVALUATION METRICS")
+    _banner("STAGE 7 / 8: COMPUTING SCORES & EVALUATION METRICS")
     meta_object = _compute_scores_and_roc(meta_object, config)
 
     # ── 8. Export results & plots ────────────────────────────────────
-    _banner("STAGE 8 / 8 — SAVING RESULTS & GENERATING PLOTS")
+    _banner("STAGE 8 / 8: SAVING RESULTS & GENERATING PLOTS")
     _export_results(meta_object, config, output_dir, plot_data_dir)
     _generate_plots(meta_object, config, output_dir, plot_data_dir)
 
@@ -194,7 +194,7 @@ def dry_run(config_path: str, *, verbose: bool = False) -> bool:
         ``True`` if everything looks good.
     """
     _configure_logging(verbose)
-    _banner("DRY RUN — VALIDATING CONFIGURATION")
+    _banner("DRY RUN: VALIDATING CONFIGURATION")
 
     raw = load_config_file(config_path)
     config, errors = validate_config(raw)
@@ -223,7 +223,7 @@ def dry_run(config_path: str, *, verbose: bool = False) -> bool:
 
     print(f"  ✅ Labeling entries cover {len(labeling)} pattern(s): " f"{list(labeling.keys())}")
 
-    # Quick connectivity check — try importing the loader and listing
+    # Quick connectivity check: try importing the loader and listing
     # the cache directory
     try:
         from preprocessing.loader_factory import DataLoaderFactory  # noqa: F401
@@ -306,7 +306,7 @@ def _label_samples(meta_object: Dict, config: Dict) -> Dict:
                 break
 
         if matched_spec is None:
-            logger.warning(f"No labeling config matches dataset '{dataset_key}' — skipping.")
+            logger.warning(f"No labeling config matches dataset '{dataset_key}': skipping.")
             continue
 
         disease_terms = matched_spec["disease_terms"]
@@ -436,12 +436,12 @@ def _run_gene_search(meta_object: Dict, config: Dict) -> Dict:
     run_forward = gs_cfg.get("run_forward", True)
 
     if not run_backward and not run_forward:
-        logger.info("Gene search disabled — skipping.")
+        logger.info("Gene search disabled: skipping.")
         return meta_object
 
     filter_results = meta_object.get("filterResults")
     if filter_results is None:
-        logger.warning("No filterResults found — cannot run gene search.")
+        logger.warning("No filterResults found: cannot run gene search.")
         return meta_object
 
     try:
@@ -464,7 +464,7 @@ def _run_gene_search(meta_object: Dict, config: Dict) -> Dict:
             bk_genes = filter_results.get("backwardSearchGenes")
             if bk_genes is not None:
                 n = len(bk_genes) if hasattr(bk_genes, "__len__") else "N/A"
-                logger.info(f"  Backward search complete — {n} gene(s) selected.")
+                logger.info(f"  Backward search complete: {n} gene(s) selected.")
         except Exception as exc:
             logger.error(f"Backward search failed: {exc}")
 
@@ -480,7 +480,7 @@ def _run_gene_search(meta_object: Dict, config: Dict) -> Dict:
             fw_genes = filter_results.get("forwardSearchGenes")
             if fw_genes is not None:
                 n = len(fw_genes) if hasattr(fw_genes, "__len__") else "N/A"
-                logger.info(f"  Forward search complete — {n} gene(s) selected.")
+                logger.info(f"  Forward search complete: {n} gene(s) selected.")
         except Exception as exc:
             logger.error(f"Forward search failed: {exc}")
 
@@ -491,7 +491,7 @@ def _compute_scores_and_roc(meta_object: Dict, config: Dict) -> Dict:
     """Stage 7: Calculate signature scores and ROC/PRC metrics."""
     filter_results = meta_object.get("filterResults")
     if filter_results is None:
-        logger.warning("No filterResults — skipping score computation.")
+        logger.warning("No filterResults: skipping score computation.")
         return meta_object
 
     # ── Scores ────────────────────────────────────────────────────────
@@ -512,7 +512,7 @@ def _compute_scores_and_roc(meta_object: Dict, config: Dict) -> Dict:
             except Exception as exc:
                 logger.warning(f"  Score calculation failed for {ds_name}: {exc}")
     except ImportError:
-        logger.warning("ScoreCalculator not available — skipping scores.")
+        logger.warning("ScoreCalculator not available: skipping scores.")
 
     # ── ROC / PRC ─────────────────────────────────────────────────────
     requested_plots = set(config["output"].get("plots", []))
@@ -533,14 +533,14 @@ def _compute_scores_and_roc(meta_object: Dict, config: Dict) -> Dict:
                 if ds_obj.get("score") is None or ds_obj.get("class") is None:
                     continue
                 try:
-                    # `ROCAnalysisEngine` has no `calculate_roc_auc` method — that
+                    # `ROCAnalysisEngine` has no `calculate_roc_auc` method: that
                     # name never existed on the class (it exposes
                     # `calculate_roc_curve`/`calculate_roc`, each returning a
                     # dict that includes an "auc" key). The mismatched call
                     # raised `AttributeError` for every dataset, which was
                     # silently swallowed by the `except Exception` below and
                     # surfaced only as "ROC failed for <dataset>: ..." warnings
-                    # (4 occurrences per no-gene-search run) — this is bug (b)
+                    # (4 occurrences per no-gene-search run): this is bug (b)
                     # from the round-13 console log. `calculate_roc_curve` also
                     # takes (y_true, y_scores) in that order, so the arguments
                     # must be `class` then `score`, not `score` then `class`.
@@ -553,7 +553,7 @@ def _compute_scores_and_roc(meta_object: Dict, config: Dict) -> Dict:
 
             meta_object["_roc_results"] = roc_results
         except ImportError:
-            logger.warning("ROC modules not available — skipping ROC/PRC.")
+            logger.warning("ROC modules not available: skipping ROC/PRC.")
 
     return meta_object
 
@@ -708,7 +708,7 @@ def _plot_forest(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dp
             gene = candidates[0]
 
     if gene is None:
-        logger.warning("No gene specified or found for forest plot — skipping.")
+        logger.warning("No gene specified or found for forest plot: skipping.")
         return
 
     fig = plotter.forest_plot(meta_object, gene_name=gene)
@@ -724,7 +724,7 @@ def _plot_heatmap(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, d
 
     fr = meta_object.get("filterResults")
     if fr is None:
-        logger.warning("No filterResults for heatmap plot — skipping.")
+        logger.warning("No filterResults for heatmap plot: skipping.")
         return
 
     plotter = EnhancedMetaAnalysisPlotter()
@@ -743,7 +743,7 @@ def _plot_violin(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dp
 
     fr = meta_object.get("filterResults")
     if fr is None:
-        logger.warning("No filterResults for violin plot — skipping.")
+        logger.warning("No filterResults for violin plot: skipping.")
         return
 
     target_datasets = config["output"].get("violin_datasets")
@@ -791,7 +791,7 @@ def _plot_roc(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: 
     }
 
     if not scorable:
-        logger.warning("No datasets with scores/classes for ROC — skipping.")
+        logger.warning("No datasets with scores/classes for ROC: skipping.")
         return
 
     try:
@@ -826,7 +826,7 @@ def _plot_prc(meta_object: Dict, config: Dict, output_dir: Path, fmt: str, dpi: 
     }
 
     if not scorable:
-        logger.warning("No datasets with scores/classes for PRC — skipping.")
+        logger.warning("No datasets with scores/classes for PRC: skipping.")
         return
 
     try:
@@ -849,7 +849,7 @@ def _plot_regression(meta_object: Dict, config: Dict, output_dir: Path, fmt: str
     if not reg_dataset or not reg_column:
         logger.info(
             "Regression plot requires regression_dataset and "
-            "regression_column in config — skipping."
+            "regression_column in config: skipping."
         )
         return
 

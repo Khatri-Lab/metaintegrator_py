@@ -109,7 +109,7 @@ def assign_class_labels(
     dataset_object["class"] = class_vec
 
     _log.info(
-        "%s: assigned class labels — %d cases, %d controls " "(column='%s', disease_terms=%s)",
+        "%s: assigned class labels: %d cases, %d controls " "(column='%s', disease_terms=%s)",
         label,
         n_disease,
         n_control,

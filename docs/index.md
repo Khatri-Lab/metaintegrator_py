@@ -16,7 +16,7 @@ loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
 # Build the meta-object and assign case (1) / control (0) labels from
-# a phenotype column — ProcessedDataset itself has no "class" field
+# a phenotype column: ProcessedDataset itself has no "class" field
 meta_object = {"originalData": {}}
 for ds in datasets:
     dataset = {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
@@ -100,18 +100,18 @@ print(pooled.nsmallest(10, "effectSizeFDR")[["effectSize", "effectSizeFDR"]])
 ## 📖 Example Workflow
 
 ```python
-# 1. Data Acquisition — download & annotate (gene annotation happens
+# 1. Data Acquisition: download & annotate (gene annotation happens
 #    inside the handler, as part of loading)
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(gse_ids)
 
-# 2. Label Samples — case (1) vs. control (0), per dataset
+# 2. Label Samples: case (1) vs. control (0), per dataset
 labeled_dataset = assign_class_labels(dataset, column_name=col, disease_terms=[...])
 
 # 3. Meta-Analysis
 results = MetaAnalyzer().run_meta_analysis(meta_object)
 
-# 4. Filter Genes — build the signature
+# 4. Filter Genes: build the signature
 results = MetaAnalyzer().filter_genes(results, effect_size_thresh=1, fdr_thresh=0.05)
 
 # 5. Visualization

@@ -1,5 +1,5 @@
 # ==========================================================================
-# MetaIntegrator-py — pyproject.toml
+# MetaIntegrator-py: pyproject.toml
 # ==========================================================================
 
 [project]
@@ -57,7 +57,7 @@ dependencies = [
     # Required engine for pandas' DataFrame.to_parquet(), used by
     # src/metaintegrator/scoring_export_engine.py's ExportFormat.PARQUET
     # branch. pandas raises ImportError at call time (not import time)
-    # without pyarrow or fastparquet installed — undeclared here, only
+    # without pyarrow or fastparquet installed: undeclared here, only
     # listed in the now-retired tests/metaintegrator/
     # test_requirements_OBSOLETE.txt.
     "pyarrow>=14.0.0",

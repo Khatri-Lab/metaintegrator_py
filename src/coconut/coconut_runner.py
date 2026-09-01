@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-# Cross-package import — resolved via src/ on sys.path (see src/__init__.py bootstrap)
+# Cross-package import: resolved via src/ on sys.path (see src/__init__.py bootstrap)
 from utils.convert_floats_to_ints import run_convert_floats_to_int64
 
 from .coconut import CombatControlOutput, coconut, combine_coco_output
@@ -390,12 +390,12 @@ def load_and_run_coconut_example(
     phenotype data, identifies control columns, and runs the COCONUT algorithm to normalize datasets.
 
     Despite the "_example" name, this is the function the CLI actually calls
-    (via `runner()` below) — it is not just a demo. The column-name arguments
+    (via `runner()` below): it is not just a demo. The column-name arguments
     below (`control_0_col`, `disease_col`, `platform_col`) tell COCONUT which
     phenotype columns identify controls, disease samples, and platform; their
     defaults match the column names used by this project's own sample data
     (`"Healthy0.Sepsis1"`, `"Platform_id"`). Data with different column names
-    should pass the matching names explicitly — either as keyword arguments here,
+    should pass the matching names explicitly: either as keyword arguments here,
     or via the `coconut_batch_effect_removal` CLI flags / config file (see
     `src/__main__.py`), rather than editing this function.
 
@@ -558,7 +558,7 @@ def runner(
     `it_conv` arguments are forwarded to `load_and_run_coconut_example()` (and from there
     to `coconut()`); their defaults match the column names used by this project's own
     sample data. Pass the matching values for phenotype data that uses different column
-    names — see `load_and_run_coconut_example()`'s docstring for details.
+    names: see `load_and_run_coconut_example()`'s docstring for details.
 
     Args:
         csv_dir : str

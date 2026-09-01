@@ -31,7 +31,7 @@ runner(csv_dir='./my_data', output_dir='./results')
 
 !!! tip "Command-line equivalent"
     Prefer not to write a script at all? The same pipeline is available from
-    the shell as `python -m src coconut_batch_effect_removal` — see the
+    the shell as `python -m src coconut_batch_effect_removal`: see the
     [Command-Line Interface guide](../getting_started/cli.md).
 
 ---
@@ -59,7 +59,7 @@ def runner(
 **Parameters**:
 - `csv_dir` (str, required): Path to directory containing CSV files
 - `output_dir` (str, optional): Where to save output files. If None, only prints results.
-- `control_0_col` (str, optional): Phenotype column indicating control samples (0 = control). Defaults to `"Healthy0.Sepsis1"` — the column name used by this project's own sample data. **Pass your own column name if your phenotype data uses a different one.**
+- `control_0_col` (str, optional): Phenotype column indicating control samples (0 = control). Defaults to `"Healthy0.Sepsis1"`: the column name used by this project's own sample data. **Pass your own column name if your phenotype data uses a different one.**
 - `disease_col` (str, optional): Phenotype column indicating disease samples. If `None`, all non-control samples are treated as disease.
 - `by_platform` (bool, optional): Whether to normalize per platform. Requires `platform_col` when `True`.
 - `platform_col` (str, optional): Phenotype column with platform info, used when `by_platform=True`. Defaults to `"Platform_id"`.
@@ -197,11 +197,11 @@ def load_and_run_coconut_example(
 
 **Parameters**:
 - `csv_directory` (str): Path to directory containing CSV files
-- `control_0_col`, `disease_col`, `by_platform`, `platform_col`, `par_prior`, `it_conv`: Same meaning and defaults as in [`runner()`](#1-runner-complete-end-to-end-pipeline-most-popular) above — these are forwarded straight to `coconut()`.
+- `control_0_col`, `disease_col`, `by_platform`, `platform_col`, `par_prior`, `it_conv`: Same meaning and defaults as in [`runner()`](#1-runner-complete-end-to-end-pipeline-most-popular) above: these are forwarded straight to `coconut()`.
 
 **What it does**:
 1. Loads data from CSV directory
-2. **Shows available phenotype columns** for each dataset — useful for confirming your `control_0_col` / `disease_col` / `platform_col` values are actually present in your data
+2. **Shows available phenotype columns** for each dataset: useful for confirming your `control_0_col` / `disease_col` / `platform_col` values are actually present in your data
 3. Runs COCONUT using the column names you passed (or the defaults, if you didn't)
 4. Returns results for further analysis
 

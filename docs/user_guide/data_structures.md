@@ -28,8 +28,8 @@ See the [Architecture Overview](../architecture.md) for the full data flow.
 ## ProcessedDataset (Preprocessing Output)
 
 The `ProcessedDataset` dataclass is the standard output of all preprocessing handlers.
-It has **no** `class`/label field of its own — case/control labels are always assigned
-as a separate step (see [Class Labels](#class-labels-class) below) — and it has no
+It has **no** `class`/label field of its own: case/control labels are always assigned
+as a separate step (see [Class Labels](#class-labels-class) below): and it has no
 `to_dict()` method:
 
 ```python
@@ -46,7 +46,7 @@ class ProcessedDataset:
 
 **Converting to the analysis dict format:**
 
-There is no built-in conversion method — build the dict by hand and assign labels
+There is no built-in conversion method: build the dict by hand and assign labels
 with `assign_class_labels()`:
 
 ```python
@@ -74,8 +74,8 @@ R-style dict access:
 ```python
 filter_result = meta_object["filterResults"]
 
-filter_result.pos_gene_names      # List[str] — up-regulated signature genes
-filter_result.neg_gene_names      # List[str] — down-regulated signature genes
+filter_result.pos_gene_names      # List[str]: up-regulated signature genes
+filter_result.neg_gene_names      # List[str]: down-regulated signature genes
 filter_result.n_pos               # int
 filter_result.n_neg               # int
 filter_result.effect_size_thresh  # float
@@ -89,8 +89,8 @@ filter_object["effectSizeThresh"] # aliased to effect_size_thresh
 ```
 
 !!! note "Two independent filtering systems"
-    A separate, strategy-based pipeline — `scoring_meta_integrator_filter.MetaIntegratorFilter`
-    (`.filter()`, not `.filter_genes()`) — produces a differently-shaped `FilterResults`
+    A separate, strategy-based pipeline: `scoring_meta_integrator_filter.MetaIntegratorFilter`
+    (`.filter()`, not `.filter_genes()`): produces a differently-shaped `FilterResults`
     object. The two are not interchangeable; see
     [API Reference](../api/overview.md#package-metaintegrator).
 
@@ -312,7 +312,7 @@ meta_analysis = {
     'pooledResults': pd.DataFrame,
 
     # Raw inverse-variance pooling output, *before* the Fisher combination
-    # is merged in — lower-level, snake_case columns, mainly of interest
+    # is merged in: lower-level, snake_case columns, mainly of interest
     # if you need the pooling statistics on their own
     'pooled_estimates': pd.DataFrame,
 

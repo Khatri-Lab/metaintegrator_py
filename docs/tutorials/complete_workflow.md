@@ -51,7 +51,7 @@ First, let's import all the modules we'll need:
 import warnings
 warnings.filterwarnings('ignore')  # Suppress pandas future warnings
 
-# Preprocessing — Factory-based data loading and gene annotation
+# Preprocessing: Factory-based data loading and gene annotation
 from preprocessing.loader_factory import DataLoaderFactory
 from preprocessing.gene_annotator import GeneAnnotator
 from preprocessing.gene_validation import EnsemblGeneValidator
@@ -62,10 +62,10 @@ from metaintegrator.validation import DatasetValidator
 from metaintegrator.core_analysis import MetaAnalysisCore
 from metaintegrator.score_calculation import ScoreCalculator
 
-# Visualization — the "basic" plotter (volcano, forest, heatmap,
+# Visualization: the "basic" plotter (volcano, forest, heatmap,
 # effect-size distribution). Don't confuse this with the differently-named,
 # differently-shaped enhanced_plotting.EnhancedMetaAnalysisPlotter used for
-# ROC/PRC/violin/regression plots — see the Visualization API reference.
+# ROC/PRC/violin/regression plots: see the Visualization API reference.
 from visualization.plotting import MetaAnalysisPlotter
 from visualization.violin_plot import violin_plot
 
@@ -140,7 +140,7 @@ Convert the loaded datasets into the meta-object dictionary format used by the a
 
 ```python
 # Convert ProcessedDataset objects to meta-object format.
-# ProcessedDataset has no to_dict() — build the dict by hand. 'class' is
+# ProcessedDataset has no to_dict(): build the dict by hand. 'class' is
 # left as None here; Step 5 assigns it.
 meta_object = {"originalData": {}}
 for ds in datasets:
@@ -433,7 +433,7 @@ print("📥 Downloading datasets...")
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
-# Step 2: Build meta-object (no to_dict() on ProcessedDataset — build by hand)
+# Step 2: Build meta-object (no to_dict() on ProcessedDataset: build by hand)
 meta_object = {"originalData": {
     ds.geo_id: {"expr": ds.expr, "pheno": ds.pheno, "keys": ds.keys,
                 "formattedName": ds.geo_id, "class": None}
@@ -513,7 +513,7 @@ for dataset in meta_object['originalData'].values():
 ### Tip 3: Use the Factory for Different Strategies
 
 ```python
-# R-parity mode (matches R output exactly) — recommended
+# R-parity mode (matches R output exactly): recommended
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 
 # Full SOFT download (all metadata)

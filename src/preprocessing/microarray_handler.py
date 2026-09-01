@@ -312,7 +312,7 @@ class MicroarrayHandler(DataHandler):
                         failed_samples.append(gsm.name)
                         continue
 
-                # Align values by probe ID rather than position — a sample
+                # Align values by probe ID rather than position: a sample
                 # can have fewer probes than the reference sample.
                 if len(expr_values) != len(probe_ids):
                     log.warning(
@@ -333,7 +333,7 @@ class MicroarrayHandler(DataHandler):
                         expr_values[: len(sample_probe_ids)], index=sample_probe_ids
                     )
 
-                    # Reindex to the reference probe list — this correctly
+                    # Reindex to the reference probe list: this correctly
                     # places NaN only where THIS sample truly has no data
                     aligned_series = sample_series.reindex(probe_ids)
                     expr_values = aligned_series.values
@@ -605,7 +605,7 @@ class MicroarrayHandler(DataHandler):
                     #
                     # R-PARITY FIX: Do NOT split on spaces for direct
                     # symbol columns. R's gsub(";| /// ",",",keys)
-                    # only replaces /// and ; with commas — it never
+                    # only replaces /// and ; with commas: it never
                     # truncates multi-word values. Keeping the full
                     # string ensures Ensembl validation produces the
                     # same result as R (reject or accept identically).
@@ -771,7 +771,7 @@ class MicroarrayHandler(DataHandler):
 
         Returns:
             True if ``symbol_str`` matches the expected gene-symbol pattern
-            (this is pattern matching only — it does not check against a
+            (this is pattern matching only: it does not check against a
             gene database).
         """
         symbol_str = str(symbol_str)

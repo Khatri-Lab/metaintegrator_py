@@ -53,7 +53,7 @@ print("✅ QC tools imported successfully")
 
 ```python
 def assess_data_quality(meta_object, generate_report=True):
-    """Local QC helper — combines the checks from this tutorial into one report."""
+    """Local QC helper: combines the checks from this tutorial into one report."""
     report = {}
     for name, dataset in meta_object['originalData'].items():
         expr = dataset['expr']

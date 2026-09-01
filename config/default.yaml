@@ -10,7 +10,7 @@ coconut_batch_effect_removal:
   disease_col:               # Phenotype column indicating disease samples (blank = all non-control)
   platform_col: Platform_id  # Phenotype column with platform info, used when by_platform is true
   it_conv: 0.0001            # Convergence threshold for the iterative COCONUT solution
-  # by_platform and par_prior are not settable from this file — see the note in
+  # by_platform and par_prior are not settable from this file: see the note in
   # `python -m src coconut_batch_effect_removal --help` (or src/__main__.py's module
   # docstring) about --by-platform / --no-par-prior always taking their CLI default.
 

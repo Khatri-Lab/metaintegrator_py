@@ -114,7 +114,7 @@ class MetaAnalysisCore:
         """
         # ── BUGFIX: preserve schema on empty input ──────────────────────────
         if df.empty:
-            return df.copy()  # same columns, zero rows — groupby won't crash
+            return df.copy()  # same columns, zero rows: groupby won't crash
         # ────────────────────────────────────────────────────────────────────
 
         expanded_rows = []
@@ -203,11 +203,11 @@ class MetaAnalysisCore:
         std_cases, std_controls = np.std(cases, ddof=1), np.std(controls, ddof=1)
         mean_diff = mean_cases - mean_controls
 
-        # Calculate pooled standard deviation — match R's .getES() exactly
+        # Calculate pooled standard deviation: match R's .getES() exactly
         # R: sp <- sqrt(((n1-1)*sd1^2 + (n2-1)*sd2^2)/(n1 + n2 - 2))
         numerator = (n_cases - 1) * std_cases**2 + (n_controls - 1) * std_controls**2
         denominator = n_cases + n_controls - 2
-        pooled_std = np.sqrt(numerator / denominator)  # NO epsilon — match R
+        pooled_std = np.sqrt(numerator / denominator)  # NO epsilon: match R
 
         # Guard: if pooled_std is zero (all values identical in both groups), return NaN
         if pooled_std == 0:
@@ -228,16 +228,16 @@ class MetaAnalysisCore:
         # R: cf <- 1 - 3/(4*(n1 + n2) - 9)
         correction_factor = 1 - 3 / (4 * (n_cases + n_controls) - 9)
 
-        # Calculate Hedge's G — match R exactly
+        # Calculate Hedge's G: match R exactly
         # R: g <- cf * diff/sp
         effect_size_g = correction_factor * mean_diff / pooled_std
 
-        # Standard error of Hedge's G — match R exactly
+        # Standard error of Hedge's G: match R exactly
         # R: se.g <- sqrt((n1+n2)/(n1*n2) + 0.5*g^2/(n1+n2-3.94))
         variance_g = (n_cases + n_controls) / (n_cases * n_controls) + 0.5 * effect_size_g**2 / (
             n_cases + n_controls - 3.94
         )
-        se_effect_size = np.sqrt(variance_g)  # NO epsilon — match R
+        se_effect_size = np.sqrt(variance_g)  # NO epsilon: match R
 
         return {
             "n1": n_cases,
@@ -545,7 +545,7 @@ class MetaAnalysisCore:
 
         n = len(effects)
 
-        # Calculate weights (inverse variance) — match R's rmeta::meta.summaries
+        # Calculate weights (inverse variance): match R's rmeta::meta.summaries
         weights = 1.0 / (std_errors**2)
 
         # Fixed-effects estimate
@@ -571,7 +571,7 @@ class MetaAnalysisCore:
             tau2_dl = max(0, (Q - df) / C) if C > 0 else 0
             tau2 = tau2_dl
 
-            # Random-effects weights — NO epsilon, match R
+            # Random-effects weights: NO epsilon, match R
             # w*_i = 1 / (se_i^2 + tau2)
             weights_random = 1.0 / (std_errors**2 + tau2)
             sum_weights_random = np.sum(weights_random)

@@ -7,10 +7,10 @@ modules that prepare and verify data for meta-analysis.
     After refactoring, these responsibilities are split across several focused
     modules rather than a single monolithic `data_loading` module:
 
-    - **`metaintegrator.validation`** — Dataset and meta-object validation
-    - **`metaintegrator.data_processing`** — Combined annotation tables
-    - **`metaintegrator.sample_ops`** — Sample subsetting
-    - **`metaintegrator.labeling`** — Class label assignment
+    - **`metaintegrator.validation`**: Dataset and meta-object validation
+    - **`metaintegrator.data_processing`**: Combined annotation tables
+    - **`metaintegrator.sample_ops`**: Sample subsetting
+    - **`metaintegrator.labeling`**: Class label assignment
 
 ---
 
@@ -93,7 +93,7 @@ Comprehensive validation of a single study data structure.
 |------|------|-------------|
 | study | Dict | Study dictionary to validate |
 
-**Returns:** `Tuple[bool, List[str]]` — (is_valid, list_of_error_messages)
+**Returns:** `Tuple[bool, List[str]]`: (is_valid, list_of_error_messages)
 
 **Validation Checks:**
 
@@ -139,7 +139,7 @@ of R's `checkDataObject(metaObj, "Meta", "Pre-Analysis")`.
 | check_type | str | Type of check (default: `"Meta"`) |
 | stage | str | Analysis stage: `"Pre-Analysis"` or `"Post-Analysis"` |
 
-**Returns:** `Tuple[bool, List[str]]` — (is_valid, list_of_error_messages)
+**Returns:** `Tuple[bool, List[str]]`: (is_valid, list_of_error_messages)
 
 **Example**
 
@@ -303,7 +303,7 @@ def assign_class_labels(
 ```
 
 Assign binary class labels (0 = control, 1 = disease) to a dataset by
-matching a phenotype column against a list of disease terms — the Python
+matching a phenotype column against a list of disease terms: the Python
 equivalent of R MetaIntegrator's `dataset$class <- ifelse(grepl("SLE",
 dataset$pheno$disease), 1, 0)` pattern.
 
@@ -340,9 +340,9 @@ print(dataset["class"])  # array([0., 1., 1., 0., ...])
 
 ## Related
 
-- [Preprocessing API](preprocessing.md) — GEO data fetching and gene annotation
-- [Analysis API](analysis.md) — Meta-analysis functions
-- [User Guide: Data Structures](../user_guide/data_structures.md) — Data structure details
+- [Preprocessing API](preprocessing.md): GEO data fetching and gene annotation
+- [Analysis API](analysis.md): Meta-analysis functions
+- [User Guide: Data Structures](../user_guide/data_structures.md): Data structure details
 
 ---
 
@@ -359,7 +359,7 @@ loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE1234"])
 
 # 2. Build meta-object
-# ProcessedDataset has no .to_dict() — build the dict from its fields.
+# ProcessedDataset has no .to_dict(): build the dict from its fields.
 meta_object = {"originalData": {
     ds.geo_id: {
         "geo_id": ds.geo_id,

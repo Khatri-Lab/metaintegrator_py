@@ -621,7 +621,7 @@ class TestLoadAndRunCoconutExample:
     @patch("coconut.coconut_runner.coconut")
     def test_run_example_custom_columns(self, mock_coconut, mock_load_data, gse_data_list):
         """Test that custom column names are forwarded to coconut() instead of the
-        project's own defaults — this is the fix for the hardcoded-columns limitation."""
+        project's own defaults: this is the fix for the hardcoded-columns limitation."""
         mock_load_data.return_value = gse_data_list
         mock_coconut.return_value = {
             "COCONUTList": [],

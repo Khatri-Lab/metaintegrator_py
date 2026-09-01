@@ -799,7 +799,7 @@ class GeneSearchOptimizer:
         """Vectorized scoring using precomputed gene row indices.
 
         Note:
-            Not currently called anywhere — prepared as a faster
+            Not currently called anywhere: prepared as a faster
             alternative to :meth:`_score_genes_matrix` for use inside
             :meth:`_backward_search_weighted` / :meth:`_forward_search_weighted`,
             where a dataset's gene expression DataFrame would be converted

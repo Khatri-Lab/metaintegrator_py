@@ -2,14 +2,14 @@
 Main meta-analysis functions for MetaIntegrator Python port.
 
 This module contains:
-- :class:`EffectSizeResult` — typed container for effect-size outputs
-- :class:`MetaAnalysisEngine` — ABC for pluggable analysis strategies
-- :class:`InverseVarianceEngine` — shared IV base for random/fixed effects
-- :class:`RandomEffectsEngine` — default random-effects implementation
-- :class:`FixedEffectsEngine` — fixed-effects implementation
-- :class:`MetaAnalyzer` — orchestrator that delegates to an engine
-- :class:`MetaAnalysisFactory` — factory for pre-configured analyzers
-- :func:`run_meta_analysis` — convenience wrapper for backward compatibility
+- :class:`EffectSizeResult`: typed container for effect-size outputs
+- :class:`MetaAnalysisEngine`: ABC for pluggable analysis strategies
+- :class:`InverseVarianceEngine`: shared IV base for random/fixed effects
+- :class:`RandomEffectsEngine`: default random-effects implementation
+- :class:`FixedEffectsEngine`: fixed-effects implementation
+- :class:`MetaAnalyzer`: orchestrator that delegates to an engine
+- :class:`MetaAnalysisFactory`: factory for pre-configured analyzers
+- :func:`run_meta_analysis`: convenience wrapper for backward compatibility
 """
 
 import abc
@@ -104,9 +104,9 @@ class MetaAnalysisEngine(abc.ABC):
     A ``MetaAnalysisEngine`` defines the *statistical algorithm* for
     combining results across studies.  It owns three pipeline steps:
 
-    1. **compute_effect_sizes** — per-study effect sizes → pooled estimates
-    2. **compute_fisher_results** — per-study p-values → Fisher combination
-    3. **format_results** — merge pooled + Fisher → final output dict
+    1. **compute_effect_sizes**: per-study effect sizes → pooled estimates
+    2. **compute_fisher_results**: per-study p-values → Fisher combination
+    3. **format_results**: merge pooled + Fisher → final output dict
 
     Different engines can implement different statistical approaches
     (random effects, fixed effects, Bayesian, etc.) while sharing the
@@ -176,7 +176,7 @@ class MetaAnalysisEngine(abc.ABC):
 
 
 # ------------------------------------------------------------------
-# InverseVarianceEngine — shared base for IV-based methods
+# InverseVarianceEngine: shared base for IV-based methods
 # ------------------------------------------------------------------
 class InverseVarianceEngine(MetaAnalysisEngine):
     """Shared logic for inverse-variance meta-analysis engines.
@@ -184,11 +184,11 @@ class InverseVarianceEngine(MetaAnalysisEngine):
     This base class implements the full three-step pipeline using
     inverse-variance pooling.  Subclasses only need to specify:
 
-    * :attr:`_between_method` — ``'random'`` or ``'fixed'``
-    * :attr:`description` — human-readable label
+    * :attr:`_between_method`: ``'random'`` or ``'fixed'``
+    * :attr:`description`: human-readable label
 
-    Everything else — FDR correction, result formatting, probe
-    collapse, multi-study merging, Fisher adjustment — is
+    Everything else: FDR correction, result formatting, probe
+    collapse, multi-study merging, Fisher adjustment: is
     method-independent and lives here.
 
     Args:
@@ -443,7 +443,7 @@ class InverseVarianceEngine(MetaAnalysisEngine):
         )
 
         if "keys" not in effects_df.columns:
-            logger.debug("Study %d: no 'keys' column — skipping collapse", study_index + 1)
+            logger.debug("Study %d: no 'keys' column: skipping collapse", study_index + 1)
             return self._process_study_effects(effects_df, within_method)
 
         unique_genes = effects_df["keys"].nunique()
@@ -717,7 +717,7 @@ class FilterResult:
 
 
 # ------------------------------------------------------------------
-# Module-level leave-one-out worker (must live at module scope — see
+# Module-level leave-one-out worker (must live at module scope: see
 # MetaAnalyzer.run_leave_one_out_analysis for why)
 # ------------------------------------------------------------------
 def _run_loo_subset(
@@ -730,7 +730,7 @@ def _run_loo_subset(
     (used by :meth:`MetaAnalyzer.run_leave_one_out_analysis` for
     ``max_cores > 1``) has to pickle every callable it submits so it can be
     sent to a worker process. Pickle can only resolve a callable "by name"
-    — via its fully-qualified module path — and a function defined *inside*
+   : via its fully-qualified module path: and a function defined *inside*
     another function (a closure) has no such path, so it always fails with
     ``Can't pickle local object '...run_leave_one_out_analysis.<locals>.
     analyze_subset'``. That was a real, previously-uncaught bug: every LOO
@@ -760,7 +760,7 @@ def _run_loo_subset(
 
 
 # ------------------------------------------------------------------
-# MetaAnalyzer — orchestrator
+# MetaAnalyzer: orchestrator
 # ------------------------------------------------------------------
 class MetaAnalyzer:
     """Main class for conducting meta-analysis.
@@ -779,10 +779,10 @@ class MetaAnalyzer:
     Collaborators can be injected via the constructor for testing and
     extensibility:
 
-    * **engine** — a :class:`MetaAnalysisEngine` (owns core + fisher)
-    * **core / fisher** — shortcut: auto-wrapped into a
+    * **engine**: a :class:`MetaAnalysisEngine` (owns core + fisher)
+    * **core / fisher**: shortcut: auto-wrapped into a
       :class:`RandomEffectsEngine` when *engine* is ``None``
-    * **validator / processor** — dataset helpers
+    * **validator / processor**: dataset helpers
 
     Examples::
 
@@ -1152,7 +1152,7 @@ class MetaAnalyzer:
         # Build each leave-one-out subset up front. Previously this was
         # computed lazily inside a nested `analyze_subset(i)` closure, which
         # is exactly the kind of object `ProcessPoolExecutor` cannot pickle
-        # (see `_run_loo_subset` above) — the fix is to hand the executor the
+        # (see `_run_loo_subset` above): the fix is to hand the executor the
         # module-level `_run_loo_subset` function instead, for both the
         # sequential and parallel branches, so their behavior stays identical.
         subsets = [original_data[:i] + original_data[i + 1 :] for i in range(n_datasets)]
@@ -1243,7 +1243,7 @@ class MetaAnalyzer:
             # `filter_genes()`'s leave-one-out consistency step only runs
             # `if meta_object.get("leaveOneOutAnalysis")`, which is falsy for
             # an *empty* dict. If every subset failed (as happened for the
-            # pickling bug this warning was added alongside — see
+            # pickling bug this warning was added alongside: see
             # `_run_loo_subset`), that step is skipped entirely with no
             # indication in the log that LOO-based filtering never ran even
             # though `is_leave_one_out=True` was requested.

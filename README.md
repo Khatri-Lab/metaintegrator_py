@@ -1,18 +1,18 @@
 # MetaIntegrator-py
 
-A Python implementation of [MetaIntegrator](https://cran.r-project.org/package=MetaIntegrator) for multi-cohort meta-analysis of gene expression data. Provides the same trusted statistical methods as the original R package — effect size combination, leave-one-out analysis, gene filtering — with a modern Python interface built on NumPy, pandas, and scikit-learn.
+A Python implementation of [MetaIntegrator](https://cran.r-project.org/package=MetaIntegrator) for multi-cohort meta-analysis of gene expression data. Provides the same trusted statistical methods as the original R package: effect size combination, leave-one-out analysis, gene filtering: with a modern Python interface built on NumPy, pandas, and scikit-learn.
 
 Developed by the [Khatri Lab](https://khatrilab.stanford.edu/) at Stanford University.
 
 ## Key Capabilities
 
-- **Meta-analysis** — Hedges' g effect sizes, inverse-variance pooling, Fisher's method, FDR correction, and leave-one-out validation across multiple GEO datasets
-- **COCONUT batch normalization** — COmbat CO-Normalization Using conTrols for removing technical batch effects across studies
-- **GEO integration** — Direct download and processing of microarray datasets from NCBI Gene Expression Omnibus
-- **Gene annotation** — Automated probe-to-gene-symbol mapping via platform annotations (GPL570, GPL96, GPL97, GPL6244)
-- **ImmunoStates deconvolution** — Cell-type proportion estimation from bulk expression data
-- **Visualization** — Forest plots, violin plots, heatmaps, ROC/PRC curves with matplotlib/seaborn
-- **R parity** — Numerical validation against the original R MetaIntegrator to ensure equivalent analytical results
+- **Meta-analysis**: Hedges' g effect sizes, inverse-variance pooling, Fisher's method, FDR correction, and leave-one-out validation across multiple GEO datasets
+- **COCONUT batch normalization**: COmbat CO-Normalization Using conTrols for removing technical batch effects across studies
+- **GEO integration**: Direct download and processing of microarray datasets from NCBI Gene Expression Omnibus
+- **Gene annotation**: Automated probe-to-gene-symbol mapping via platform annotations (GPL570, GPL96, GPL97, GPL6244)
+- **ImmunoStates deconvolution**: Cell-type proportion estimation from bulk expression data
+- **Visualization**: Forest plots, violin plots, heatmaps, ROC/PRC curves with matplotlib/seaborn
+- **R parity**: Numerical validation against the original R MetaIntegrator to ensure equivalent analytical results
 
 ## Quick Start
 
@@ -112,4 +112,4 @@ See [CITATION.cff](CITATION.cff) for the machine-readable citation file.
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE) for details.
+Apache License 2.0: see [LICENSE](LICENSE) for details.

@@ -19,7 +19,7 @@ loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
 # Convert to meta-object format and assign case (1) / control (0)
-# labels from a phenotype column — ProcessedDataset itself has no
+# labels from a phenotype column: ProcessedDataset itself has no
 # "class" field, so this is always a separate, manual step
 meta_object = {"originalData": {}}
 for ds in datasets:
@@ -71,7 +71,7 @@ print(f"Up-regulated: {sig.n_pos}, Down-regulated: {sig.n_neg}")
 
 ## Next Steps
 
-- [Command-Line Interface](cli.md) — run this same pipeline without writing a script
+- [Command-Line Interface](cli.md): run this same pipeline without writing a script
 - [Complete Tutorial](../tutorials/complete_workflow.md)
 - [User Guide](../user_guide/concepts.md)
 - [API Reference](../api/overview.md)

@@ -44,7 +44,7 @@ class FakeValidator:
 
 
 # ============================================================================
-# clean_symbol — direct symbol columns
+# clean_symbol: direct symbol columns
 # ============================================================================
 
 
@@ -108,7 +108,7 @@ class TestCleanSymbolDirect:
 
 
 # ============================================================================
-# clean_symbol — assignment columns
+# clean_symbol: assignment columns
 # ============================================================================
 
 
@@ -182,7 +182,7 @@ class TestFindSymbolColumn:
 
 
 # ============================================================================
-# _build_probe_mapping — the int/str coercion regression test
+# _build_probe_mapping: the int/str coercion regression test
 # ============================================================================
 
 
@@ -224,7 +224,7 @@ class TestBuildProbeMapping:
 
 
 # ============================================================================
-# annotate — end-to-end
+# annotate: end-to-end
 # ============================================================================
 
 

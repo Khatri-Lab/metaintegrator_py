@@ -29,7 +29,7 @@ runner(csv_dir='./my_studies', output_dir='./results')
 👉 [**Full Quick Start Guide**](quickstart.md)
 
 Prefer the command line over a Python script? The same pipeline is available
-as `python -m src coconut_batch_effect_removal` — see the
+as `python -m src coconut_batch_effect_removal`: see the
 [Command-Line Interface guide](../getting_started/cli.md).
 
 ---
@@ -302,7 +302,7 @@ meta_results = analyzer.run_meta_analysis_core([meta_input])
 ```
 
 ### Visualization
-PCA plotting isn't part of the package's public API — build one directly with
+PCA plotting isn't part of the package's public API: build one directly with
 scikit-learn on the COCONUT-normalized matrix:
 
 ```python

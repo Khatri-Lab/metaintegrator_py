@@ -31,56 +31,56 @@ Understanding these differences helps you select the best tool for your specific
 
 ## Feature Matrix
 
-| Feature | metaIntegrator-py (Python)   | MetaIntegrator (R) |
-|---------|------------------------------|-------------------|
-| **Core Meta-Analysis** | ✅                            | ✅ |
-| Effect Size Calculation (Hedge's g) | ✅                            | ✅ |
-| Random/Fixed Effects Models | ✅                            | ✅ |
-| Fisher's Method (p-value combination) | ✅                            | ✅ |
-| Leave-One-Out Analysis | ✅                            | ✅ |
-| Parallel Processing | ✅ (ProcessPoolExecutor)      | ✅ (mclapply) |
-| **Data Acquisition** |                              | |
-| GEO Data Fetching | ✅ (Multiple protocols)       | ✅ (GEOquery) |
-| Automatic Caching | ✅                            | ❌ |
-| Rate Limiting | ✅ (Built-in)                 | ⚠️ (Manual) |
-| Multi-Platform Support | ✅                            | ✅ |
-| **Gene Annotation** |                              | |
-| ENSEMBL ID Mapping | ✅                            | ✅ |
-| RefSeq ID Mapping | ✅                            | ✅ |
-| GenBank ID Mapping | ✅                            | ✅ |
-| Entrez ID Mapping | ✅                            | ✅ |
-| Custom Annotation | ✅                            | ✅ |
-| **Visualization** |                              | |
-| Volcano Plots | ✅ (matplotlib)               | ✅ (ggplot2) |
-| Forest Plots | ✅ (matplotlib)               | ✅ (ggplot2) |
-| Heatmaps | ✅ (seaborn)                  | ✅ (ggplot2) |
-| Violin Plots | ✅ (ggplot2-style)            | ✅ (ggpubr) |
-| ROC / PRC Curves | ✅ (multi-dataset)            | ✅ |
-| Default Quality | ✅ Publication-ready          | ✅ Publication-ready |
-| Interactive Plots | ⚠️ (Plotly support)          | ⚠️ (Limited) |
-| **R-Parity Status** |                              | |
-| Gene filtering parity | ✅ 100% gene identity match   | — |
-| AUC parity (±0.002) | ✅ All datasets               | — |
-| Score calculation | ✅ Matches `calculateScore`   | — |
-| **Advanced Features** |                              | |
-| Power Calculation | ✅                            | ✅ |
-| ROC/PRC Analysis | ✅                            | ✅ |
-| Gene Scoring | ✅                            | ✅ |
-| Immune Deconvolution | ✅                            | ✅ |
-| COCONUT Integration | ✅                            | ✅ |
-| **Data Validation** |                              | |
-| Comprehensive Checks | ✅ (Built-in DataValidator)   | ✅ (checkDataObject) |
-| Error Messages | ✅ (Detailed, structured)     | ✅ (Informative) |
-| Type Safety | ✅ (Type hints)               | ❌ (Dynamic) |
-| **Documentation** |                              | |
-| API Reference | ✅ (Comprehensive)            | ✅ (Roxygen2) |
-| Tutorials | ✅ (Jupyter-ready)            | ✅ (Vignettes) |
-| Examples | ✅                            | ✅ |
-| **Ecosystem** |                              | |
-| Package Manager | pip, virtualenv         | CRAN, Bioconductor |
+| Feature | metaIntegrator-py (Python)   | MetaIntegrator (R)    |
+|---------|------------------------------|-----------------------|
+| **Core Meta-Analysis** | ✅                            | ✅                     |
+| Effect Size Calculation (Hedge's g) | ✅                            | ✅                     |
+| Random/Fixed Effects Models | ✅                            | ✅                     |
+| Fisher's Method (p-value combination) | ✅                            | ✅                     |
+| Leave-One-Out Analysis | ✅                            | ✅                     |
+| Parallel Processing | ✅ (ProcessPoolExecutor)      | ✅ (mclapply)          |
+| **Data Acquisition** |                              |                       |
+| GEO Data Fetching | ✅ (Multiple protocols)       | ✅ (GEOquery)          |
+| Automatic Caching | ✅                            | ❌                     |
+| Rate Limiting | ✅ (Built-in)                 | ⚠️ (Manual)           |
+| Multi-Platform Support | ✅                            | ✅                     |
+| **Gene Annotation** |                              |                       |
+| ENSEMBL ID Mapping | ✅                            | ✅                     |
+| RefSeq ID Mapping | ✅                            | ✅                     |
+| GenBank ID Mapping | ✅                            | ✅                     |
+| Entrez ID Mapping | ✅                            | ✅                     |
+| Custom Annotation | ✅                            | ✅                     |
+| **Visualization** |                              |                       |
+| Volcano Plots | ✅ (matplotlib)               | ✅ (ggplot2)           |
+| Forest Plots | ✅ (matplotlib)               | ✅ (ggplot2)           |
+| Heatmaps | ✅ (seaborn)                  | ✅ (ggplot2)           |
+| Violin Plots | ✅ (ggplot2-style)            | ✅ (ggpubr)            |
+| ROC / PRC Curves | ✅ (multi-dataset)            | ✅                     |
+| Default Quality | ✅ Publication-ready          | ✅ Publication-ready   |
+| Interactive Plots | ⚠️ (Plotly support)          | ⚠️ (Limited)          |
+| **R-Parity Status** |                              |                       |
+| Gene filtering parity | ✅ 100% gene identity match   | -                     |
+| AUC parity (±0.002) | ✅ All datasets               | -                     |
+| Score calculation | ✅ Matches `calculateScore`   | -                    |
+| **Advanced Features** |                              |                       |
+| Power Calculation | ✅                            | ✅                     |
+| ROC/PRC Analysis | ✅                            | ✅                     |
+| Gene Scoring | ✅                            | ✅                     |
+| Immune Deconvolution | ✅                            | ✅                     |
+| COCONUT Integration | ✅                            | ✅                     |
+| **Data Validation** |                              |                       |
+| Comprehensive Checks | ✅ (Built-in DataValidator)   | ✅ (checkDataObject)   |
+| Error Messages | ✅ (Detailed, structured)     | ✅ (Informative)       |
+| Type Safety | ✅ (Type hints)               | ❌ (Dynamic)           |
+| **Documentation** |                              |                       |
+| API Reference | ✅ (Comprehensive)            | ✅ (Roxygen2)          |
+| Tutorials | ✅ (Jupyter-ready)            | ✅ (Vignettes)         |
+| Examples | ✅                            | ✅                     |
+| **Ecosystem** |                              |                       |
+| Package Manager | pip, virtualenv         | CRAN, Bioconductor    |
 | Dependencies | NumPy, pandas, scipy         | Bioconductor packages |
-| IDE Support | Excellent (VS Code, PyCharm) | Excellent (RStudio) |
-| Notebook Support | Jupyter                      | R Markdown |
+| IDE Support | Excellent (VS Code, PyCharm) | Excellent (RStudio)   |
+| Notebook Support | Jupyter                      | R Markdown            |
 
 **Legend:**
 - ✅ Fully supported
@@ -218,7 +218,7 @@ forestPlot(results, filtered$posGeneNames[1:10])
 ### Python (metaIntegrator-py)
 
 ```python
-# Python style — Factory pattern + object-oriented analysis
+# Python style: Factory pattern + object-oriented analysis
 from preprocessing.loader_factory import DataLoaderFactory
 from metaintegrator.labeling import assign_class_labels
 from metaintegrator.analysis import MetaAnalyzer

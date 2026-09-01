@@ -1,5 +1,5 @@
 # requirements.txt
-# Runtime dependencies — what end users need to use metaintegrator-py
+# Runtime dependencies: what end users need to use metaintegrator-py
 
 # Core scientific stack
 pandas>=1.5.0

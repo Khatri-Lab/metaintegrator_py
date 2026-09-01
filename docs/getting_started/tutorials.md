@@ -63,7 +63,7 @@ See [Installation](installation.md#dependencies) for the complete list.
 ## Quick Start
 
 Follow our comprehensive tutorial that walks through the entire pipeline. Gene
-annotation happens automatically inside the handler — there is no separate
+annotation happens automatically inside the handler: there is no separate
 "annotate" call for the standard workflow:
 
 ```python
@@ -81,7 +81,7 @@ datasets = loader.load_multiple(["GSE5847", "GSE28750"])
 
 !!! note "No pre-computed/instant-results mode"
     There is currently no bundled pre-computed dataset or "instant results"
-    shortcut in the package — every run downloads (or reads from the local
+    shortcut in the package: every run downloads (or reads from the local
     `cache_dir`) and processes real GEO data. The **first** download of a
     dataset is the only slow step; every subsequent run against the same
     `cache_dir` is fast (see the caching tip below).
@@ -228,7 +228,7 @@ Choose the path that matches your experience level:
 5. **Try with your own GEO IDs** (optional, 30 min)
 
 **Starting point**: Run the Complete Workflow Tutorial once against
-`GSE5847`/`GSE28750` with `cache_dir` set — every re-run after the first
+`GSE5847`/`GSE28750` with `cache_dir` set: every re-run after the first
 uses the local cache and finishes in seconds.
 
 ### Intermediate Path (3-4 hours)
@@ -255,7 +255,7 @@ uses the local cache and finishes in seconds.
 ## Common Workflows
 
 ### Workflow 1: Standard Analysis (30-60 minutes)
-The typical research workflow — download, label, analyze, visualize:
+The typical research workflow: download, label, analyze, visualize:
 
 ```python
 from preprocessing.loader_factory import DataLoaderFactory

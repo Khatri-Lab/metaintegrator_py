@@ -4,7 +4,7 @@ GEO (Gene Expression Omnibus) data sources.
 Provides two strategies for fetching data from NCBI GEO:
 
 - NCBIGeoSource: Series Matrix files (fast, subset of samples).
-- GEOparseSource: SOFT files (slower, all samples — R parity).
+- GEOparseSource: SOFT files (slower, all samples: R parity).
 
 Both sources validate input up front (only GSE series IDs are accepted;
 GSM and GPL IDs are rejected with a clear error), and GEOparseSource
@@ -181,11 +181,11 @@ class GEOparseSource(DataSource):
 
         Args:
             dataset_id: GEO Series ID, e.g. ``'GSE11909'``. Must be a
-                series (GSE) ID — samples (GSM) and platforms (GPL) are
+                series (GSE) ID: samples (GSM) and platforms (GPL) are
                 rejected.
             use_soft: If True, download the SOFT file (the full dataset,
                 with all samples). If False, use Series Matrix instead
-                (a subset — not recommended).
+                (a subset: not recommended).
             **kwargs: Additional arguments passed to ``GEOparse.get_GEO()``.
 
         Returns:
@@ -312,7 +312,7 @@ class GEOparseSource(DataSource):
         """Fetch multiple GEO datasets.
 
         Args:
-            dataset_ids: GEO Series IDs (GSE only — GSM and GPL are not
+            dataset_ids: GEO Series IDs (GSE only: GSM and GPL are not
                 supported).
             stop_on_error: If True, raise on the first failure; if False,
                 skip it and continue with the remaining datasets.

@@ -57,7 +57,7 @@ __all__ = [
 DEFAULTS: Dict[str, Any] = {
     # ---- Data acquisition ------------------------------------------------
     "datasets": {
-        "gse_ids": [],  # REQUIRED — list of GEO accessions
+        "gse_ids": [],  # REQUIRED: list of GEO accessions
         "strategy": "hybrid",  # "hybrid" | "geoparse" | "ncbi"
         "cache_dir": "~/.geo_cache",  # where raw downloads are cached
         "stop_on_error": False,  # abort if one GSE fails?
@@ -65,7 +65,7 @@ DEFAULTS: Dict[str, Any] = {
     # ---- Sample labeling -------------------------------------------------
     #  Keyed by GSE prefix (matched via substring, same as the notebook).
     #  Each entry must have at least "disease_terms".
-    "labeling": {},  # REQUIRED — at least one entry
+    "labeling": {},  # REQUIRED: at least one entry
     # ---- Meta-analysis ---------------------------------------------------
     "meta_analysis": {
         "strategy": "random_effects",  # "random_effects" | "fixed_effects"
@@ -403,10 +403,10 @@ def load_config_file(path: str) -> Dict[str, Any]:
 
 _TEMPLATE_YAML = textwrap.dedent("""\
     # ===========================================================================
-    # MetaIntegrator CLI — Meta-Analysis Configuration
+    # MetaIntegrator CLI: Meta-Analysis Configuration
     # ===========================================================================
     # Copy this file and edit the values below.  Commented fields show their
-    # defaults — uncomment and change them only when you need a non-default value.
+    # defaults: uncomment and change them only when you need a non-default value.
     #
     # Run with:
     #   python -m src meta_analysis --config my_config.yaml
@@ -416,7 +416,7 @@ _TEMPLATE_YAML = textwrap.dedent("""\
     # ===========================================================================
 
     # ---------------------------------------------------------------------------
-    # 1. DATASETS — which GEO studies to download
+    # 1. DATASETS: which GEO studies to download
     # ---------------------------------------------------------------------------
     datasets:
       gse_ids:
@@ -428,7 +428,7 @@ _TEMPLATE_YAML = textwrap.dedent("""\
       # stop_on_error: false
 
     # ---------------------------------------------------------------------------
-    # 2. LABELING — how to assign case / control labels per study
+    # 2. LABELING: how to assign case / control labels per study
     #
     #    Keys are matched as substrings against dataset IDs, so "GSE11909" will
     #    match both GSE11909_GPL96 and GSE11909_GPL97.
@@ -487,7 +487,7 @@ _TEMPLATE_YAML = textwrap.dedent("""\
       # presence_threshold_value: 75       # e.g. 75 = must appear in >=75% of datasets
 
     # ---------------------------------------------------------------------------
-    # 5. GENE SEARCH — backward and forward selection
+    # 5. GENE SEARCH: backward and forward selection
     # ---------------------------------------------------------------------------
     gene_search:
       run_backward: true
@@ -496,7 +496,7 @@ _TEMPLATE_YAML = textwrap.dedent("""\
       # forward_thresh: 0.0
 
     # ---------------------------------------------------------------------------
-    # 6. OUTPUT — where and what to save
+    # 6. OUTPUT: where and what to save
     # ---------------------------------------------------------------------------
     output:
       output_dir: ./my_meta_analysis_output

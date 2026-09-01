@@ -1,5 +1,5 @@
 """
-Tests for the data_processing module split — backward compatibility.
+Tests for the data_processing module split: backward compatibility.
 
 After splitting data_processing.py into data_processing.py,
 sample_ops.py, and labeling.py, all original import paths must

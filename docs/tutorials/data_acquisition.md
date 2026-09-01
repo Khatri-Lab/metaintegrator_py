@@ -1,6 +1,6 @@
 # Data Acquisition from GEO
 
-Learn how to download and prepare gene expression datasets from NCBI's Gene Expression Omnibus (GEO) using metaIntegrator-py's `DataLoaderFactory` — with real NCBI GEO fetching, local caching, and gene annotation built in.
+Learn how to download and prepare gene expression datasets from NCBI's Gene Expression Omnibus (GEO) using metaIntegrator-py's `DataLoaderFactory`: with real NCBI GEO fetching, local caching, and gene annotation built in.
 
 ## Goal
 
@@ -41,7 +41,7 @@ The Gene Expression Omnibus (GEO) is NCBI's public repository of gene expression
 Let's start with downloading one small dataset:
 
 ```python
-# Create a loader — strategy='r_parity' (an alias for 'hybrid') is the
+# Create a loader: strategy='r_parity' (an alias for 'hybrid') is the
 # recommended, production strategy: it matches R MetaIntegrator's output
 print("📥 Downloading dataset from GEO...")
 
@@ -53,7 +53,7 @@ datasets = loader.load_multiple(["GSE5847"])
 
 print("✅ Download complete!")
 
-# Inspect the structure — load_multiple() always returns a list of
+# Inspect the structure: load_multiple() always returns a list of
 # ProcessedDataset objects, one per platform
 print(f"\nDatasets downloaded: {[ds.geo_id for ds in datasets]}")
 ```
@@ -70,7 +70,7 @@ Datasets downloaded: ['GSE5847_GPL96']
 1. Contacted NCBI GEO servers
 2. Downloaded the Series Matrix file
 3. Extracted expression data and sample metadata
-4. Mapped probe IDs to gene symbols (via `GeneAnnotator`, with Ensembl/GenBank filtering) — this happens automatically, as part of loading
+4. Mapped probe IDs to gene symbols (via `GeneAnnotator`, with Ensembl/GenBank filtering): this happens automatically, as part of loading
 5. Cached files locally at `./geo_cache/`
 
 ### Step 3: Download Multiple Datasets
@@ -130,7 +130,7 @@ print(f"   Type: {type(ds.expr)}")
 print(f"\n   First 5 probes × 3 samples:")
 print(ds.expr.iloc[:5, :3])
 
-# Check gene identifiers — these are gene symbols already (annotation
+# Check gene identifiers: these are gene symbols already (annotation
 # happened during loading), 'NA' for probes that couldn't be mapped
 print(f"\n🧬 Gene Identifiers (first 10):")
 print(ds.keys[:10])
@@ -169,7 +169,7 @@ AFFX-BioB-M_at      8.456      8.423      8.489
 ℹ️  Metadata: {'source': 'geo', 'platform': 'GPL96', 'handler': 'HybridMicroarrayHandler'}
 ```
 
-**Note:** `keys` is already gene symbols, not probe IDs — control probes
+**Note:** `keys` is already gene symbols, not probe IDs: control probes
 (`AFFX-*`) and unmappable probes come through as `'NA'`. See the
 [Gene Annotation Tutorial](gene_annotation.md) for how this mapping works
 under the hood and how to run it directly if you need to.
@@ -195,7 +195,7 @@ def check_dataset_quality(ds):
     status_missing = "✅" if missing_pct < 5 else "⚠️"
     print(f"{status_missing} Missing values: {missing_pct:.2f}%")
 
-    # Check 2: Log-scale (heuristic — there's no built-in check).
+    # Check 2: Log-scale (heuristic: there's no built-in check).
     # Log2 microarray data is rarely above ~20-25; linear-scale data
     # commonly reaches into the thousands.
     is_log_scale = expr.max().max() < 30
@@ -262,23 +262,23 @@ for ds in multi_datasets:
 
 ### Step 7: Choosing a Loading Strategy
 
-`create_geo_loader()` supports three strategies — pick based on what you need:
+`create_geo_loader()` supports three strategies: pick based on what you need:
 
 ```python
-# R-parity mode (matches R MetaIntegrator output exactly) — recommended default
+# R-parity mode (matches R MetaIntegrator output exactly): recommended default
 loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 
-# Full SOFT download (all metadata, GEOparse-based) — supports optional
+# Full SOFT download (all metadata, GEOparse-based): supports optional
 # log_transform / normalize toggles
 loader = DataLoaderFactory.create_geo_loader(
     strategy='full', log_transform=True, normalize=True,
 )
 
-# Fast exploration mode (subset via Series Matrix — may miss some samples)
+# Fast exploration mode (subset via Series Matrix: may miss some samples)
 loader = DataLoaderFactory.create_geo_loader(strategy='fast')
 ```
 
-`log_transform` and `normalize` only apply to `'full'`/`'fast'` — the
+`log_transform` and `normalize` only apply to `'full'`/`'fast'`: the
 recommended `'r_parity'`/`'hybrid'` strategy handles this internally and
 doesn't expose those toggles.
 
@@ -311,7 +311,7 @@ for ds in datasets:
 # ✅ Good: Uses cache
 loader = DataLoaderFactory.create_geo_loader(strategy="r_parity", cache_dir="./geo_cache")
 
-# ⚠️ Still works, but defaults to ~/.geo_cache — fine, just be intentional about it
+# ⚠️ Still works, but defaults to ~/.geo_cache: fine, just be intentional about it
 loader = DataLoaderFactory.create_geo_loader(strategy="r_parity")
 ```
 
@@ -331,7 +331,7 @@ for ds in datasets:
 
 ### Tip 3: Handle Download Failures Gracefully
 
-Some datasets may fail to download — use `stop_on_error=False` and diff
+Some datasets may fail to download: use `stop_on_error=False` and diff
 the requested vs. returned IDs:
 
 ```python
@@ -379,7 +379,7 @@ print(f"Cached download: {time.time() - start:.1f} seconds")
 
 ### Gotcha 3: Expression Data May Not Be in Log Scale
 
-Always verify and transform if needed (there's no built-in check — use a
+Always verify and transform if needed (there's no built-in check: use a
 range heuristic):
 
 ```python
@@ -450,7 +450,7 @@ if missing_pct > 10:
 
 ### Q: Many gene keys are 'NA'
 
-**A**: This is expected — control probes and probes without a mappable
+**A**: This is expected: control probes and probes without a mappable
 symbol are set to `'NA'` (matching R MetaIntegrator's behavior). See
 [Gene Annotation Tutorial](gene_annotation.md) for details on what gets
 filtered and why.
@@ -466,10 +466,10 @@ Now that you can download GEO data, proceed to:
 ### Key Takeaways
 
 ✅ Use `DataLoaderFactory.create_geo_loader().load_multiple()` for downloads
-✅ Gene annotation happens automatically as part of loading — no separate call needed
+✅ Gene annotation happens automatically as part of loading: no separate call needed
 ✅ Always specify `cache_dir` to avoid re-downloading
 ✅ `'r_parity'`/`'hybrid'` is the recommended, production strategy
-✅ There's no built-in log-scale check — use a simple range heuristic
+✅ There's no built-in log-scale check: use a simple range heuristic
 ✅ Use `stop_on_error=False` to skip datasets that fail to download
 
 ---

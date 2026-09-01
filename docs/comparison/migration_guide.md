@@ -162,21 +162,21 @@ df.loc[row_name, column_name]
 | `.sum.of.logs()` | `FisherCombination.sum_of_logs()` | `metaintegrator.core_analysis` | Class-based |
 | **Filtering** | | | |
 | `filterGenes()` | `MetaAnalyzer.filter_genes()` / `filter_genes()` | `metaintegrator.analysis` | Returns `FilterResult` dataclass (not a plain dict) |
-| `getMostRecentFilter()` | `meta_object["filterResults"]` | — | Returns `FilterResult` dataclass; access via `.pos_gene_names` or `["posGeneNames"]` |
+| `getMostRecentFilter()` | `meta_object["filterResults"]` |: | Returns `FilterResult` dataclass; access via `.pos_gene_names` or `["posGeneNames"]` |
 | **Visualization** | | | |
 | `forestPlot()` | `forest_plot()` | `visualization.enhanced_plotting` | Standalone function; also `gg_forest_plot()` |
 | `violinPlot()` | `violin_plot()` / `multi_violin_plot()` | `visualization.violin_plot` | R-parity ggpubr styling |
-| `volcanoPlot()` | `MetaAnalysisPlotter.plot_volcano()` | `visualization.enhanced_plotting` | — |
+| `volcanoPlot()` | `MetaAnalysisPlotter.plot_volcano()` | `visualization.enhanced_plotting` |: |
 | `heatmapPlot()` | `heatmap_plot()` | `visualization.enhanced_plotting` | Standalone function |
-| `multipleROCPlot()` | `multiple_roc_plot()` | `visualization.enhanced_plotting` | — |
-| `multiplePRCPlot()` | `multiple_prc_plot()` | `visualization.enhanced_plotting` | — |
+| `multipleROCPlot()` | `multiple_roc_plot()` | `visualization.enhanced_plotting` |: |
+| `multiplePRCPlot()` | `multiple_prc_plot()` | `visualization.enhanced_plotting` |: |
 | **ROC/PRC** | | | |
-| `calculateROC()` | `ROCAnalysisEngine.calculate_roc()` | `metaintegrator.roc_analysis_engine` | — |
-| `calculatePRC()` | `PRCAnalyzer.calculate_prc()` | `metaintegrator.prc_analysis` | — |
+| `calculateROC()` | `ROCAnalysisEngine.calculate_roc()` | `metaintegrator.roc_analysis_engine` |: |
+| `calculatePRC()` | `PRCAnalyzer.calculate_prc()` | `metaintegrator.prc_analysis` |: |
 | **Scoring** | | | |
 | `calculateScore()` | `ScoreCalculator.calculate_score()` | `metaintegrator.score_calculation` | Also: `calculateScore()` convenience function |
 | **Power Analysis** | | | |
-| `calculatePower()` | `PowerCalculator` | `metaintegrator.power_calculation` | — |
+| `calculatePower()` | `PowerCalculator` | `metaintegrator.power_calculation` |: |
 | **Utilities** | | | |
 | `make.names()` | `DatasetValidator.make_valid_name()` | `metaintegrator.validation` | Python identifier rules |
 | `sapply()` | List comprehension or `map()` | Built-in | More Pythonic |
@@ -603,6 +603,6 @@ But you gain:
 - **Automatic caching** for GEO data (avoids redundant downloads)
 - **Type safety** with type hints
 - **Modern tooling** for production deployment
-- **Equivalent statistical results** — same algorithms, same outputs
+- **Equivalent statistical results**: same algorithms, same outputs
 
 The migration effort is **moderate** for standard workflows and **worthwhile** for production deployments or ML integration.

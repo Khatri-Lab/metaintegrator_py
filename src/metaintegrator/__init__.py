@@ -6,12 +6,12 @@ meta-analysis, filtering, scoring, power, and ROC/PRC statistical tools
 for gene expression data. It is one of several top-level packages that
 make up metaIntegrator-py:
 
-- ``preprocessing`` — GEO data download/loading and gene annotation
+- ``preprocessing``: GEO data download/loading and gene annotation
   (``DataLoaderFactory``, ``GeneAnnotator``, ``EnsemblGeneValidator``, ...)
-- ``metaintegrator`` (this package) — meta-analysis engine, gene filtering,
+- ``metaintegrator`` (this package): meta-analysis engine, gene filtering,
   scoring, power calculation, ROC/PRC analysis, COCONUT integration
-- ``visualization`` — plotting (forest, volcano, heatmap, violin, ROC/PRC)
-- ``coconut`` — the COCONUT batch-normalization algorithm itself
+- ``visualization``: plotting (forest, volcano, heatmap, violin, ROC/PRC)
+- ``coconut``: the COCONUT batch-normalization algorithm itself
 
 Python port of R MetaIntegrator package.
 Original R package by Winston A. Haynes , Francesco Vallania , Aurelie Tomczak , Timothy Sweeney , Erika Bongen ,
@@ -26,10 +26,10 @@ from .core_analysis import *
 from .scoring_core import *
 from .scoring_meta_integrator_orchestrator import *
 
-# Visualization modules (cross-package — resolved via src/ on sys.path)
+# Visualization modules (cross-package: resolved via src/ on sys.path)
 # NOTE: visualization.enhanced_plotting's plotter class was renamed from
 # MetaAnalysisPlotter to EnhancedMetaAnalysisPlotter to stop colliding with
-# the unrelated visualization.plotting.MetaAnalysisPlotter class — see
+# the unrelated visualization.plotting.MetaAnalysisPlotter class: see
 # visualization/__init__.py's module docstring.
 try:
     from visualization.enhanced_plotting import EnhancedMetaAnalysisPlotter

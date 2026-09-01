@@ -1,5 +1,5 @@
 """
-R-Parity GEO Data Loader — thin wrapper (backward-compatible API).
+R-Parity GEO Data Loader: thin wrapper (backward-compatible API).
 
 This module preserves the ``load_geo_datasets_r_parity()`` function
 signature used by notebooks and tests.  Internally it delegates to

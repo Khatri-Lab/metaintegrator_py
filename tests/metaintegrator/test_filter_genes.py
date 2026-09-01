@@ -22,7 +22,7 @@ import pandas as pd
 import pytest
 
 # ---------------------------------------------------------------------------
-# Path setup — allow running with `python -m pytest` from project root
+# Path setup: allow running with `python -m pytest` from project root
 # ---------------------------------------------------------------------------
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(current_dir, "..", "..", "src")
@@ -35,7 +35,7 @@ from metaintegrator.analysis import (
 )
 
 # ===================================================================
-# Helpers — build realistic pooledResults DataFrames
+# Helpers: build realistic pooledResults DataFrames
 # ===================================================================
 
 
@@ -273,7 +273,7 @@ class TestFilterResult:
 
 
 # ===================================================================
-# filter_genes() — input validation
+# filter_genes(): input validation
 # ===================================================================
 
 
@@ -331,7 +331,7 @@ class TestFilterGenesValidation:
 
 
 # ===================================================================
-# filter_genes() — threshold filtering logic
+# filter_genes(): threshold filtering logic
 # ===================================================================
 
 
@@ -459,7 +459,7 @@ class TestFilterGenesThresholds:
 
 
 # ===================================================================
-# filter_genes() — Fisher FDR directional filtering
+# filter_genes(): Fisher FDR directional filtering
 # ===================================================================
 
 
@@ -505,7 +505,7 @@ class TestFilterGenesFisher:
 
 
 # ===================================================================
-# filter_genes() — leave-one-out consistency
+# filter_genes(): leave-one-out consistency
 # ===================================================================
 
 
@@ -608,7 +608,7 @@ class TestFilterGenesLOO:
 
 
 # ===================================================================
-# filter_genes() — edge cases
+# filter_genes(): edge cases
 # ===================================================================
 
 
@@ -746,7 +746,7 @@ class TestFilterGenesEdgeCases:
 
 
 # ===================================================================
-# _loo_consistent_genes() — direct unit tests
+# _loo_consistent_genes(): direct unit tests
 # ===================================================================
 
 

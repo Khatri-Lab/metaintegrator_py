@@ -1,5 +1,5 @@
 """
-Tests for metaintegrator.labeling — class label assignment.
+Tests for metaintegrator.labeling: class label assignment.
 
 Covers:
 - Basic two-class labeling (disease vs control)

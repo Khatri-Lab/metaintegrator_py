@@ -315,7 +315,7 @@ class ReferenceDataManager:
         # extension dtypes (e.g. the modern default string dtype for
         # object/string columns), and np.issubdtype raises TypeError
         # ("Cannot interpret '<StringDtype...>' as a data type") rather
-        # than returning False for those — is_numeric_dtype is pandas' own
+        # than returning False for those: is_numeric_dtype is pandas' own
         # dtype-checking utility and handles both numpy and extension
         # dtypes correctly.
         if not matrix.dtypes.apply(pd.api.types.is_numeric_dtype).all():

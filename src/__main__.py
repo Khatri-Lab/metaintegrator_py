@@ -27,7 +27,7 @@ Run COCONUT::
 
 Note: for `coconut_batch_effect_removal`, --by-platform and --no-par-prior
 always take their CLI default (False / True) unless passed explicitly, even
-when a config file sets `by_platform` or `par_prior` — argparse's store_true /
+when a config file sets `by_platform` or `par_prior`: argparse's store_true /
 store_false flags don't have a way to represent "not set" that config-file
 merging (see `src/utils/config.py::merge_config`) can distinguish from "set to
 the default". Use the CLI flags directly, or call
@@ -72,7 +72,7 @@ def run(argv: Optional[List[str]] = None) -> None:
     """
     parser = argparse.ArgumentParser(
         prog="Metaintegrator_py",
-        description="MetaIntegrator Python — meta-analysis and batch-effect tools",
+        description="MetaIntegrator Python: meta-analysis and batch-effect tools",
     )
 
     parser.add_argument(

@@ -23,7 +23,7 @@ for ds in datasets:
 ## DataLoaderFactory
 
 Single entry point for creating pre-configured loaders. This is the single
-canonical place for wiring sources to handlers — all convenience functions
+canonical place for wiring sources to handlers: all convenience functions
 and thin wrappers delegate here.
 
 ```python
@@ -42,7 +42,7 @@ class DataLoaderFactory:
 |-----------|------|---------|-------------|
 | `strategy` | str | `'full'` | Loading strategy (see table below) |
 | `cache_dir` | str / Path | `~/.geo_cache` | Cache directory for raw downloads |
-| `log_transform` | bool | `False` | Apply log2 transformation. **`full` / `fast` only** — `hybrid`/`r_parity` always auto-detects instead and ignores this flag. |
+| `log_transform` | bool | `False` | Apply log2 transformation. **`full` / `fast` only**: `hybrid`/`r_parity` always auto-detects instead and ignores this flag. |
 | `normalize` | bool | `False` | Apply quantile normalization. **`full` / `fast` only.** |
 | `**kwargs` | | | Passed through to the underlying source constructor (`full` / `fast` only) |
 
@@ -50,7 +50,7 @@ class DataLoaderFactory:
 
 | Strategy | Source | Handler | Best for |
 |----------|--------|---------|----------|
-| `hybrid` / `r_parity` | `HybridGeoSource` | `HybridMicroarrayHandler` | **Production** — matches R output |
+| `hybrid` / `r_parity` | `HybridGeoSource` | `HybridMicroarrayHandler` | **Production**: matches R output |
 | `full` | `GEOparseSource` | `MicroarrayHandler` | Full SOFT download (all samples) |
 | `fast` | `NCBIGeoSource` | `MicroarrayHandler` | Quick exploration (Series Matrix only, may miss samples) |
 
@@ -61,8 +61,8 @@ class DataLoaderFactory:
 | Method | Status |
 |--------|--------|
 | `create_microarray_loader(source_type='geo_full', cache_dir=..., **kwargs)` | General wrapper around `create_geo_loader`. `source_type` aliases: `geo_hybrid`/`geo_r_parity` → `hybrid`, `geo_full`/`geo` → `full`, `geo_fast` → `fast`. |
-| `create_rnaseq_loader(...)` | Placeholder — raises `NotImplementedError` |
-| `create_single_cell_loader(...)` | Placeholder — raises `NotImplementedError` |
+| `create_rnaseq_loader(...)` | Placeholder: raises `NotImplementedError` |
+| `create_single_cell_loader(...)` | Placeholder: raises `NotImplementedError` |
 
 ---
 
@@ -83,10 +83,10 @@ class DataLoader:
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `load(dataset_id, **kwargs)` | `list[ProcessedDataset]` | Load and process a single GEO series — one entry per platform found in the series |
+| `load(dataset_id, **kwargs)` | `list[ProcessedDataset]` | Load and process a single GEO series: one entry per platform found in the series |
 | `load_multiple(dataset_ids, stop_on_error=False, **kwargs)` | `list[ProcessedDataset]` | Load multiple series. Failures are logged and skipped unless `stop_on_error=True` |
 
-Both methods return a **list**, even for a single-platform series — `load()` does not collapse to a bare `ProcessedDataset`.
+Both methods return a **list**, even for a single-platform series: `load()` does not collapse to a bare `ProcessedDataset`.
 
 ---
 
@@ -138,7 +138,7 @@ The **production handler** for R-parity. `parse()` orchestrates:
 3. Auto-detect and apply log2 transformation (median expression > 20 ⇒ raw
    intensity)
 4. Diagnostic check against known probe counts for common platforms
-   (`GPL96`, `GPL97`, `GPL6244`, `GPL570`) — a mismatch logs a warning, not
+   (`GPL96`, `GPL97`, `GPL6244`, `GPL570`): a mismatch logs a warning, not
    an error
 5. If annotation from the family SOFT file yields zero genes, fall back to
    a standalone GPL download and re-annotate
@@ -157,7 +157,7 @@ class HybridMicroarrayHandler(DataHandler):
 Internally calls `GeneAnnotator.annotate()` with `validator=validator`
 (Ensembl validation ON) for R-parity.
 
-`normalize()` is a no-op — Series Matrix data from NCBI is already
+`normalize()` is a no-op: Series Matrix data from NCBI is already
 normalized; the log2 auto-detection in `parse()` handles the one exception.
 
 ---
@@ -184,14 +184,14 @@ class GeneAnnotator:
 
 **Returns:** List of gene symbols (one per probe). `'NA'` for unmappable probes.
 
-**Annotation strategies** (columns tried in priority order — first match wins):
+**Annotation strategies** (columns tried in priority order: first match wins):
 
 | Priority | Column name(s) | Format |
 |----------|-----------------|--------|
-| 1 | `Gene Symbol`, `GENE_SYMBOL`, `Gene_Symbol`, `gene_symbol`, `genesymbol`, `Symbol`, `SYMBOL`, `symbol`, `HUGO_Gene_Nomenclature` | Direct — value already is the gene symbol |
-| 2 | `gene_assignment` | Assignment — `accession // symbol // description`; symbol is extracted from field 2 of the first `///`-delimited entry only |
+| 1 | `Gene Symbol`, `GENE_SYMBOL`, `Gene_Symbol`, `gene_symbol`, `genesymbol`, `Symbol`, `SYMBOL`, `symbol`, `HUGO_Gene_Nomenclature` | Direct: value already is the gene symbol |
+| 2 | `gene_assignment` | Assignment: `accession // symbol // description`; symbol is extracted from field 2 of the first `///`-delimited entry only |
 | 3 | `Gene`, `GENE`, `gene` | Direct |
-| 4 | `ORF` | Direct — microbial platforms |
+| 4 | `ORF` | Direct: microbial platforms |
 
 **R-parity filters** (applied after symbol extraction):
 
@@ -230,7 +230,7 @@ class EnsemblGeneValidator:
 | `data_dir` | Path, optional | Directory containing reference data. Defaults to the package's bundled `preprocessing/data/`. |
 
 `valid_genes` (`Set[str]`) is a public attribute populated at construction
-time — it is **not** a method.
+time: it is **not** a method.
 
 Data file, tried in order (first found wins): `ensembl_genes.csv.gz` →
 `ensembl_genes.csv` → `ensembl_gene_symbols.txt`. Raises `FileNotFoundError`
@@ -249,7 +249,7 @@ valid, invalid = validator.validate_list(['TP53', 'FAKE_GENE'])
 
 | Function | Purpose |
 |----------|---------|
-| `apply_ensembl_validation(dataset_dict, validator)` | Validate one dataset's `keys` in place — R-parity: only the first gene of each comma-separated key is checked; if it fails, the entire key is set to `'NA'` |
+| `apply_ensembl_validation(dataset_dict, validator)` | Validate one dataset's `keys` in place: R-parity: only the first gene of each comma-separated key is checked; if it fails, the entire key is set to `'NA'` |
 | `validate_all_datasets(data_dict, validator=None)` | Apply validation across every dataset in `meta_object['originalData']` |
 | `create_validator()` | Shortcut for `EnsemblGeneValidator()` |
 
@@ -299,7 +299,7 @@ converter.convert_list(['ENSG00000141510', 'FAKE'])       # ['TP53', 'NA']
 
 Low-level GEO network I/O with retry, timeout, and disk caching. This is
 the single seam injected into `HybridGeoSource`, `GEOparseSource`, and
-`NCBIFetcher` — mock it for offline testing.
+`NCBIFetcher`: mock it for offline testing.
 
 ```python
 class NCBINetwork:
@@ -370,7 +370,7 @@ loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
 datasets = loader.load_multiple(['GSE11909', 'GSE50635', 'GSE39088'])
 
 # 2. Convert to meta-object format.
-# ProcessedDataset has no .to_dict() — build the dict from its fields.
+# ProcessedDataset has no .to_dict(): build the dict from its fields.
 meta_object = {"originalData": {}}
 for ds in datasets:
     meta_object["originalData"][ds.geo_id] = {
@@ -395,6 +395,6 @@ results = analyzer.run_meta_analysis(meta_object)
 
 ## Related
 
-- [Architecture Overview](../architecture.md) — Factory/Handler/Source diagrams
-- [Gene Annotation Tutorial](../tutorials/gene_annotation.md) — Step-by-step walkthrough
-- [Analysis API](analysis.md) — What happens after preprocessing
+- [Architecture Overview](../architecture.md): Factory/Handler/Source diagrams
+- [Gene Annotation Tutorial](../tutorials/gene_annotation.md): Step-by-step walkthrough
+- [Analysis API](analysis.md): What happens after preprocessing

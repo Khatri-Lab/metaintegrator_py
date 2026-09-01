@@ -138,7 +138,7 @@ class SampleLevelGeneDataProcessor:
             warnings.warn(f"No matching genes found for {gene_names}")
             # Return empty DataFrame with correct structure. dtype=float is
             # required here (matching the "some genes missing" fill-in a
-            # few lines below) — without it, an index/columns-only
+            # few lines below): without it, an index/columns-only
             # DataFrame with no data defaults to dtype=object, which then
             # survives the fillna(1) calls in get_sample_level_gene_data
             # as Python `int` objects rather than floats. That silently

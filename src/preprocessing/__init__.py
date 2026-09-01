@@ -37,7 +37,7 @@ from .r_parity_handler import (  # alias for HybridMicroarrayHandler
 )
 from .r_parity_loader import load_geo_datasets_r_parity  # alias, uses strategy='hybrid'
 
-# Backward-compatible aliases (deprecated — use Hybrid* instead)
+# Backward-compatible aliases (deprecated: use Hybrid* instead)
 from .r_parity_source import RParityGeoSource  # alias for HybridGeoSource
 
 __all__ = [

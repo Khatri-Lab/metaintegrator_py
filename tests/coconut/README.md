@@ -1,4 +1,4 @@
-# COCONUT Test Suite — Running Instructions
+# COCONUT Test Suite: Running Instructions
 
 Tests for `src/coconut/coconut.py` (the COCONUT batch-normalization algorithm)
 and `src/coconut/coconut_runner.py` (its CSV-loading/CLI wrapper).
@@ -10,12 +10,12 @@ and `src/coconut/coconut_runner.py` (its CSV-loading/CLI wrapper).
 
 | File | What it covers |
 |---|---|
-| `test_coconut.py` | `coconut()` and its internals — data fixtures, ComBat helpers, iterative solver, non-parametric prior, integration tests, a couple of debug/perf tests. |
-| `test_coconut_runner.py` | `coconut_runner.py` — CSV discovery/loading, dataset name extraction, output writing, the CLI entry point. |
-| `test_runner.py` | **Not a pytest test module** despite the `test_` prefix — a standalone CLI script (`python test_runner.py [all\|unit\|integration\|fast\|performance\|coverage]`) that wraps `pytest` invocations with preset flag combinations. Pytest will import it during collection (harmless — it defines no `test_*`/`Test*` items, so nothing runs from it) but you run it directly with `python`, not `pytest`. |
+| `test_coconut.py` | `coconut()` and its internals: data fixtures, ComBat helpers, iterative solver, non-parametric prior, integration tests, a couple of debug/perf tests. |
+| `test_coconut_runner.py` | `coconut_runner.py`: CSV discovery/loading, dataset name extraction, output writing, the CLI entry point. |
+| `test_runner.py` | **Not a pytest test module** despite the `test_` prefix: a standalone CLI script (`python test_runner.py [all\|unit\|integration\|fast\|performance\|coverage]`) that wraps `pytest` invocations with preset flag combinations. Pytest will import it during collection (harmless: it defines no `test_*`/`Test*` items, so nothing runs from it) but you run it directly with `python`, not `pytest`. |
 | `__init__.py` | Empty; makes this a package so pytest's default import mode doesn't collide it with same-named test modules elsewhere in the repo. |
 
-There is no `pytest.ini` here — pytest configuration for the whole project
+There is no `pytest.ini` here: pytest configuration for the whole project
 (including this directory) lives in the repo root's `pyproject.toml`
 (`[tool.pytest.ini_options]`).
 
@@ -33,13 +33,13 @@ pip install -e ".[test]"
 The root `pyproject.toml` sets `pythonpath = ["src"]` for pytest, so
 `coconut`, `metaintegrator`, etc. are importable during test runs without
 any extra setup. `test_coconut.py` and `test_coconut_runner.py` also each
-insert `../../src` onto `sys.path` manually at import time — redundant
+insert `../../src` onto `sys.path` manually at import time: redundant
 under pytest given the config above, but it's what makes them importable if
 you ever run one of them directly as a plain script instead.
 
 ## Running the tests
 
-Run from the **repo root** (recommended — matches `pyproject.toml`'s
+Run from the **repo root** (recommended: matches `pyproject.toml`'s
 `testpaths` and coverage `source` config) or from this directory; both work:
 
 ```bash
@@ -61,7 +61,7 @@ pytest tests/coconut/test_coconut_runner.py::TestIntegration -v
 ```
 
 Note `test_debug_coconut_steps` is a module-level function, not a method of
-`TestCoconutMainFunction` — don't qualify it under that class or pytest
+`TestCoconutMainFunction`: don't qualify it under that class or pytest
 won't find it.
 
 With coverage:
@@ -76,13 +76,13 @@ The root `pyproject.toml` registers seven markers project-wide: `slow`,
 `integration`, `unit`, `parametric`, `nonparametric`, `performance`, and
 `regression`. Of those, **only `slow` is actually applied** anywhere in this
 directory today (one test in `test_coconut.py`, `TestPerformanceAndStress`).
-`integration`/`unit` etc. aren't decorated onto any test here — the
+`integration`/`unit` etc. aren't decorated onto any test here: the
 `TestIntegrationTests` / `TestIntegration` classes above are just class
 *names*, not `@pytest.mark.integration`. So:
 
 ```bash
-pytest tests/coconut/ -m "not slow"      # skips the perf/stress test — does something
-pytest tests/coconut/ -m "not integration"  # currently a no-op here — nothing's marked
+pytest tests/coconut/ -m "not slow"      # skips the perf/stress test: does something
+pytest tests/coconut/ -m "not integration"  # currently a no-op here: nothing's marked
 ```
 
 is accurate; a command like `-m "not integration and not slow"` only
@@ -92,12 +92,12 @@ here is marked `integration`.
 ## Debugging tips
 
 - Run the debug test first (`test_debug_coconut_steps`, `-v -s` to see its
-  print output) — it walks through COCONUT's steps manually and is usually
+  print output): it walks through COCONUT's steps manually and is usually
   the fastest way to localize a data-shape/indexing problem.
 - If you see `ImportWarning: Could not import COCONUT functions...` followed
   by `NotImplementedError: ... not imported. Please fix imports.`, that's
   `test_coconut.py`'s own fallback path (see its `try`/`except ImportError`
-  block) — it means the `coconut` package genuinely wasn't importable
+  block): it means the `coconut` package genuinely wasn't importable
   (usually a missing `pip install -e .` from the repo root, or running from
   an environment that doesn't have `src/` reachable), not a bug in the test
   itself.

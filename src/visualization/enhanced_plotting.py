@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # (thousands of genes, as opposed to a gene-search-optimized panel of a few
 # dozen) that produces a figure well over 1,000 inches tall. Rendering that
 # at `savefig(dpi=300)` requires a multi-hundred-thousand-pixel-tall canvas,
-# which reliably OOM-kills the process (SIGKILL, exit code 137 — not a
+# which reliably OOM-kills the process (SIGKILL, exit code 137: not a
 # catchable Python exception) partway through `heatmap_plot()`, before the
 # violin/ROC/PRC plots that are supposed to run afterward ever get a chance
 # to. Capping to the top genes by |effect size| keeps the heatmap both
@@ -48,7 +48,7 @@ class EnhancedMetaAnalysisPlotter:
     CI_95_MULTIPLIER = 1.96
 
     # Hard upper bound (inches) on any heatmap figure dimension. Backstop
-    # for `_calculate_heatmap_figsize` — see that method's docstring.
+    # for `_calculate_heatmap_figsize`: see that method's docstring.
     _MAX_HEATMAP_DIMENSION_INCHES = 100.0
 
     @staticmethod
@@ -400,7 +400,7 @@ class EnhancedMetaAnalysisPlotter:
                 |effect size| (using the pooled effect size when available,
                 otherwise the mean |effect size| across datasets). ``None``
                 disables the cap. Defaults to
-                :data:`DEFAULT_HEATMAP_MAX_GENES` — an unbounded gene count
+                :data:`DEFAULT_HEATMAP_MAX_GENES`: an unbounded gene count
                 makes ``_calculate_heatmap_figsize``'s figure height grow
                 linearly without limit, which can OOM-kill the process at
                 ``savefig()`` for a raw (un-filtered-to-a-panel) gene set of
@@ -425,7 +425,7 @@ class EnhancedMetaAnalysisPlotter:
         # Cap to the top genes by |effect size| *before* building heat_data,
         # so the (potentially very large) effect_sizes/pooled_results slices
         # below never exceed max_genes rows. An explicit gene_order list is
-        # honored as-is — the caller chose those genes deliberately.
+        # honored as-is: the caller chose those genes deliberately.
         if (
             max_genes is not None
             and not isinstance(gene_order, list)
@@ -1143,19 +1143,19 @@ class EnhancedMetaAnalysisPlotter:
         mean-difference score (mean of positive genes minus mean of negative
         genes, no normalization), independently of
         :func:`metaintegrator.score_calculation.ScoreCalculator.calculate_score`
-        — the R-parity, geometric-mean-based scorer used by the CLI (stage 7,
+       : the R-parity, geometric-mean-based scorer used by the CLI (stage 7,
         ``_compute_scores_and_roc``) and by ``violin_plot.py``. Having two
         divergent implementations meant the ROC/PRC AUCs shown on
         ``roc_multiple.png``/``prc_multiple.png`` could disagree with the AUCs
         derivable from ``dataset["score"]`` / the exported ``scores_*.csv``
         files for the *same* run. This method now delegates to
-        ``ScoreCalculator.calculate_score()`` so every code path — CLI,
-        programmatic/Jupyter use, and this plotting module — produces
+        ``ScoreCalculator.calculate_score()`` so every code path: CLI,
+        programmatic/Jupyter use, and this plotting module: produces
         identical scores for the same filter and dataset.
 
         If ``dataset`` already carries a precomputed ``"score"`` (as it does
         after CLI stage 7), that cached value is reused instead of
-        recomputing — the same short-circuit already used by
+        recomputing: the same short-circuit already used by
         ``violin_plot.py``'s ``_get_or_compute_scores()``.
 
         Args:
@@ -1180,7 +1180,7 @@ class EnhancedMetaAnalysisPlotter:
             # ScoreCalculator requires dataset['expr'] to be a pandas
             # DataFrame. Gene lookup inside ScoreCalculator is driven
             # entirely by the separate 'keys' list, matched positionally
-            # row-by-row against 'expr' — not by the DataFrame's own index —
+            # row-by-row against 'expr': not by the DataFrame's own index —
             # so wrapping a raw ndarray with a plain default-index DataFrame
             # is sufficient and preserves the original gene/sample order.
             dataset = dict(dataset)  # shallow copy: don't mutate the caller's dataset
@@ -1870,7 +1870,7 @@ def prc_plot(y_true: np.ndarray, y_scores: np.ndarray, **kwargs) -> plt.Figure:
 # ------------------------------------------------------------------
 # Backward-compatible deprecated alias
 # ------------------------------------------------------------------
-# This class used to be named ``MetaAnalysisPlotter`` — the same name as
+# This class used to be named ``MetaAnalysisPlotter``: the same name as
 # the unrelated, differently-scoped class in :mod:`visualization.plotting`
 # (volcano/forest/heatmap/effect-size-distribution/study-overview/
 # MA-summary plots). Having two independent classes share one name across

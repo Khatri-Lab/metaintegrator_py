@@ -1,5 +1,5 @@
 """
-Backward-compatibility alias — use :mod:`hybrid_handler` instead.
+Backward-compatibility alias: use :mod:`hybrid_handler` instead.
 
 .. deprecated::
     Import :class:`HybridMicroarrayHandler` from ``preprocessing.hybrid_handler``.

@@ -52,7 +52,7 @@ class HybridGeoSource(DataSource):
     Combines two data retrieval methods in a single fetch:
 
     1. **Series Matrix files** (via :class:`NCBINetwork`) for expression
-       data — pre-aligned, probe × sample matrices.
+       data: pre-aligned, probe × sample matrices.
     2. **GEOparse SOFT files** for GPL annotation tables and per-sample
        phenotype metadata.
 
@@ -150,7 +150,7 @@ class HybridGeoSource(DataSource):
                     f"columns: {gpl.table.columns.tolist()[:6]}..."
                 )
             else:
-                log.error(f"    GPL table is EMPTY for {platform_id} — annotation will fail!")
+                log.error(f"    GPL table is EMPTY for {platform_id}: annotation will fail!")
 
             raw = RawDataset(
                 source_id=gse_id,
@@ -261,7 +261,7 @@ class HybridGeoSource(DataSource):
         return result
 
     # ------------------------------------------------------------------ #
-    #  Series Matrix parsing (pure — no network)                          #
+    #  Series Matrix parsing (pure: no network)                          #
     # ------------------------------------------------------------------ #
 
     @staticmethod

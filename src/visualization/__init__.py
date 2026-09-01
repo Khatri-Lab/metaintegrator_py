@@ -8,7 +8,7 @@ including forest plots, heatmaps, ROC/PRC curves, violin plots, and more.
 
 BREAKING CHANGE (naming-collision fix): ``visualization.plotting`` and
 ``visualization.enhanced_plotting`` used to define two independent classes
-that both happened to be named ``MetaAnalysisPlotter`` — different methods,
+that both happened to be named ``MetaAnalysisPlotter``: different methods,
 different modules, no relationship. This package previously re-exported
 only the ``enhanced_plotting`` one under the bare name ``MetaAnalysisPlotter``,
 so ``from visualization import MetaAnalysisPlotter`` silently got you the
@@ -18,7 +18,7 @@ effect-size-distribution/study-overview one.
 ``enhanced_plotting``'s class is now named ``EnhancedMetaAnalysisPlotter``
 (with a deprecated, warning-emitting alias for direct
 ``from visualization.enhanced_plotting import MetaAnalysisPlotter``
-imports — see that module). At package level, ``MetaAnalysisPlotter`` now
+imports: see that module). At package level, ``MetaAnalysisPlotter`` now
 unambiguously means ``visualization.plotting.MetaAnalysisPlotter``. Code
 that did ``from visualization import MetaAnalysisPlotter`` expecting the
 enhanced/forest-plot-capable class must switch to
@@ -27,7 +27,7 @@ enhanced/forest-plot-capable class must switch to
 
 # The "enhanced" plotter: forest/gg-forest/heatmap/Manhattan/
 # predictive-value/ROC/PRC/violin/regression, plus multi-dataset ROC/PRC
-# convenience functions. Was also named MetaAnalysisPlotter — see the
+# convenience functions. Was also named MetaAnalysisPlotter: see the
 # module docstring above.
 from .enhanced_plotting import (
     EnhancedMetaAnalysisPlotter,

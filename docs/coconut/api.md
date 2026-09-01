@@ -42,7 +42,7 @@ def runner(
   Directory to save output CSV files. If `None`, results are only printed
 
 - **control_0_col** *(str, optional)*  
-  Phenotype column indicating control samples (0 = control). Defaults to `"Healthy0.Sepsis1"` — pass your own column name if your data uses a different one.
+  Phenotype column indicating control samples (0 = control). Defaults to `"Healthy0.Sepsis1"`: pass your own column name if your data uses a different one.
 
 - **disease_col** *(str, optional)*  
   Phenotype column indicating disease samples. If `None`, all non-control samples are treated as disease.
@@ -180,7 +180,7 @@ def load_and_run_coconut_example(
   Path to directory with CSV files
 
 - **control_0_col**, **disease_col**, **by_platform**, **platform_col**, **par_prior**, **it_conv** *(optional)*  
-  Same meaning and defaults as in [`runner()`](#runner-most-popular) above — forwarded directly to `coconut()`.
+  Same meaning and defaults as in [`runner()`](#runner-most-popular) above: forwarded directly to `coconut()`.
 
 **Returns:**
 
@@ -189,7 +189,7 @@ Dictionary containing COCONUT results (same structure as `coconut()`)
 **What it does:**
 
 1. Loads data from CSV directory
-2. Shows available phenotype columns for each dataset — useful for confirming your column names are actually present in your data
+2. Shows available phenotype columns for each dataset: useful for confirming your column names are actually present in your data
 3. Runs COCONUT using the column names you passed (or the defaults, if you didn't)
 4. Returns results for further analysis
 
@@ -333,7 +333,7 @@ def combine_coco_output(
 **Parameters:**
 
 - **coconut_out** *(dict, required)*
-  Output from `coconut()` function (call positionally — `combine_coco_output(result)` — the
+  Output from `coconut()` function (call positionally: `combine_coco_output(result)`: the
   parameter name differs slightly from `coconut()`'s own `gses` naming)
 
 **Returns:**

@@ -40,7 +40,7 @@ print("✅ Annotation tools imported successfully")
     In production, gene annotation is called automatically by
     `HybridMicroarrayHandler` during `DataLoaderFactory.create_geo_loader('r_parity').load_multiple(...)`.
     By the time you have a `ProcessedDataset`, `keys` is already gene
-    symbols — not probe IDs. This tutorial shows the manual steps for
+    symbols: not probe IDs. This tutorial shows the manual steps for
     learning and debugging.
 
 ### Step 2: Annotate Probes Directly
@@ -64,7 +64,7 @@ print(f"Mapped {sum(k != 'NA' for k in keys)} of {len(keys)} probes")
    (tries `Gene Symbol`, `Symbol`, `gene_assignment`, etc.)
 2. For direct columns, it replaces `///` and `;` with commas (multi-gene probes become comma-separated)
 3. For assignment columns, it parses `accession // symbol // description` format
-4. **Ensembl validation** (`EnsemblGeneValidator`) rejects non-HGNC symbols (LOC*, ORFs, mitochondrial aliases) — probes get `'NA'` instead
+4. **Ensembl validation** (`EnsemblGeneValidator`) rejects non-HGNC symbols (LOC*, ORFs, mitochondrial aliases): probes get `'NA'` instead
 5. **GenBank filter** (`GeneAnnotator.GENBANK_ACCESSION_RE`) rejects accession IDs (AF*, AK*, BC*, etc.) that some platforms include alongside gene symbols
 
 Both filters together produce gene counts matching R within ±5 per platform.
@@ -101,12 +101,12 @@ print(f"\n📈 Mapping rate: {n_mapped:,}/{len(ds.keys):,} ({n_mapped / len(ds.k
 ```
 
 **Note:** There is no separate `annotation_report` dict attached to a
-dataset — `'NA'` entries in `keys` *are* the report. Compute your own
+dataset: `'NA'` entries in `keys` *are* the report. Compute your own
 summary statistics from `keys` as shown above.
 
 ### Step 4: Handle Multiple Probe-to-Gene Mappings
 
-Some probes map to the same gene — this is normal and handled automatically
+Some probes map to the same gene: this is normal and handled automatically
 downstream (`SampleLevelGeneDataProcessor` groups by gene and averages):
 
 ```python
@@ -120,7 +120,7 @@ if duplicated_genes:
     top_duplicated = sorted(duplicated_genes.items(), key=lambda x: x[1], reverse=True)[:5]
     for gene, count in top_duplicated:
         print(f"   • {gene}: {count} probes")
-    print("\n💡 This is normal — meta-analysis summarizes probe-level data per gene.")
+    print("\n💡 This is normal: meta-analysis summarizes probe-level data per gene.")
 else:
     print("✅ No duplicate gene mappings")
 ```
@@ -134,7 +134,7 @@ Found 234 genes with multiple probes:
    • MYC: 4 probes
    • PTEN: 4 probes
 
-💡 This is normal — meta-analysis summarizes probe-level data per gene.
+💡 This is normal: meta-analysis summarizes probe-level data per gene.
 ```
 
 ### Step 5: Convert Non-Symbol Gene IDs with GeneConverter
@@ -207,11 +207,11 @@ for ds in datasets:
 ```
 
 A mapping rate well below 50% is unusually low for a standard Affymetrix/
-Illumina platform — a good sign the GPL table wasn't matched correctly.
+Illumina platform: a good sign the GPL table wasn't matched correctly.
 
 ### Tip 2: Control Probes Never Map
 
-Control probes (`AFFX-*`) are expected to come through as `'NA'` — they
+Control probes (`AFFX-*`) are expected to come through as `'NA'`: they
 aren't genes, so this isn't a bug:
 
 ```python
@@ -242,7 +242,7 @@ genes_fixed = [g.upper() for g in genes]
 **A**: Several possible causes:
 
 1. **Old or custom platform**: the GPL table's gene-symbol column wasn't
-   recognized by `find_symbol_column()` — inspect `gpl_table.columns` directly.
+   recognized by `find_symbol_column()`: inspect `gpl_table.columns` directly.
 2. **Non-standard probe IDs**: inspect `ds.keys[:20]` and `ds.expr.index[:20]`
    to see what's actually there.
 3. **Organism mismatch**: verify the organism in phenotype data —
@@ -290,7 +290,7 @@ Now that you understand how gene symbols get standardized:
 
 ### Key Takeaways
 
-✅ Annotation happens automatically inside `HybridMicroarrayHandler` during `load_multiple()` — no separate call needed for the standard workflow
+✅ Annotation happens automatically inside `HybridMicroarrayHandler` during `load_multiple()`: no separate call needed for the standard workflow
 ✅ Unmapped probes come through as `'NA'`, not a separate report object
 ✅ `GeneAnnotator.annotate()` is the manual entry point if you need direct control
 ✅ `EnsemblGeneValidator` filters non-HGNC symbols; the GenBank-accession regex filters accession IDs

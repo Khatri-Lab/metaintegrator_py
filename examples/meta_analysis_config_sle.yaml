@@ -1,5 +1,5 @@
 # ===========================================================================
-# MetaIntegrator CLI — SLE (Systemic Lupus Erythematosus) Example Config
+# MetaIntegrator CLI: SLE (Systemic Lupus Erythematosus) Example Config
 # ===========================================================================
 # This config reproduces the SLE tutorial notebook headlessly.
 #
@@ -11,7 +11,7 @@
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
-# 1. DATASETS — three public GEO SLE datasets
+# 1. DATASETS: three public GEO SLE datasets
 # ---------------------------------------------------------------------------
 datasets:
   gse_ids:
@@ -23,7 +23,7 @@ datasets:
   stop_on_error: false
 
 # ---------------------------------------------------------------------------
-# 2. LABELING — SLE-specific case/control assignment
+# 2. LABELING: SLE-specific case/control assignment
 #
 #    Keys are matched as substrings (GSE11909 → GSE11909_GPL96, GSE11909_GPL97).
 # ---------------------------------------------------------------------------

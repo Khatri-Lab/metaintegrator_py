@@ -643,7 +643,7 @@ The Python implementation matches R MetaIntegrator's `violinPlot()` style.
 ```python
 from visualization.violin_plot import violin_plot, multi_violin_plot
 
-# Single dataset — matches R's violinPlot(filterObject, datasetObject, labelColumn)
+# Single dataset: matches R's violinPlot(filterObject, datasetObject, labelColumn)
 fig = violin_plot(
     filter_object,
     sle_meta_analysis['originalData']['GSE11909_GPL96'],

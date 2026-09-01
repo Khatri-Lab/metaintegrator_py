@@ -495,7 +495,7 @@ def create_analyzer(
 **Example**
 
 ```python
-# Random effects (default — matches R MetaIntegrator)
+# Random effects (default: matches R MetaIntegrator)
 analyzer = MetaAnalysisFactory.create_analyzer("random_effects")
 
 # Fixed effects
@@ -545,9 +545,9 @@ dict-like access for backward compatibility.
 from metaintegrator.analysis import EffectSizeResult
 
 # Fields:
-#   g:                pd.DataFrame  — per-study effect-size matrix (genes × studies)
-#   se_g:             pd.DataFrame  — per-study standard-error matrix
-#   pooled_estimates: pd.DataFrame  — pooled statistics
+#   g:                pd.DataFrame : per-study effect-size matrix (genes × studies)
+#   se_g:             pd.DataFrame : per-study standard-error matrix
+#   pooled_estimates: pd.DataFrame : pooled statistics
 ```
 
 ### FilterResult
@@ -596,7 +596,7 @@ from metaintegrator.core_analysis import (
     FisherCombination
 )
 
-# 1. Prepare studies — DataProcessor has no "prepare_study_object" helper;
+# 1. Prepare studies: DataProcessor has no "prepare_study_object" helper;
 # build each study dict from expr/pheno/keys and assign class labels
 # from a phenotype column with assign_class_labels().
 studies = {}
@@ -815,7 +815,7 @@ config = FilterConfig(
 meta_filter = MetaIntegratorFilter(config=config)
 filter_result = meta_filter.filter(meta_object)  # → FilterResults (scoring_core)
 
-# Attribute access only — no R-style dict aliasing on this class
+# Attribute access only: no R-style dict aliasing on this class
 filter_result.pos_gene_names   # list of up-regulated genes
 filter_result.neg_gene_names   # list of down-regulated genes
 filter_result.total_genes      # property: len(pos) + len(neg)
@@ -827,7 +827,7 @@ filter_result.to_dict()        # plain dict, snake_case keys
 ## ROCAnalysisEngine
 
 ROC curve computation and multi-dataset evaluation. Methods are on the
-*instance*, not the class — `ROCAnalysisEngine` must be constructed first.
+*instance*, not the class: `ROCAnalysisEngine` must be constructed first.
 
 ```python
 from metaintegrator.roc_analysis_engine import ROCAnalysisEngine
@@ -872,6 +872,6 @@ results = orchestrator.run_analysis(meta_object, analysis_name="analysis")
 
 ## Related
 
-- [Architecture Overview](../architecture.md) — Scoring pipeline diagram
-- [Preprocessing API](preprocessing.md) — Data loading before analysis
-- [Visualization API](visualization.md) — Plotting results
+- [Architecture Overview](../architecture.md): Scoring pipeline diagram
+- [Preprocessing API](preprocessing.md): Data loading before analysis
+- [Visualization API](visualization.md): Plotting results

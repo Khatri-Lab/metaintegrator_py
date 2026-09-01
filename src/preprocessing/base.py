@@ -209,7 +209,7 @@ class DataHandler(abc.ABC):
     def process(self, raw_dataset: RawDataset) -> ProcessedDataset:
         """Run the full processing pipeline: parse, then normalize.
 
-        This is a template method — it defines the processing workflow while
+        This is a template method: it defines the processing workflow while
         subclasses supply the actual ``parse()`` and ``normalize()`` logic.
 
         Args:
@@ -266,7 +266,7 @@ class DataLoader:
             **kwargs: Forwarded to ``source.fetch()``.
 
         Returns:
-            The processed dataset(s) — more than one if the source spans
+            The processed dataset(s): more than one if the source spans
             multiple platforms.
         """
         # Fetch raw data from source

@@ -48,7 +48,7 @@ from .gene_validation import EnsemblGeneValidator
 log = logging.getLogger(__name__)
 
 # Known expected probe counts for diagnostic verification.
-# These are informational only — mismatches produce a warning, not an error.
+# These are informational only: mismatches produce a warning, not an error.
 EXPECTED_PROBES = {
     "GPL96": 22283,
     "GPL97": 22645,
@@ -275,7 +275,7 @@ class HybridMicroarrayHandler(DataHandler):
         """Re-annotate using standalone GPL when family SOFT yields 0 genes."""
         dataset_name = f"{gse_id}_{platform_id}"
         log.warning(
-            f"    0 genes for {dataset_name} from family SOFT — falling back to standalone GPL"
+            f"    0 genes for {dataset_name} from family SOFT: falling back to standalone GPL"
         )
 
         try:

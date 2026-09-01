@@ -6,18 +6,18 @@ This module provides tools for creating publication-quality visualizations of me
 
 | Module | Focus |
 |--------|-------|
-| `plotting.py` | `MetaAnalysisPlotter` — volcano, forest, heatmap, effect-size distribution, study overview, MA summary |
-| `enhanced_plotting.py` | `EnhancedMetaAnalysisPlotter` plus module-level functions — forest/heatmap/Manhattan/predictive-value/single- and multi-dataset ROC/PRC/violin/regression plots |
+| `plotting.py` | `MetaAnalysisPlotter`: volcano, forest, heatmap, effect-size distribution, study overview, MA summary |
+| `enhanced_plotting.py` | `EnhancedMetaAnalysisPlotter` plus module-level functions: forest/heatmap/Manhattan/predictive-value/single- and multi-dataset ROC/PRC/violin/regression plots |
 | `violin_plot.py` | R-parity violin plots with ggplot2/ggpubr styling |
 
 > **Naming history.** `enhanced_plotting`'s plotter class used to also be
-> named `MetaAnalysisPlotter` — an unrelated class in a different module
+> named `MetaAnalysisPlotter`: an unrelated class in a different module
 > that happened to share the same name as `plotting.MetaAnalysisPlotter`,
 > with a completely disjoint method set. It has been renamed to
 > `EnhancedMetaAnalysisPlotter` to remove the collision. A deprecated,
 > warning-emitting alias (`visualization.enhanced_plotting.MetaAnalysisPlotter`)
 > is kept for old imports, but new code should use `EnhancedMetaAnalysisPlotter`
-> directly — see `visualization/__init__.py`'s module docstring for the
+> directly: see `visualization/__init__.py`'s module docstring for the
 > full migration note.
 >
 > Every method documented below (`plot_volcano`, `plot_forest_plot`,
@@ -26,7 +26,7 @@ This module provides tools for creating publication-quality visualizations of me
 > `EnhancedMetaAnalysisPlotter`'s methods are named `forest_plot`,
 > `heatmap_plot`, `manhattan_plot`, `roc_plot`, `prc_plot`,
 > `multiple_roc_plot`, `multiple_prc_plot`, `violin_plot`, `regression_plot`,
-> etc. — not otherwise documented on this page. Import the one you mean
+> etc.: not otherwise documented on this page. Import the one you mean
 > explicitly:
 > `from visualization.plotting import MetaAnalysisPlotter` or
 > `from visualization.enhanced_plotting import EnhancedMetaAnalysisPlotter`.
@@ -59,8 +59,8 @@ fig = violin_plot(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `filter_object` | dict | — | MetaFilter with `posGeneNames` / `negGeneNames` |
-| `dataset_object` | dict | — | Dataset with `expr`, `keys`, `class`, `pheno` |
+| `filter_object` | dict |: | MetaFilter with `posGeneNames` / `negGeneNames` |
+| `dataset_object` | dict |: | Dataset with `expr`, `keys`, `class`, `pheno` |
 | `label_column` | str | `'label'` | Column in `pheno` defining groups. Falls back to binary `class` labels (0→Control, 1→Disease) when the column is missing or has ≤1 unique value. |
 | `comparison_method` | str | `'wilcox'` | `'wilcox'` (Mann–Whitney) or `'t'` (Welch) |
 | `show_points` | bool | `True` | Jittered data points |

@@ -64,7 +64,7 @@ pip install GEOparse>=2.0.3
 
 ## Configuration
 
-There are no environment variables for configuring the GEO loader — all
+There are no environment variables for configuring the GEO loader: all
 configuration is passed explicitly to `DataLoaderFactory.create_geo_loader()`.
 
 ### Python Configuration
@@ -137,7 +137,7 @@ for ds in datasets:
 ### Data Processing Pipeline
 
 Gene annotation (probe → gene symbol) happens automatically inside the handler
-during `load_multiple()` — there's no separate annotation step to call for the
+during `load_multiple()`: there's no separate annotation step to call for the
 standard workflow. Class labels are the one step you always do by hand:
 
 ```python
@@ -167,7 +167,7 @@ print("\n✅ Data ready for meta-analysis")
 !!! tip "Why the same `column_name` value works across every GEO dataset"
     `ds.pheno` always has the same five standardized columns —
     `title`, `source_name`, `organism`, `characteristics`, and
-    `description` — no matter what the original GEO submitter called
+    `description`: no matter what the original GEO submitter called
     them (e.g. a raw `characteristics_ch1` field). Each loading
     strategy's handler builds `pheno` from GEOparse's per-sample
     metadata and normalizes the field names during loading, so
@@ -268,7 +268,7 @@ dataset = {
 ### Batch Download with Error Handling
 
 `load_multiple(..., stop_on_error=False)` already skips datasets that fail to
-download rather than aborting the whole batch — wrap it if you also want a
+download rather than aborting the whole batch: wrap it if you also want a
 structured success/failure report:
 
 ```python
@@ -400,13 +400,13 @@ import pickle
 with open('meta_object.pkl', 'wb') as f:
     pickle.dump(meta_object, f)
 
-# Later use (offline) — no re-download needed at all
+# Later use (offline): no re-download needed at all
 with open('meta_object.pkl', 'rb') as f:
     meta_object = pickle.load(f)
 ```
 
 Even without pickling, re-running `load_multiple()` against the same `cache_dir`
-is itself offline-capable — cached files are read from disk, not re-downloaded.
+is itself offline-capable: cached files are read from disk, not re-downloaded.
 
 ### Q: What GEO accession types are supported?
 
@@ -506,7 +506,7 @@ verify_gse_exists("GSE99999")  # Should return False
 ### Issue: "Expression data not in log scale"
 
 **Cause:** Data needs log transformation for meta-analysis. There's no built-in
-`check_geo_log_scale()` helper — a simple range heuristic works well in practice
+`check_geo_log_scale()` helper: a simple range heuristic works well in practice
 (log₂ microarray data is typically in the 0–20 range; linear-scale data often
 reaches into the thousands):
 

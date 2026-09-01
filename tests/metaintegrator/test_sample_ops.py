@@ -1,5 +1,5 @@
 """
-Tests for metaintegrator.sample_ops — the canonical location for
+Tests for metaintegrator.sample_ops: the canonical location for
 sample subsetting after the data_processing split.
 
 The comprehensive subsetting logic tests live in
@@ -135,7 +135,7 @@ class TestNumpyArrayKeepSamples:
         assert list(result["expr"].columns) == ["S1", "S3", "S5"]
 
     def test_numpy_boolean_all_false_raises(self, standard_dataset):
-        """All-false boolean mask produces empty result — valid but 0 samples."""
+        """All-false boolean mask produces empty result: valid but 0 samples."""
         mask = np.array([False] * 6)
         result = subset_original_data(standard_dataset, mask)
         assert result["expr"].shape[1] == 0

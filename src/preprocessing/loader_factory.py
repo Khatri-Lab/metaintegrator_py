@@ -8,7 +8,7 @@ All loader creation goes through :class:`DataLoaderFactory`.  The
 convenience functions at module level are thin wrappers.
 
 Examples:
-    R-parity (recommended — matches R MetaIntegrator output)::
+    R-parity (recommended: matches R MetaIntegrator output)::
 
         loader = DataLoaderFactory.create_geo_loader(strategy='r_parity')
         datasets = loader.load_multiple(['GSE11909', 'GSE50635'])
@@ -149,7 +149,7 @@ class DataLoaderFactory:
     ) -> DataLoader:
         """Create a DataLoader for RNA-seq data.
 
-        Placeholder — not yet implemented.
+        Placeholder: not yet implemented.
         """
         raise NotImplementedError(
             "RNA-seq loader not yet implemented. " "Coming in Phase 2 of architecture rollout."
@@ -161,7 +161,7 @@ class DataLoaderFactory:
     ) -> DataLoader:
         """Create a DataLoader for single-cell RNA-seq data.
 
-        Placeholder — not yet implemented.
+        Placeholder: not yet implemented.
         """
         raise NotImplementedError(
             "Single-cell loader not yet implemented. " "Coming in Phase 3 of architecture rollout."
@@ -182,7 +182,7 @@ def load_geo_datasets_processed(
 ) -> List[ProcessedDataset]:
     """Load GEO datasets and return :class:`ProcessedDataset` objects.
 
-    This is the recommended entry point for new code — it supports every
+    This is the recommended entry point for new code: it supports every
     strategy and returns typed objects.
 
     Args:

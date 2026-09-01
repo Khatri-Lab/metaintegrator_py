@@ -573,7 +573,7 @@ class ImmunoStatesDeconvolverLegacy:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the legacy deconvolver, warning loudly that it's deprecated.
 
-        See the class docstring — this positional-alignment
+        See the class docstring: this positional-alignment
         implementation is kept only for backward compatibility.
         """
         warnings.warn(
