@@ -1136,39 +1136,39 @@ class EnhancedMetaAnalysisPlotter:
 
     def _calculate_scores(self, filter_object: Dict, dataset: Dict) -> np.ndarray:
         """
-        Calculates per-sample signature scores for a dataset.
+         Calculates per-sample signature scores for a dataset.
 
-        consolidated onto the single "gold standard" scoring
-        implementation. This method used to compute its own simple
-        mean-difference score (mean of positive genes minus mean of negative
-        genes, no normalization), independently of
-        :func:`metaintegrator.score_calculation.ScoreCalculator.calculate_score`
-       : the R-parity, geometric-mean-based scorer used by the CLI (stage 7,
-        ``_compute_scores_and_roc``) and by ``violin_plot.py``. Having two
-        divergent implementations meant the ROC/PRC AUCs shown on
-        ``roc_multiple.png``/``prc_multiple.png`` could disagree with the AUCs
-        derivable from ``dataset["score"]`` / the exported ``scores_*.csv``
-        files for the *same* run. This method now delegates to
-        ``ScoreCalculator.calculate_score()`` so every code path: CLI,
-        programmatic/Jupyter use, and this plotting module: produces
-        identical scores for the same filter and dataset.
+         consolidated onto the single "gold standard" scoring
+         implementation. This method used to compute its own simple
+         mean-difference score (mean of positive genes minus mean of negative
+         genes, no normalization), independently of
+         :func:`metaintegrator.score_calculation.ScoreCalculator.calculate_score`
+        : the R-parity, geometric-mean-based scorer used by the CLI (stage 7,
+         ``_compute_scores_and_roc``) and by ``violin_plot.py``. Having two
+         divergent implementations meant the ROC/PRC AUCs shown on
+         ``roc_multiple.png``/``prc_multiple.png`` could disagree with the AUCs
+         derivable from ``dataset["score"]`` / the exported ``scores_*.csv``
+         files for the *same* run. This method now delegates to
+         ``ScoreCalculator.calculate_score()`` so every code path: CLI,
+         programmatic/Jupyter use, and this plotting module: produces
+         identical scores for the same filter and dataset.
 
-        If ``dataset`` already carries a precomputed ``"score"`` (as it does
-        after CLI stage 7), that cached value is reused instead of
-        recomputing: the same short-circuit already used by
-        ``violin_plot.py``'s ``_get_or_compute_scores()``.
+         If ``dataset`` already carries a precomputed ``"score"`` (as it does
+         after CLI stage 7), that cached value is reused instead of
+         recomputing: the same short-circuit already used by
+         ``violin_plot.py``'s ``_get_or_compute_scores()``.
 
-        Args:
-            filter_object: A dictionary containing filter criteria including
-                'posGeneNames' and 'negGeneNames' keys with lists of gene names as values.
-            dataset: A dictionary containing the keys and expression matrix of genes.
-                'keys' is the list of gene names and 'expr' is the expression matrix.
-                If it already has a 'score' key with a non-``None`` value, that
-                value is returned (converted to an array) unchanged.
+         Args:
+             filter_object: A dictionary containing filter criteria including
+                 'posGeneNames' and 'negGeneNames' keys with lists of gene names as values.
+             dataset: A dictionary containing the keys and expression matrix of genes.
+                 'keys' is the list of gene names and 'expr' is the expression matrix.
+                 If it already has a 'score' key with a non-``None`` value, that
+                 value is returned (converted to an array) unchanged.
 
-        Returns:
-            np.ndarray: Per-sample signature scores (R-parity Z-scores when
-            freshly computed; whatever ``dataset["score"]`` holds when reused).
+         Returns:
+             np.ndarray: Per-sample signature scores (R-parity Z-scores when
+             freshly computed; whatever ``dataset["score"]`` holds when reused).
         """
         if dataset.get("score") is not None:
             return np.asarray(dataset["score"], dtype=float)

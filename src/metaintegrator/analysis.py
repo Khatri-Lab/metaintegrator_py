@@ -725,36 +725,36 @@ def _run_loo_subset(
 ) -> Dict:
     """Run one leave-one-out subset's core meta-analysis.
 
-    This is a free function at module scope, not a method or a nested
-    closure, because :class:`~concurrent.futures.ProcessPoolExecutor`
-    (used by :meth:`MetaAnalyzer.run_leave_one_out_analysis` for
-    ``max_cores > 1``) has to pickle every callable it submits so it can be
-    sent to a worker process. Pickle can only resolve a callable "by name"
-   : via its fully-qualified module path: and a function defined *inside*
-    another function (a closure) has no such path, so it always fails with
-    ``Can't pickle local object '...run_leave_one_out_analysis.<locals>.
-    analyze_subset'``. That was a real, previously-uncaught bug: every LOO
-    subset raised this exception, so ``run_leave_one_out_analysis`` silently
-    returned a list of four ``None`` results and downstream leave-one-out
-    consistency filtering in :meth:`MetaAnalyzer.filter_genes` was a no-op
-    even when ``is_leave_one_out=True`` in the config, because
-    ``meta_object.get("leaveOneOutAnalysis")`` evaluated as an empty (falsy)
-    dict.
+     This is a free function at module scope, not a method or a nested
+     closure, because :class:`~concurrent.futures.ProcessPoolExecutor`
+     (used by :meth:`MetaAnalyzer.run_leave_one_out_analysis` for
+     ``max_cores > 1``) has to pickle every callable it submits so it can be
+     sent to a worker process. Pickle can only resolve a callable "by name"
+    : via its fully-qualified module path: and a function defined *inside*
+     another function (a closure) has no such path, so it always fails with
+     ``Can't pickle local object '...run_leave_one_out_analysis.<locals>.
+     analyze_subset'``. That was a real, previously-uncaught bug: every LOO
+     subset raised this exception, so ``run_leave_one_out_analysis`` silently
+     returned a list of four ``None`` results and downstream leave-one-out
+     consistency filtering in :meth:`MetaAnalyzer.filter_genes` was a no-op
+     even when ``is_leave_one_out=True`` in the config, because
+     ``meta_object.get("leaveOneOutAnalysis")`` evaluated as an empty (falsy)
+     dict.
 
-    ``analyzer`` (a :class:`MetaAnalyzer` instance) is passed explicitly so
-    the worker process can call the *same* engine/validator/processor the
-    caller configured, rather than duplicating that wiring here. This is
-    picklable for the default configuration (its collaborators are plain
-    module-level classes), matching the exact scenario in the reported bug.
+     ``analyzer`` (a :class:`MetaAnalyzer` instance) is passed explicitly so
+     the worker process can call the *same* engine/validator/processor the
+     caller configured, rather than duplicating that wiring here. This is
+     picklable for the default configuration (its collaborators are plain
+     module-level classes), matching the exact scenario in the reported bug.
 
-    Args:
-        analyzer: The :class:`MetaAnalyzer` instance to run the subset on.
-        subset_data: The dataset list with one dataset excluded.
-        use_old_method: Use legacy Q-value Fisher method.
+     Args:
+         analyzer: The :class:`MetaAnalyzer` instance to run the subset on.
+         subset_data: The dataset list with one dataset excluded.
+         use_old_method: Use legacy Q-value Fisher method.
 
-    Returns:
-        The subset's core meta-analysis result dict (same shape as
-        :meth:`MetaAnalyzer.run_meta_analysis_core`'s return value).
+     Returns:
+         The subset's core meta-analysis result dict (same shape as
+         :meth:`MetaAnalyzer.run_meta_analysis_core`'s return value).
     """
     return analyzer.run_meta_analysis_core(subset_data, use_old_method)
 
