@@ -1,0 +1,29 @@
+# Keep the build context small: these are the same categories excluded
+# in .gitignore, plus editor/VCS metadata and generated docs/tutorial
+# output that has no business inside an image layer.
+.git/
+.github/
+.venv/
+venv/
+env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+.idea/
+.vscode/
+.DS_Store
+**/.DS_Store
+site/
+tutorials/output*/
+docs/
