@@ -840,6 +840,491 @@ class TestPerformanceAndRobustness:
         assert isinstance(scores, np.ndarray)
 
 
+class TestMaxIterationsAndProgressCallback:
+    """Tests for the ``max_iterations`` / ``progress_callback`` parameters
+    added to ``backward_search`` / ``forward_search`` (both the class
+    methods and their private ``_weighted`` implementations, plus the
+    module-level convenience functions).
+
+    Uses the same deterministic, gene-level ``discovery_genes`` fixture as
+    ``TestRatioScaling`` above (no ``getSampleLevelGeneData`` mocking
+    needed, since ``_backward_search_weighted`` / ``_forward_search_weighted``
+    take already-converted gene-level data directly), so these tests are
+    fully deterministic: no random test-to-test flakiness from where a
+    real search happens to stop.
+    """
+
+    def setup_method(self):
+        """Build the same deterministic gene-level discovery data
+        ``TestRatioScaling`` uses, so a natural (uncapped) search's stopping
+        point is reproducible across the calls each test makes."""
+        np.random.seed(42)
+        self.optimizer = GeneSearchOptimizer()
+
+        self.gene_matrix = pd.DataFrame(
+            np.random.randn(6, 20) * 0.5 + 5,
+            index=["G1", "G2", "G3", "G4", "G5", "G6"],
+            columns=[f"s{i}" for i in range(20)],
+        )
+        self.discovery_genes = [
+            {
+                "genes": self.gene_matrix.iloc[:, :12].copy(),
+                "class": np.array([0] * 6 + [1] * 6),
+            },
+            {
+                "genes": self.gene_matrix.iloc[:, :8].copy(),
+                "class": np.array([0] * 4 + [1] * 4),
+            },
+        ]
+        self.weights = np.array([12, 8])
+
+    # ------------------------------------------------------------------
+    # max_iterations=None: behavior must be unchanged from before this
+    # parameter existed (the same regression guarantee this whole
+    # enhancement was built on top of).
+    # ------------------------------------------------------------------
+    def test_backward_default_none_converges_and_reports_it(self):
+        pos, neg, converged, iterations_run = self.optimizer._backward_search_weighted(
+            self.discovery_genes, ["G1", "G2", "G3"], ["G4", "G5", "G6"], back_thresh=-1.0
+        )
+        assert converged is True
+        assert isinstance(iterations_run, int)
+        assert iterations_run >= 0
+
+    def test_forward_default_none_converges_and_reports_it(self):
+        pos, neg, converged, iterations_run = self.optimizer._forward_search_weighted(
+            self.discovery_genes,
+            ["G1", "G2", "G3"],
+            ["G4", "G5", "G6"],
+            None,
+            None,
+            forward_thresh=-1.0,
+        )
+        assert converged is True
+        assert isinstance(iterations_run, int)
+        assert iterations_run >= 0
+
+    # ------------------------------------------------------------------
+    # max_iterations actually cuts the search off before natural
+    # convergence, deterministically: run once uncapped to find the
+    # natural stopping point N, then again capped at N-1 and confirm it
+    # stops exactly there with converged=False.
+    # ------------------------------------------------------------------
+    def test_backward_max_iterations_cuts_off_before_convergence(self):
+        pos_genes = ["G1", "G2", "G3"]
+        neg_genes = ["G4", "G5", "G6"]
+
+        _, _, natural_converged, natural_iterations = self.optimizer._backward_search_weighted(
+            self.discovery_genes, pos_genes, neg_genes, back_thresh=-1.0
+        )
+        assert natural_converged is True
+        assert natural_iterations >= 1, (
+            "test fixture must produce at least 1 natural removal for this "
+            "test to meaningfully exercise a cap; adjust back_thresh/seed "
+            "if this fails."
+        )
+
+        capped_at = natural_iterations - 1
+        _, _, capped_converged, capped_iterations = self.optimizer._backward_search_weighted(
+            self.discovery_genes,
+            pos_genes,
+            neg_genes,
+            back_thresh=-1.0,
+            max_iterations=capped_at,
+        )
+        assert capped_iterations == capped_at
+        assert capped_converged is False
+
+    def test_forward_max_iterations_cuts_off_before_convergence(self):
+        pos_genes = ["G1", "G2", "G3"]
+        neg_genes = ["G4", "G5", "G6"]
+
+        _, _, natural_converged, natural_iterations = self.optimizer._forward_search_weighted(
+            self.discovery_genes, pos_genes, neg_genes, None, None, forward_thresh=-1.0
+        )
+        assert natural_converged is True
+        assert natural_iterations >= 1, (
+            "test fixture must produce at least 1 natural addition for this "
+            "test to meaningfully exercise a cap; adjust forward_thresh/seed "
+            "if this fails."
+        )
+
+        capped_at = natural_iterations - 1
+        _, _, capped_converged, capped_iterations = self.optimizer._forward_search_weighted(
+            self.discovery_genes,
+            pos_genes,
+            neg_genes,
+            None,
+            None,
+            forward_thresh=-1.0,
+            max_iterations=capped_at,
+        )
+        assert capped_iterations == capped_at
+        assert capped_converged is False
+
+    def test_max_iterations_zero_makes_no_moves(self):
+        """An edge case worth its own test: max_iterations=0 should stop
+        before evaluating anything, leaving the input signature untouched."""
+        pos_genes = ["G1", "G2", "G3"]
+        neg_genes = ["G4", "G5", "G6"]
+
+        pos, neg, converged, iterations_run = self.optimizer._backward_search_weighted(
+            self.discovery_genes, pos_genes, neg_genes, back_thresh=-1.0, max_iterations=0
+        )
+        assert iterations_run == 0
+        assert converged is False
+        assert pos == pos_genes
+        assert neg == neg_genes
+
+    # ------------------------------------------------------------------
+    # progress_callback: invoked once per accepted move, with the
+    # documented (iteration, gene, auc_before, auc_after,
+    # candidates_remaining) signature.
+    # ------------------------------------------------------------------
+    def test_backward_progress_callback_invoked_once_per_removal(self):
+        calls = []
+
+        def _capture(iteration, gene, auc_before, auc_after, candidates_remaining):
+            calls.append((iteration, gene, auc_before, auc_after, candidates_remaining))
+
+        pos_genes = ["G1", "G2", "G3"]
+        neg_genes = ["G4", "G5", "G6"]
+        all_genes = set(pos_genes) | set(neg_genes)
+
+        _, _, converged, iterations_run = self.optimizer._backward_search_weighted(
+            self.discovery_genes,
+            pos_genes,
+            neg_genes,
+            back_thresh=-1.0,
+            progress_callback=_capture,
+        )
+
+        assert len(calls) == iterations_run
+        # Iteration numbers are 1-indexed and sequential.
+        assert [c[0] for c in calls] == list(range(1, iterations_run + 1))
+        # Every reported gene actually came from the starting signature.
+        assert all(c[1] in all_genes for c in calls)
+        # candidates_remaining strictly decreases by exactly 1 each call
+        # (one gene leaves the signature per accepted removal).
+        remaining_counts = [c[4] for c in calls]
+        assert remaining_counts == sorted(remaining_counts, reverse=True)
+        if len(remaining_counts) > 1:
+            deltas = [
+                remaining_counts[i] - remaining_counts[i + 1]
+                for i in range(len(remaining_counts) - 1)
+            ]
+            assert all(d == 1 for d in deltas)
+
+    def test_forward_progress_callback_invoked_once_per_addition(self):
+        calls = []
+
+        def _capture(iteration, gene, auc_before, auc_after, candidates_remaining):
+            calls.append((iteration, gene, auc_before, auc_after, candidates_remaining))
+
+        pos_genes = ["G1", "G2", "G3"]
+        neg_genes = ["G4", "G5", "G6"]
+        all_genes = set(pos_genes) | set(neg_genes)
+
+        _, _, converged, iterations_run = self.optimizer._forward_search_weighted(
+            self.discovery_genes,
+            pos_genes,
+            neg_genes,
+            None,
+            None,
+            forward_thresh=-1.0,
+            progress_callback=_capture,
+        )
+
+        assert len(calls) == iterations_run
+        assert [c[0] for c in calls] == list(range(1, iterations_run + 1))
+        assert all(c[1] in all_genes for c in calls)
+
+    def test_progress_callback_exception_propagates_and_aborts_search(self):
+        """A callback that raises must abort the search immediately rather
+        than being swallowed: silently continuing after a reporting
+        failure could hide a real problem in whatever the callback was
+        doing (e.g. persisting progress, refreshing a lock)."""
+
+        class _Boom(Exception):
+            pass
+
+        def _raising_callback(iteration, gene, auc_before, auc_after, candidates_remaining):
+            raise _Boom("callback failed")
+
+        with pytest.raises(_Boom):
+            self.optimizer._backward_search_weighted(
+                self.discovery_genes,
+                ["G1", "G2", "G3"],
+                ["G4", "G5", "G6"],
+                back_thresh=-1.0,
+                progress_callback=_raising_callback,
+            )
+
+    # ------------------------------------------------------------------
+    # Public methods and module-level convenience functions thread the
+    # new parameters through correctly, end to end.
+    # ------------------------------------------------------------------
+    @patch("metaintegrator.sample_level_gene_data.getSampleLevelGeneData")
+    def test_public_backward_search_returns_converged_and_iterations_run(
+        self, mock_get_sample_level
+    ):
+        mock_get_sample_level.return_value = pd.DataFrame(
+            np.random.randn(6, 20) + 3,
+            index=["GENE1", "GENE2", "GENE3", "GENE4", "GENE5", "GENE6"],
+            columns=[f"sample_{i}" for i in range(20)],
+        )
+        meta_object = {
+            "originalData": {
+                "discovery1": {
+                    "formattedName": "Discovery Dataset 1",
+                    "expr": pd.DataFrame(
+                        np.random.randn(10, 20) + 2,
+                        index=[f"probe_{i}" for i in range(10)],
+                        columns=[f"sample_{i}" for i in range(20)],
+                    ),
+                    "keys": [
+                        "GENE1",
+                        "GENE2",
+                        "GENE3",
+                        "GENE4",
+                        "GENE5",
+                        "GENE1",
+                        "GENE2",
+                        "GENE6",
+                        "GENE7",
+                        "GENE8",
+                    ],
+                    "class": np.array([0] * 10 + [1] * 10),
+                }
+            }
+        }
+        filter_object = {
+            "posGeneNames": ["GENE1", "GENE2", "GENE3", "GENE4"],
+            "negGeneNames": ["GENE5", "GENE6"],
+            "filterDescription": "Test filter",
+        }
+
+        result = self.optimizer.backward_search(
+            meta_object, filter_object, back_thresh=-0.1, max_iterations=1
+        )
+
+        assert "converged" in result
+        assert "iterationsRun" in result
+        assert result["iterationsRun"] <= 1
+
+    @patch("metaintegrator.sample_level_gene_data.getSampleLevelGeneData")
+    def test_convenience_backward_search_passes_through_new_params(self, mock_get_sample_level):
+        mock_get_sample_level.return_value = pd.DataFrame(np.random.randn(4, 10) + 3)
+        meta_object = {
+            "originalData": {
+                "study1": {
+                    "expr": pd.DataFrame(np.random.randn(5, 10)),
+                    "keys": ["G1", "G2", "G3", "G4", "G5"],
+                    "class": np.array([0, 0, 0, 1, 1, 1, 1, 1, 1, 1]),
+                }
+            }
+        }
+        filter_object = {
+            "posGeneNames": ["G1", "G2"],
+            "negGeneNames": ["G3", "G4"],
+            "filterDescription": "Test",
+        }
+        calls = []
+
+        result = backward_search(
+            meta_object,
+            filter_object,
+            back_thresh=0.0,
+            max_iterations=0,
+            progress_callback=lambda *args: calls.append(args),
+        )
+
+        assert result["iterationsRun"] == 0
+        assert result["converged"] is False
+        assert calls == []  # max_iterations=0 means the callback never fires
+
+    @patch("metaintegrator.sample_level_gene_data.getSampleLevelGeneData")
+    def test_convenience_forward_search_passes_through_new_params(self, mock_get_sample_level):
+        mock_get_sample_level.return_value = pd.DataFrame(np.random.randn(4, 10) + 3)
+        meta_object = {
+            "originalData": {
+                "study1": {
+                    "expr": pd.DataFrame(np.random.randn(5, 10)),
+                    "keys": ["G1", "G2", "G3", "G4", "G5"],
+                    "class": np.array([0, 0, 0, 1, 1, 1, 1, 1, 1, 1]),
+                }
+            }
+        }
+        filter_object = {
+            "posGeneNames": ["G1", "G2"],
+            "negGeneNames": ["G3", "G4"],
+            "filterDescription": "Test",
+        }
+
+        result = forward_search(
+            meta_object,
+            filter_object,
+            yes_pos=["G1"],
+            yes_neg=[],
+            forward_thresh=0.0,
+            max_iterations=0,
+        )
+
+        assert result["iterationsRun"] == 0
+        assert result["converged"] is False
+
+
+class TestScoreSignature:
+    """Tests for ``GeneSearchOptimizer.score_signature``, added so a
+    caller can get a gene set's weighted AUC without running a search --
+    most usefully, the starting AUC of a search that ends up making zero
+    moves, which ``progress_callback`` never reports (it only fires once
+    a move actually happens).
+
+    Reuses the same realistic ``meta_object``/``filter_object`` fixture
+    shape as ``TestGeneSearchOptimizer.setup_method`` (own copy, not
+    shared via inheritance, matching this file's existing convention of
+    ``TestRatioScaling``/``TestMaxIterationsAndProgressCallback`` each
+    building their own fixtures rather than subclassing).
+    """
+
+    def setup_method(self):
+        np.random.seed(42)
+        self.optimizer = GeneSearchOptimizer()
+
+        self.meta_object = {
+            "originalData": {
+                "discovery1": {
+                    "formattedName": "Discovery Dataset 1",
+                    "expr": pd.DataFrame(
+                        np.random.randn(10, 20) + 2,
+                        index=[f"probe_{i}" for i in range(10)],
+                        columns=[f"sample_{i}" for i in range(20)],
+                    ),
+                    "keys": [
+                        "GENE1",
+                        "GENE2",
+                        "GENE3",
+                        "GENE4",
+                        "GENE5",
+                        "GENE1",
+                        "GENE2",
+                        "GENE6",
+                        "GENE7",
+                        "GENE8",
+                    ],
+                    "class": np.array([0] * 10 + [1] * 10),
+                },
+                "discovery2": {
+                    "formattedName": "Discovery Dataset 2",
+                    "expr": pd.DataFrame(
+                        np.random.randn(10, 16) + 2,
+                        index=[f"probe_{i}" for i in range(10)],
+                        columns=[f"sample_{i}" for i in range(16)],
+                    ),
+                    "keys": [
+                        "GENE1",
+                        "GENE2",
+                        "GENE3",
+                        "GENE4",
+                        "GENE5",
+                        "GENE6",
+                        "GENE7",
+                        "GENE8",
+                        "GENE1",
+                        "GENE3",
+                    ],
+                    "class": np.array([0] * 8 + [1] * 8),
+                },
+            }
+        }
+        self.filter_object = {
+            "posGeneNames": ["GENE1", "GENE2", "GENE3", "GENE4"],
+            "negGeneNames": ["GENE5", "GENE6"],
+            "filterDescription": "Test filter",
+        }
+
+    @patch("metaintegrator.sample_level_gene_data.getSampleLevelGeneData")
+    def test_returns_a_non_negative_float(self, mock_get_sample_level):
+        result = self.optimizer.score_signature(self.meta_object, self.filter_object)
+        assert isinstance(result, float)
+        assert result >= 0
+
+    def test_empty_signature_returns_zero(self):
+        """An empty signature (no genes named) returns ``0.0``, matching
+        ``_forward_search_weighted``'s own internal placeholder for the
+        same case. Not a special case in ``score_signature`` itself:
+        ``getSampleLevelGeneData`` requires a non-empty gene list, so
+        every dataset fails to convert and is skipped (logged via
+        ``logger.warning``, a log record rather than a Python
+        ``warnings.warn`` -- nothing for ``pytest.warns`` to catch
+        here), leaving an empty ``discovery_genes``/``weights`` pair.
+        ``_get_weighted_aucs_genes_list``'s own ``0.5 * np.sum(weights)``
+        branch then evaluates against that empty array, which is
+        ``0.0``."""
+        empty_filter = {
+            "posGeneNames": [],
+            "negGeneNames": [],
+            "filterDescription": "empty",
+        }
+        result = self.optimizer.score_signature(self.meta_object, empty_filter)
+        assert result == 0.0
+
+    @patch("metaintegrator.sample_level_gene_data.getSampleLevelGeneData")
+    def test_matches_manual_get_weighted_aucs_genes_list_computation(self, mock_get_sample_level):
+        """Confirms this method is a thin wrapper, not a reimplementation:
+        the same genes, scored by hand through the lower-level pieces
+        ``score_signature`` itself calls, must produce the identical
+        value."""
+        pos_genes = self.filter_object["posGeneNames"]
+        neg_genes = self.filter_object["negGeneNames"]
+
+        discovery_genes = self.optimizer._convert_discovery_list_to_genes(
+            self.meta_object, pos_genes, neg_genes
+        )
+        weights = np.array([len(dataset["class"]) for dataset in discovery_genes])
+        expected = self.optimizer._get_weighted_aucs_genes_list(
+            discovery_genes, pos_genes, neg_genes, weights
+        )
+
+        result = self.optimizer.score_signature(self.meta_object, self.filter_object)
+
+        assert result == pytest.approx(expected)
+
+    def test_rejects_invalid_meta_object(self):
+        with pytest.raises(ValueError, match="must be a dictionary"):
+            self.optimizer.score_signature("not_a_dict", self.filter_object)
+
+    def test_rejects_invalid_filter_object(self):
+        with pytest.raises(ValueError, match="must contain 'posGeneNames'"):
+            self.optimizer.score_signature(self.meta_object, {"negGeneNames": []})
+
+    @patch("metaintegrator.sample_level_gene_data.getSampleLevelGeneData")
+    def test_gene_missing_from_every_dataset_is_silently_nan_padded_not_warned(
+        self, mock_get_sample_level, recwarn
+    ):
+        """Corrects a disproven assumption caught by the real test suite
+        (see this method's own docstring): a gene named in
+        ``filter_object`` but absent from every discovery dataset does
+        NOT trigger
+        ``_match_all_genes``'s "not found" warning here, because
+        ``_extract_data_from_gem`` backfills any unmatched requested
+        gene as a NaN-valued row, so it is always present in the
+        returned gene-level matrix's index by the time
+        ``_match_all_genes`` checks for missing ones. Verified by
+        actually running this test (the original version, asserting
+        the opposite, failed with "DID NOT WARN") rather than by
+        tracing the code alone."""
+        filter_with_unknown_gene = {
+            "posGeneNames": ["GENE1", "NOT_A_REAL_GENE"],
+            "negGeneNames": ["GENE5"],
+            "filterDescription": "unknown gene",
+        }
+        result = self.optimizer.score_signature(self.meta_object, filter_with_unknown_gene)
+        assert isinstance(result, float)
+        assert len(recwarn) == 0
+
+
 if __name__ == "__main__":
     # Run the tests
     pytest.main([__file__, "-v", "--tb=short"])

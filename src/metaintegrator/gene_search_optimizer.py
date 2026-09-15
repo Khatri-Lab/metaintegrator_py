@@ -6,7 +6,7 @@ gene search optimization, and related statistical computations.
 
 import logging
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -54,7 +54,12 @@ class GeneSearchOptimizer:
         self.roc_analyzer = ROCAnalysisEngine()
 
     def backward_search(
-        self, meta_object: Dict, filter_object: Dict, back_thresh: float = 0.0
+        self,
+        meta_object: Dict,
+        filter_object: Dict,
+        back_thresh: float = 0.0,
+        max_iterations: Optional[int] = None,
+        progress_callback: Optional[Callable[[int, str, float, float, int], None]] = None,
     ) -> Dict:
         """
         Backward search for gene selection optimization.
@@ -65,9 +70,51 @@ class GeneSearchOptimizer:
             meta_object (Dict): The meta object containing discovery datasets
             filter_object (Dict): Filter object containing gene signatures
             back_thresh (float): Stopping threshold for backward search (default: 0)
+            max_iterations (Optional[int]): Maximum number of genes this search
+                is allowed to remove before it stops, regardless of whether it
+                has converged. Checked at the start of each iteration, before
+                that iteration's (potentially expensive) evaluation of every
+                remaining gene. ``None`` (the default) means unlimited,
+                identical to this method's behavior before this parameter
+                existed. This is a safety valve on the number of *moves* the
+                search makes, not a wall-clock time bound: each iteration's
+                cost scales with how many genes are still in the signature, so
+                cost is front-loaded into the earliest iterations rather than
+                spread evenly. A caller that needs a hard wall-clock guarantee
+                should still enforce one at the process/task level; this
+                parameter only bounds how far the search is allowed to shrink
+                the signature. Reaching this cap is reported via
+                ``converged=False`` in the returned dict, so a caller can
+                distinguish "the search finished on its own" from "the search
+                was cut off before it was done"; a cut-off signature is a
+                valid, usable result, but not necessarily the smallest one
+                this search would have found given enough iterations.
+            progress_callback (Optional[Callable[[int, str, float, float, int], None]]):
+                Optional callable invoked once per gene actually removed
+                (not once per candidate gene merely evaluated), as
+                ``callback(iteration, gene, auc_before, auc_after,
+                candidates_remaining)``: the 1-indexed step number, the gene
+                just removed, the weighted AUC immediately before and after
+                that removal, and how many genes remain in the signature
+                afterward. Never called for a candidate that was evaluated
+                but not removed. Any exception raised by the callback
+                propagates immediately and aborts the search; a callback that
+                only needs to report progress (e.g. update a UI, or refresh
+                an external lock/lease) should catch its own errors rather
+                than let a logging/reporting failure abort a real search in
+                progress.
 
         Returns:
-            Dict: Updated filter object with optimized gene sets
+            Dict: Updated filter object with optimized gene sets, plus two
+            new keys describing how the search ended:
+                - ``converged`` (bool): ``True`` if the search stopped
+                  because no further removal improved on ``back_thresh``
+                  (or no genes remained to evaluate), i.e. the same
+                  stopping condition this method has always used.
+                  ``False`` if it stopped only because ``max_iterations``
+                  was reached first.
+                - ``iterationsRun`` (int): How many genes were actually
+                  removed.
         """
         # Validate inputs
         self._validate_meta_object(meta_object)
@@ -85,14 +132,21 @@ class GeneSearchOptimizer:
         discovery_genes = self._convert_discovery_list_to_genes(meta_object, pos_genes, neg_genes)
 
         # Perform backward search
-        optimized_genes = self._backward_search_weighted(
-            discovery_genes, pos_genes, neg_genes, back_thresh
+        optimized_pos, optimized_neg, converged, iterations_run = self._backward_search_weighted(
+            discovery_genes,
+            pos_genes,
+            neg_genes,
+            back_thresh,
+            max_iterations=max_iterations,
+            progress_callback=progress_callback,
         )
 
         # Update filter object
         updated_filter = filter_object.copy()
-        updated_filter["posGeneNames"] = optimized_genes[0]
-        updated_filter["negGeneNames"] = optimized_genes[1]
+        updated_filter["posGeneNames"] = optimized_pos
+        updated_filter["negGeneNames"] = optimized_neg
+        updated_filter["converged"] = converged
+        updated_filter["iterationsRun"] = iterations_run
 
         # Update description
         original_desc = filter_object.get("filterDescription", "")
@@ -101,7 +155,8 @@ class GeneSearchOptimizer:
         )
 
         logger.info(
-            f"Backward search completed. Remaining: {len(optimized_genes[0])} positive, {len(optimized_genes[1])} negative genes"
+            f"Backward search completed. Remaining: {len(optimized_pos)} positive, {len(optimized_neg)} negative genes "
+            f"(converged={converged}, iterationsRun={iterations_run})"
         )
 
         return updated_filter
@@ -113,6 +168,8 @@ class GeneSearchOptimizer:
         yes_pos: Optional[List[str]] = None,
         yes_neg: Optional[List[str]] = None,
         forward_thresh: float = 0.0,
+        max_iterations: Optional[int] = None,
+        progress_callback: Optional[Callable[[int, str, float, float, int], None]] = None,
     ) -> Dict:
         """
         Forward search for gene selection optimization.
@@ -125,9 +182,28 @@ class GeneSearchOptimizer:
             yes_pos (Optional[List[str]]): Starting positive genes (optional)
             yes_neg (Optional[List[str]]): Starting negative genes (optional)
             forward_thresh (float): Stopping threshold for forward search (default: 0)
+            max_iterations (Optional[int]): Maximum number of genes this search
+                is allowed to add before it stops, regardless of whether it has
+                converged. See ``backward_search``'s ``max_iterations`` for the
+                full rationale (checked at the start of each iteration; bounds
+                the number of moves, not wall-clock time; ``None`` means
+                unlimited, identical to this method's behavior before this
+                parameter existed).
+            progress_callback (Optional[Callable[[int, str, float, float, int], None]]):
+                Optional callable invoked once per gene actually added (not
+                once per candidate merely evaluated), as ``callback(iteration,
+                gene, auc_before, auc_after, candidates_remaining)``. See
+                ``backward_search``'s ``progress_callback`` for the full
+                contract (candidates_remaining here counts genes not yet
+                added, rather than genes not yet removed). Any exception
+                raised by the callback aborts the search; see the same
+                caveat there.
 
         Returns:
-            Dict: Updated filter object with optimized gene sets
+            Dict: Updated filter object with optimized gene sets, plus
+            ``converged`` and ``iterationsRun``. See ``backward_search``'s
+            ``Returns`` for exactly what each means; the interpretation is
+            the same, only the search direction differs.
         """
         # Validate inputs
         self._validate_meta_object(meta_object)
@@ -145,14 +221,23 @@ class GeneSearchOptimizer:
         discovery_genes = self._convert_discovery_list_to_genes(meta_object, pos_genes, neg_genes)
 
         # Perform forward search
-        optimized_genes = self._forward_search_weighted(
-            discovery_genes, pos_genes, neg_genes, yes_pos, yes_neg, forward_thresh
+        optimized_pos, optimized_neg, converged, iterations_run = self._forward_search_weighted(
+            discovery_genes,
+            pos_genes,
+            neg_genes,
+            yes_pos,
+            yes_neg,
+            forward_thresh,
+            max_iterations=max_iterations,
+            progress_callback=progress_callback,
         )
 
         # Update filter object
         updated_filter = filter_object.copy()
-        updated_filter["posGeneNames"] = optimized_genes[0]
-        updated_filter["negGeneNames"] = optimized_genes[1]
+        updated_filter["posGeneNames"] = optimized_pos
+        updated_filter["negGeneNames"] = optimized_neg
+        updated_filter["converged"] = converged
+        updated_filter["iterationsRun"] = iterations_run
 
         # Update description
         original_desc = filter_object.get("filterDescription", "")
@@ -161,10 +246,100 @@ class GeneSearchOptimizer:
         )
 
         logger.info(
-            f"Forward search completed. Selected: {len(optimized_genes[0])} positive, {len(optimized_genes[1])} negative genes"
+            f"Forward search completed. Selected: {len(optimized_pos)} positive, {len(optimized_neg)} negative genes "
+            f"(converged={converged}, iterationsRun={iterations_run})"
         )
 
         return updated_filter
+
+    def score_signature(self, meta_object: Dict, filter_object: Dict) -> float:
+        """Compute a gene signature's weighted AUC, without searching.
+
+        Runs the exact same computation ``backward_search``/
+        ``forward_search`` each perform once, internally, before their
+        own search loops begin ("Get initial weighted AUC" /
+        "Get initial AUC" in ``_backward_search_weighted``/
+        ``_forward_search_weighted``), extracted here so a caller can
+        get that same number for *any* gene set on demand -- most
+        usefully, the starting signature of a search that ends up
+        making zero moves, which otherwise has no weighted AUC recorded
+        anywhere, since ``progress_callback`` is only ever invoked once
+        a move actually happens.
+
+        Like every other weighted-AUC value this class reports
+        (``progress_callback``'s ``auc_before``/``auc_after``), the
+        returned value is a *sum* across discovery datasets of each
+        dataset's sample-count-weighted AUC, not a ``[0, 1]``-bounded
+        mean -- callers that want a normalized value must divide by the
+        sum of each dataset's sample count themselves, exactly as they
+        already must for every other weighted-AUC value this class
+        produces. This is intentional: a caller comparing this value
+        against a ``progress_callback``-reported ``auc_before``/
+        ``auc_after`` (e.g. to detect "the search made zero moves, so
+        the final AUC equals the starting AUC") needs both values on
+        the same unnormalized scale, or the comparison would be
+        comparing two different units.
+
+        For an empty signature (no genes in either ``posGeneNames`` or
+        ``negGeneNames``), this naturally evaluates to ``0.0``, matching
+        ``_forward_search_weighted``'s own internal placeholder for the
+        same case (``current_auc = 0.0`` when no seed is given). This is
+        not a special case in this method -- it falls out of
+        ``_convert_discovery_list_to_genes``'s own behavior:
+        ``getSampleLevelGeneData`` requires a non-empty gene list, so
+        with no genes named, every dataset fails that call and is
+        skipped (logged as a warning each time), leaving an empty
+        ``discovery_genes``/``weights`` pair; ``_get_weighted_aucs_
+        genes_list``'s own empty-signature branch
+        (``0.5 * np.sum(weights)``) then evaluates against that empty
+        ``weights`` array and is ``0.0``, not the sample-count-weighted
+        chance level a non-empty ``meta_object`` might suggest. Kept
+        this way deliberately, rather than computing ``weights``
+        straight from ``meta_object`` to sidestep it: doing so would
+        make this method's returned scale disagree with
+        ``backward_search``/``forward_search``'s own ``progress_
+        callback`` values whenever a dataset is skipped for the same
+        reason (see ``_convert_discovery_list_to_genes``'s docstring),
+        breaking the "directly comparable, same-scale numbers" property
+        this method exists to provide.
+
+        Args:
+            meta_object: Same shape as ``backward_search``/
+                ``forward_search``'s ``meta_object``: a dict with an
+                ``originalData`` mapping of dataset name to that
+                dataset's data (including per-sample ``class`` labels).
+            filter_object: Same shape as ``backward_search``/
+                ``forward_search``'s ``filter_object``: a dict with
+                ``posGeneNames``/``negGeneNames`` lists naming the exact
+                gene set to score. A gene absent from every discovery
+                dataset does not raise, and in practice does not warn
+                either: ``_convert_discovery_list_to_genes`` (via
+                ``_extract_data_from_gem``) backfills any requested gene
+                it can't match as a NaN-valued row, so it is always
+                present in the converted gene-level matrix's index --
+                which means ``_match_all_genes``'s own "not found"
+                warning, called afterward with that same index, has
+                nothing left to report. This is inherited, unchanged,
+                library behavior (``backward_search``/``forward_search``
+                call ``_match_all_genes`` the exact same way after the
+                exact same conversion step), not something specific to
+                this method.
+
+        Returns:
+            The unnormalized, sample-count-weighted AUC sum for exactly
+            the gene set named in ``filter_object``.
+        """
+        self._validate_meta_object(meta_object)
+        self._validate_filter_object(filter_object)
+
+        pos_genes = filter_object.get("posGeneNames", [])
+        neg_genes = filter_object.get("negGeneNames", [])
+
+        discovery_genes = self._convert_discovery_list_to_genes(meta_object, pos_genes, neg_genes)
+        weights = np.array([len(dataset["class"]) for dataset in discovery_genes])
+        self._match_all_genes(discovery_genes, pos_genes, neg_genes, None, None)
+
+        return self._get_weighted_aucs_genes_list(discovery_genes, pos_genes, neg_genes, weights)
 
     def _validate_meta_object(self, meta_object: Dict) -> None:
         """Validate meta object structure.
@@ -284,23 +459,34 @@ class GeneSearchOptimizer:
         pos_genes: List[str],
         neg_genes: List[str],
         back_thresh: float,
-    ) -> Tuple[List[str], List[str]]:
+        max_iterations: Optional[int] = None,
+        progress_callback: Optional[Callable[[int, str, float, float, int], None]] = None,
+    ) -> Tuple[List[str], List[str], bool, int]:
         """Perform weighted backward search algorithm.
 
         This method implements the core logic from R's .backSearchWeighted function. It calculates
         weights based on sample sizes of each discovery dataset and iteratively removes genes
         that lead to the smallest decrease (or largest increase) in weighted AUC. The algorithm
-        continues until the improvement threshold back_thresh is not met or no genes remain to evaluate.
-        The final positive and negative gene lists are returned.
+        continues until the improvement threshold back_thresh is not met, no genes remain to
+        evaluate, or max_iterations is reached, whichever comes first.
+        The final positive and negative gene lists are returned, along with whether the search
+        actually converged (as opposed to being cut off by max_iterations) and how many genes
+        were removed. See ``backward_search``'s docstring for the full contract on
+        ``max_iterations`` / ``progress_callback`` / the returned convergence flag; this method
+        is where that contract is actually implemented.
 
         Args:
             discovery_genes (List[Dict]): List of discovery dataset dictionaries containing gene data and class labels.
             pos_genes (List[str]): List of genes initially selected as positive.
             neg_genes (List[str]): List of genes initially selected as negative.
             back_thresh (float): Threshold for stopping the backward search when the worst AUC decrease is greater than this value.
+            max_iterations (Optional[int]): Maximum genes to remove before stopping regardless of convergence. ``None`` = unlimited.
+            progress_callback (Optional[Callable[[int, str, float, float, int], None]]): Called once per gene actually removed.
 
         Returns:
-            Tuple[List[str], List[str]]: Updated lists of positive and negative genes after backward search.
+            Tuple[List[str], List[str], bool, int]: Updated lists of positive and negative
+            genes after backward search, whether the search converged on its own (``False``
+            if cut off by ``max_iterations``), and how many genes were removed.
         """
         # Calculate weights based on sample sizes
         weights = np.array([len(dataset["class"]) for dataset in discovery_genes])
@@ -317,15 +503,26 @@ class GeneSearchOptimizer:
         current_pos = pos_genes.copy()
         current_neg = neg_genes.copy()
 
+        iterations_run = 0
+        converged = False
+
         logger.info(f"Initial weighted AUC: {current_auc:.4f}")
 
         while True:
+            if max_iterations is not None and iterations_run >= max_iterations:
+                logger.info(
+                    f"Backward search stopped at max_iterations={max_iterations} "
+                    f"before convergence"
+                )
+                break
+
             # Find gene that when removed causes smallest decrease (or largest increase) in AUC
             gene_search = self._backward_search_inner(
                 discovery_genes, current_pos, current_neg, current_auc, weights
             )
 
             if len(gene_search) == 0:
+                converged = True
                 break
 
             # Find worst gene (minimum difference means removing it helps least or hurts most)
@@ -338,6 +535,7 @@ class GeneSearchOptimizer:
                 worst_idx = gene_search["diff"].idxmin()
                 worst_gene = gene_search.loc[worst_idx, "gene"]
                 new_auc = gene_search.loc[worst_idx, "search"]
+                auc_before_this_step = current_auc
 
                 logger.info(f"Removing gene: {worst_gene}, new weighted AUC: {new_auc:.4f}")
 
@@ -347,16 +545,31 @@ class GeneSearchOptimizer:
                     current_neg.remove(worst_gene)
 
                 current_auc = new_auc
+                iterations_run += 1
+
+                if progress_callback is not None:
+                    candidates_remaining = len(current_pos) + len(current_neg)
+                    progress_callback(
+                        iterations_run,
+                        worst_gene,
+                        auc_before_this_step,
+                        new_auc,
+                        candidates_remaining,
+                    )
             else:
+                converged = True
                 break
 
         # Final verification
         final_auc = self._get_weighted_aucs_genes_list(
             discovery_genes, current_pos, current_neg, weights
         )
-        logger.info(f"Final weighted AUC: {final_auc:.4f}")
+        logger.info(
+            f"Final weighted AUC: {final_auc:.4f} (converged={converged}, "
+            f"iterationsRun={iterations_run})"
+        )
 
-        return current_pos, current_neg
+        return current_pos, current_neg, converged, iterations_run
 
     def _forward_search_weighted(
         self,
@@ -366,7 +579,9 @@ class GeneSearchOptimizer:
         yes_pos: Optional[List[str]],
         yes_neg: Optional[List[str]],
         forward_thresh: float,
-    ) -> Tuple[List[str], List[str]]:
+        max_iterations: Optional[int] = None,
+        progress_callback: Optional[Callable[[int, str, float, float, int], None]] = None,
+    ) -> Tuple[List[str], List[str], bool, int]:
         """Perform weighted forward search algorithm.
 
         This method implements the core logic from R's .forwardSearchWeighted
@@ -378,8 +593,13 @@ class GeneSearchOptimizer:
         weighted AUC improvement. If the best improvement is at least
         forward_thresh, the gene is added to the selected set and the
         process continues. The search stops when no candidate gene meets
-        the threshold. The final weighted AUC and the updated positive
-        and negative gene lists are logged and returned.
+        the threshold, no candidates remain, or max_iterations is reached,
+        whichever comes first. The final weighted AUC and the updated positive
+        and negative gene lists are logged and returned, along with whether
+        the search actually converged and how many genes were added. See
+        ``forward_search``'s docstring for the full contract on
+        ``max_iterations`` / ``progress_callback`` / the returned convergence
+        flag; this method is where that contract is actually implemented.
 
         Args:
             discovery_genes (List[Dict]): List of discovery dataset dictionaries containing gene data and class labels.
@@ -388,9 +608,13 @@ class GeneSearchOptimizer:
             yes_pos (Optional[List[str]]): Optional list of genes that must be included in the positive set.
             yes_neg (Optional[List[str]]): Optional list of genes that must be included in the negative set.
             forward_thresh (float): Minimum improvement threshold required to add a new gene.
+            max_iterations (Optional[int]): Maximum genes to add before stopping regardless of convergence. ``None`` = unlimited.
+            progress_callback (Optional[Callable[[int, str, float, float, int], None]]): Called once per gene actually added.
 
         Returns:
-            Tuple[List[str], List[str]]: Updated lists of selected positive and negative genes after forward search.
+            Tuple[List[str], List[str], bool, int]: Updated lists of selected positive and
+            negative genes after forward search, whether the search converged on its own
+            (``False`` if cut off by ``max_iterations``), and how many genes were added.
         """
         # Calculate weights based on sample sizes
         weights = np.array([len(dataset["class"]) for dataset in discovery_genes])
@@ -418,9 +642,19 @@ class GeneSearchOptimizer:
                 print_results=False,
             )
 
+        iterations_run = 0
+        converged = False
+
         logger.info(f"Starting weighted AUC: {current_auc:.4f}")
 
         while True:
+            if max_iterations is not None and iterations_run >= max_iterations:
+                logger.info(
+                    f"Forward search stopped at max_iterations={max_iterations} "
+                    f"before convergence"
+                )
+                break
+
             # Find best gene to add
             gene_search = self._forward_search_inner(
                 discovery_genes,
@@ -433,6 +667,7 @@ class GeneSearchOptimizer:
             )
 
             if len(gene_search) == 0:
+                converged = True
                 break
 
             # Find best gene (maximum improvement)
@@ -445,6 +680,7 @@ class GeneSearchOptimizer:
                 best_idx = gene_search["diff"].idxmax()
                 best_gene = gene_search.loc[best_idx, "gene"]
                 new_auc = gene_search.loc[best_idx, "search"]
+                auc_before_this_step = current_auc
 
                 logger.info(f"Adding gene: {best_gene}, new weighted AUC: {new_auc:.4f}")
 
@@ -456,16 +692,31 @@ class GeneSearchOptimizer:
                     selected_neg.append(best_gene)
 
                 current_auc = new_auc
+                iterations_run += 1
+
+                if progress_callback is not None:
+                    candidates_remaining = len(candidate_pos) + len(candidate_neg)
+                    progress_callback(
+                        iterations_run,
+                        best_gene,
+                        auc_before_this_step,
+                        new_auc,
+                        candidates_remaining,
+                    )
             else:
+                converged = True
                 break
 
         # Final verification
         final_auc = self._get_weighted_aucs_genes_list(
             discovery_genes, selected_pos, selected_neg, weights, print_results=True
         )
-        logger.info(f"Final weighted AUC: {final_auc:.4f}")
+        logger.info(
+            f"Final weighted AUC: {final_auc:.4f} (converged={converged}, "
+            f"iterationsRun={iterations_run})"
+        )
 
-        return selected_pos, selected_neg
+        return selected_pos, selected_neg, converged, iterations_run
 
     def _backward_search_inner(
         self,
@@ -993,7 +1244,13 @@ class GeneSearchOptimizer:
 # ------------------------------------------------------------------
 # Convenience functions for backward compatibility
 # ------------------------------------------------------------------
-def backward_search(meta_object: Dict, filter_object: Dict, back_thresh: float = 0.0) -> Dict:
+def backward_search(
+    meta_object: Dict,
+    filter_object: Dict,
+    back_thresh: float = 0.0,
+    max_iterations: Optional[int] = None,
+    progress_callback: Optional[Callable[[int, str, float, float, int], None]] = None,
+) -> Dict:
     """
     Perform backward search for gene selection optimization.
 
@@ -1005,12 +1262,23 @@ def backward_search(meta_object: Dict, filter_object: Dict, back_thresh: float =
         meta_object (Dict): Meta information used by the optimizer.
         filter_object (Dict): Filtering criteria for gene selection.
         back_thresh (float): Threshold value for the backward search; defaults to 0.0.
+        max_iterations (Optional[int]): See ``GeneSearchOptimizer.backward_search``.
+        progress_callback (Optional[Callable[[int, str, float, float, int], None]]):
+            See ``GeneSearchOptimizer.backward_search``.
 
     Returns:
-        Dict: Resulting dictionary from the optimizer's backward search.
+        Dict: Resulting dictionary from the optimizer's backward search,
+        including the ``converged`` / ``iterationsRun`` keys described on
+        ``GeneSearchOptimizer.backward_search``.
     """
     optimizer = GeneSearchOptimizer()
-    return optimizer.backward_search(meta_object, filter_object, back_thresh)
+    return optimizer.backward_search(
+        meta_object,
+        filter_object,
+        back_thresh,
+        max_iterations=max_iterations,
+        progress_callback=progress_callback,
+    )
 
 
 def forward_search(
@@ -1019,6 +1287,8 @@ def forward_search(
     yes_pos: Optional[List[str]] = None,
     yes_neg: Optional[List[str]] = None,
     forward_thresh: float = 0.0,
+    max_iterations: Optional[int] = None,
+    progress_callback: Optional[Callable[[int, str, float, float, int], None]] = None,
 ) -> Dict:
     """
     Perform forward search for gene selection optimization.
@@ -1037,9 +1307,22 @@ def forward_search(
             considered negative. Defaults to None.
         forward_thresh (float): Threshold value for the forward search;
             defaults to 0.0.
+        max_iterations (Optional[int]): See ``GeneSearchOptimizer.forward_search``.
+        progress_callback (Optional[Callable[[int, str, float, float, int], None]]):
+            See ``GeneSearchOptimizer.forward_search``.
 
     Returns:
-        Dict: Resulting dictionary from the optimizer's forward search.
+        Dict: Resulting dictionary from the optimizer's forward search,
+        including the ``converged`` / ``iterationsRun`` keys described on
+        ``GeneSearchOptimizer.forward_search``.
     """
     optimizer = GeneSearchOptimizer()
-    return optimizer.forward_search(meta_object, filter_object, yes_pos, yes_neg, forward_thresh)
+    return optimizer.forward_search(
+        meta_object,
+        filter_object,
+        yes_pos,
+        yes_neg,
+        forward_thresh,
+        max_iterations=max_iterations,
+        progress_callback=progress_callback,
+    )

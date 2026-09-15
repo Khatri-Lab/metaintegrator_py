@@ -994,7 +994,7 @@ class TestEnhancedMetaAnalysisPlotter:
     def test_calculate_scores_delegates_to_score_calculator(
         self, plotter, sample_filter_object, sample_dataset
     ):
-        """ _calculate_scores() was consolidated onto
+        """_calculate_scores() was consolidated onto
         metaintegrator.score_calculation.ScoreCalculator -- the R-parity,
         geometric-mean-based "gold standard" scorer already used by the CLI
         and by violin_plot.py -- instead of independently
