@@ -106,13 +106,22 @@ summary statistics from `keys` as shown above.
 
 ### Step 4: Handle Multiple Probe-to-Gene Mappings
 
-Some probes map to the same gene: this is normal and handled automatically
-downstream (`SampleLevelGeneDataProcessor` groups by gene and averages):
+Some probes map to the same gene.
+This is normal and handled automatically downstream.
+The rule depends on the step:
+
+- Meta-analysis effect sizes pool the probes with fixed-effect inverse-variance weights.
+- Fisher p-values keep the smallest p-value per gene.
+- Sample-level data and scores (`SampleLevelGeneDataProcessor`) average the probes.
+
+A probe keyed `"CD6,IL2RG"` counts once for each of its genes.
+See [Probe-to-Gene Mapping](../user_guide/probe_to_gene_mapping.md) for details.
 
 ```python
 from collections import Counter
 
-gene_counts = Counter(k for k in ds.keys if k != 'NA')
+# Split multi-gene keys first, the same way the analysis does
+gene_counts = Counter(g for k in ds.keys if k != 'NA' for g in k.split(','))
 duplicated_genes = {gene: count for gene, count in gene_counts.items() if count > 1}
 
 if duplicated_genes:

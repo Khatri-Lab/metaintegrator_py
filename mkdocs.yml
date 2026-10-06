@@ -144,6 +144,7 @@ nav:
     - Core Concepts: user_guide/concepts.md
     - Data Structures: user_guide/data_structures.md
     - GEO Integration: user_guide/geo_integration.md
+    - Probe-to-Gene Mapping: user_guide/probe_to_gene_mapping.md
     - Filtering Strategies: user_guide/filtering.md
     - Statistical Methods: user_guide/statistics.md
     - Best Practices: user_guide/best_practices.md
