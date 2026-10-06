@@ -719,10 +719,19 @@ class MetaAnalysisCore:
         """
         Collapse multiple probes to single gene symbols.
 
-        This matches R's workflow:
-        1. .expand.df() - Split comma-separated gene symbols into separate rows
-        2. Remove unmapped/invalid probes
-        3. .summ.eff.within() - Summarize multiple probes per gene
+        This matches R's ``.combine.effect.sizes()`` workflow:
+
+        1. Drop probes whose effect size could not be computed. R removes
+           rows where ``g`` is NA before anything else.
+        2. ``.expand.df()``: split comma-separated gene symbols into
+           separate rows, one per gene.
+        3. Remove unmapped probes (``'NA'``, empty, or missing keys).
+        4. ``.summ.eff.within()``: summarize multiple probes per gene.
+
+        Step 1 matters for genes with several probes. With fixed-effect
+        pooling, a single NaN probe would turn the pooled gene value into
+        NaN, even when the other probes are fine. R drops the NaN probe
+        first and pools the rest, so we do the same.
 
         Args:
             effect_sizes_df: DataFrame with columns ['g', 'se_g', 'keys', ...]
@@ -743,7 +752,15 @@ class MetaAnalysisCore:
         if missing:
             raise ValueError(f"Missing required columns: {missing}")
 
-        # Step 1: Expand probes that map to multiple genes (comma-separated)
+        # Step 1: Drop probes with no usable effect size.
+        # R: bad <- which(is.na(effects$g) | ...)  (drops before expanding)
+        # A NaN g comes from a probe with too few non-missing samples or
+        # zero variance. se_g is NaN in exactly the same cases, but we
+        # check both to be safe.
+        usable = effect_sizes_df["g"].notna() & effect_sizes_df["se_g"].notna()
+        effect_sizes_df = effect_sizes_df[usable]
+
+        # Step 2: Expand probes that map to multiple genes (comma-separated)
         # This matches R's .expand.df() function
         expanded_rows = []
         for idx, row in effect_sizes_df.iterrows():
@@ -766,7 +783,7 @@ class MetaAnalysisCore:
 
         expanded_df = pd.DataFrame(expanded_rows).reset_index(drop=True)
 
-        # Step 2: Remove NA/invalid gene symbols
+        # Step 3: Remove NA/invalid gene symbols
         # This matches R's removal of NA, "NA" string, and empty keys
         expanded_df = expanded_df[
             (expanded_df["keys"].notna())
@@ -779,7 +796,7 @@ class MetaAnalysisCore:
             # No valid genes after filtering
             return pd.DataFrame(columns=["g", "se_g"])
 
-        # Step 3: Summarize multiple probes per gene
+        # Step 4: Summarize multiple probes per gene
         # This uses the existing summarize_effects_within_study method
         # which matches R's .summ.eff.within() function
         collapsed = MetaAnalysisCore.summarize_effects_within_study(

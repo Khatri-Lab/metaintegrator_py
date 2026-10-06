@@ -116,18 +116,48 @@ class GeneAnnotator:
                 absent from that set is replaced with ``'NA'``.
 
         Returns:
-            Gene symbols aligned 1-to-1 with ``probe_ids``.
+            Gene symbols aligned 1-to-1 with ``probe_ids``. Multi-gene
+            probes are comma-separated (for example ``'CD6,IL2RG'``).
+            Unmapped probes are ``'NA'``. When the table has no known
+            symbol column, the probe IDs are used as keys and then go
+            through the same filters, so a validator turns non-gene
+            probe IDs into ``'NA'``.
         """
         gene_col = self.find_symbol_column(gpl_table)
         if gene_col is None:
-            log.warning("No gene-symbol column found in GPL table")
-            return [str(p) for p in probe_ids]
+            # R-parity (Case 0a in .GEO_fData_key_parser): with no usable
+            # annotation, R uses the probe IDs as keys and then runs the
+            # same Ensembl filter as every other case. Probe IDs that are
+            # not gene symbols (for example "1007_s_at") become NA. That
+            # keeps probe IDs out of the gene list. It also lets callers
+            # detect "zero genes" and try another annotation source.
+            log.warning("No gene-symbol column found in GPL table. Using probe IDs as keys.")
+            return self._filter_symbols([str(p) for p in probe_ids], validator)
 
         log.info(f"    Using column '{gene_col}' for gene symbols")
 
         is_assignment = gene_col in self.ASSIGNMENT_COLUMNS
         mapping = self._build_probe_mapping(gpl_table, gene_col)
+        symbols = [self.clean_symbol(mapping.get(str(probe)), is_assignment) for probe in probe_ids]
+        return self._filter_symbols(symbols, validator)
 
+    def _filter_symbols(self, symbols: List[str], validator: object | None) -> List[str]:
+        """Apply the R-parity filters to cleaned symbols.
+
+        Both filters look at the first gene of a multi-gene key only. If
+        the first gene fails, the whole key becomes ``'NA'``. This matches
+        R, which checks ``strsplit(key, ",")[[1]][1]`` and nothing else.
+
+        Args:
+            symbols: Cleaned keys, one per probe. Multi-gene keys are
+                comma-separated.
+            validator: Optional object with a ``valid_genes: Set[str]``
+                attribute. When given, keys whose first gene is not in
+                that set become ``'NA'``.
+
+        Returns:
+            Filtered keys, aligned 1:1 with ``symbols``.
+        """
         valid_genes: Optional[Set[str]] = None
         if validator is not None and hasattr(validator, "valid_genes"):
             valid_genes = validator.valid_genes
@@ -136,10 +166,7 @@ class GeneAnnotator:
         n_ensembl_filtered = 0
         n_accession_filtered = 0
 
-        for probe in probe_ids:
-            raw = mapping.get(str(probe))
-            symbol = self.clean_symbol(raw, is_assignment)
-
+        for symbol in symbols:
             # R-parity: Ensembl validation on *first* gene only
             if valid_genes is not None and symbol != "NA":
                 first_gene = symbol.split(",")[0].strip()

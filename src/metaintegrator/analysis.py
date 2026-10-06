@@ -443,8 +443,12 @@ class InverseVarianceEngine(MetaAnalysisEngine):
         )
 
         if "keys" not in effects_df.columns:
-            logger.debug("Study %d: no 'keys' column: skipping collapse", study_index + 1)
-            return self._process_study_effects(effects_df, within_method)
+            # Without keys there is no probe-to-gene mapping, so the study
+            # cannot be collapsed to genes or merged with other studies.
+            raise ValueError(
+                f"Study {study_index + 1}: effect-size table has no 'keys' column. "
+                "Each study needs one gene key per probe."
+            )
 
         unique_genes = effects_df["keys"].nunique()
         duplicate_keys = effects_df["keys"].duplicated().sum()
@@ -483,19 +487,6 @@ class InverseVarianceEngine(MetaAnalysisEngine):
             se_matrix.shape,
         )
         return g_matrix, se_matrix
-
-    def _process_study_effects(self, effects: pd.DataFrame, method: str) -> pd.DataFrame:
-        """Legacy path for DataFrames missing a ``keys`` column."""
-        effects_df = effects.copy()
-        effects_df["keys"] = effects_df["keys"].astype(str)
-
-        valid_mask = (
-            ~effects_df["g"].isna() & ~effects_df["keys"].isna() & (effects_df["keys"] != "NA")
-        )
-        effects_df = effects_df[valid_mask]
-        effects_df = self._core.expand_dataframe(effects_df)
-
-        return self._core.summarize_effects_within_study(effects_df, method=method)
 
     @staticmethod
     def _multimerge_effect_sizes(

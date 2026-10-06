@@ -1587,5 +1587,13 @@ class TestEngineHierarchy:
         assert captured["method"] == "fixed"
 
 
+def test_collapse_study_without_keys_raises_clear_error():
+    """A study without a probe-to-gene 'keys' column fails with a clear ValueError."""
+    engine = RandomEffectsEngine()
+    effects = pd.DataFrame({"g": [0.1], "se_g": [0.2]})
+    with pytest.raises(ValueError, match="no 'keys' column"):
+        engine._collapse_study(effects, "fixed_iv", 0)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

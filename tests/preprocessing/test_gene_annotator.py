@@ -306,6 +306,32 @@ class TestAnnotate:
         keys = annotator.annotate(table, pd.Index(["P1"]))
         assert keys == ["P1"]
 
+    def test_no_symbol_column_validator_rejects_probe_ids(self, annotator):
+        """R Case 0a: probe-ID fallback keys still go through Ensembl validation.
+
+        Affymetrix-style probe IDs are not gene symbols. They must become
+        NA so that they never enter the meta-analysis as fake genes. An
+        all-NA result also lets the hybrid handler try the standalone GPL.
+        """
+        table = pd.DataFrame({"ID": ["1007_s_at", "1053_at"], "probe_seq": ["ATCG", "GGCC"]})
+        validator = FakeValidator(valid={"TP53", "DDR1"})
+        keys = annotator.annotate(table, pd.Index(["1007_s_at", "1053_at"]), validator=validator)
+        assert keys == ["NA", "NA"]
+
+    def test_no_symbol_column_keeps_probe_ids_that_are_genes(self, annotator):
+        """R Case 0a: a probe ID that is itself a valid symbol is kept."""
+        table = pd.DataFrame({"ID": ["TP53", "ILMN_1"], "probe_seq": ["ATCG", "GGCC"]})
+        validator = FakeValidator(valid={"TP53"})
+        keys = annotator.annotate(table, pd.Index(["TP53", "ILMN_1"]), validator=validator)
+        assert keys == ["TP53", "NA"]
+
+    def test_validator_rejects_whole_multi_gene_key(self, annotator):
+        """If the first gene is invalid, the whole multi-gene key becomes NA (R-parity)."""
+        table = _make_gpl_table(id_col=["P1"], gene_col=["FAKE /// TP53"])
+        validator = FakeValidator(valid={"TP53"})
+        keys = annotator.annotate(table, pd.Index(["P1"]), validator=validator)
+        assert keys == ["NA"]
+
     def test_empty_table(self, annotator):
         """An empty GPL table with an empty probe index returns an empty key list."""
         table = pd.DataFrame({"ID": [], "Gene Symbol": []})

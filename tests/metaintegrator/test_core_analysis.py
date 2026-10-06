@@ -1130,5 +1130,70 @@ class TestQuickSanityChecks:
         assert callable(getattr(FisherCombination, method_name))
 
 
+# =============================================================================
+# Probe-to-gene collapse (R-parity for .combine.effect.sizes)
+# =============================================================================
+
+
+class TestCollapseProbesToGenes:
+    """Tests for MetaAnalysisCore.collapse_probes_to_genes()."""
+
+    def test_multi_probe_gene_pooled_by_inverse_variance(self):
+        """Two probes for one gene are pooled with fixed-effect IV weights."""
+        df = pd.DataFrame(
+            {"g": [1.0, 3.0], "se_g": [1.0, 2.0], "keys": ["TP53", "TP53"]},
+            index=["p1", "p2"],
+        )
+        out = MetaAnalysisCore.collapse_probes_to_genes(df)
+        w = np.array([1.0, 0.25])
+        assert list(out.index) == ["TP53"]
+        assert out.loc["TP53", "g"] == pytest.approx((1.0 * w[0] + 3.0 * w[1]) / w.sum())
+        assert out.loc["TP53", "se_g"] == pytest.approx(np.sqrt(1.0 / w.sum()))
+
+    def test_multi_gene_probe_counts_for_each_gene(self):
+        """A probe keyed 'A,B' contributes its full effect to both A and B."""
+        df = pd.DataFrame({"g": [0.5], "se_g": [0.2], "keys": ["CD6,IL2RG"]}, index=["p1"])
+        out = MetaAnalysisCore.collapse_probes_to_genes(df)
+        assert sorted(out.index) == ["CD6", "IL2RG"]
+        assert out.loc["CD6", "g"] == pytest.approx(0.5)
+        assert out.loc["IL2RG", "g"] == pytest.approx(0.5)
+
+    def test_nan_probe_does_not_poison_gene(self):
+        """R drops NaN-g probes first, so the other probe for the gene survives."""
+        df = pd.DataFrame(
+            {"g": [np.nan, 0.8], "se_g": [np.nan, 0.3], "keys": ["TP53", "TP53"]},
+            index=["p_zero_var", "p_ok"],
+        )
+        out = MetaAnalysisCore.collapse_probes_to_genes(df)
+        assert out.loc["TP53", "g"] == pytest.approx(0.8)
+        assert out.loc["TP53", "se_g"] == pytest.approx(0.3)
+
+    def test_gene_with_only_nan_probes_is_dropped(self):
+        """A gene whose only probe has NaN g is absent from the study, as in R."""
+        df = pd.DataFrame(
+            {"g": [np.nan, 0.4], "se_g": [np.nan, 0.2], "keys": ["BAD", "GOOD"]},
+            index=["p1", "p2"],
+        )
+        out = MetaAnalysisCore.collapse_probes_to_genes(df)
+        assert list(out.index) == ["GOOD"]
+
+    def test_na_keys_are_removed(self):
+        """Unmapped probes ('NA') never become genes."""
+        df = pd.DataFrame(
+            {"g": [0.1, 0.2], "se_g": [0.1, 0.1], "keys": ["NA", "TP53"]}, index=["p1", "p2"]
+        )
+        out = MetaAnalysisCore.collapse_probes_to_genes(df)
+        assert list(out.index) == ["TP53"]
+
+    def test_extreme_picks_largest_abs_z(self):
+        """The 'extreme' option keeps the probe with the largest |g / se_g|."""
+        df = pd.DataFrame(
+            {"g": [0.5, -0.9], "se_g": [0.1, 0.3], "keys": ["TP53", "TP53"]},
+            index=["p1", "p2"],
+        )
+        out = MetaAnalysisCore.collapse_probes_to_genes(df, method="extreme")
+        assert out.loc["TP53", "g"] == pytest.approx(0.5)
+
+
 if __name__ == "__main__":
     pytest.main([__file__])
