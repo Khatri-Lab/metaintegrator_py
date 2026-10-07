@@ -27,7 +27,7 @@ Gene filtering removes uninformative or low-quality features before statistical 
 !!! note "What's actually built into metaintegrator_py?"
     Only two things on this page are metaintegrator_py functions: the threshold
     filters in [`filter_genes()`](#metaintegrator_pys-built-in-gene-filtering) (effect
-    size, FDR, number of studies, heterogeneity, leave-one-out consistency -- the
+    size, FDR, number of studies, heterogeneity, leave-one-out robustness -- the
     Python equivalent of R MetaIntegrator's `filterGenes()`), and the
     [`forward_search()` / `backward_search()`](#metaintegrator_pys-built-in-gene-filtering)
     signature-refinement functions. Everything under "Generic Pre-Analysis QC
@@ -110,11 +110,23 @@ results = analyzer.filter_genes(
     fdr_thresh=0.05,             # maximum FDR (effect-size and Fisher)
     number_studies_thresh=2,     # minimum contributing studies
     heterogeneity_pval_thresh=0, # 0 disables this filter
-    is_leave_one_out=True,       # require consistent direction in LOO
+    is_leave_one_out=True,       # gene must pass in every leave-one-out run
 )
 
 print(results['filterResults'].pos_gene_names)
 ```
+
+**How leave-one-out filtering works.**
+It follows R's `filterGenes(isLeaveOneOut = TRUE)` exactly.
+The filter does not look at the main meta-analysis at all.
+Instead, it runs every threshold on each leave-one-out result, where one study was left out.
+Because one study is missing, the studies threshold drops by one in these runs.
+A gene is kept only if it passes in **every** leave-one-out run.
+So a gene that depends on a single study does not make the signature.
+
+Leave-one-out filtering needs leave-one-out results and more than two datasets.
+Otherwise the filter runs once on the main result,
+and `filterResults.is_leave_one_out` is `False`.
 
 `number_studies_thresh` is the built-in equivalent of "keep genes present in at
 least N of my studies" -- if you've been thinking of that as a percentage, set

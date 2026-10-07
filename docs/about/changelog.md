@@ -8,6 +8,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+- **`filter_genes()` leave-one-out now follows R `filterGenes()`.**
+  With `is_leave_one_out=True`, a gene must pass every threshold in every
+  leave-one-out run, with one fewer study required. The main result is not
+  filtered in this mode. Before, Python filtered the main result and only
+  checked that the effect sign stayed the same across runs. Expect fewer
+  genes. On `tinyMetaObject` with default thresholds, the signature goes
+  from 50 up / 28 down genes to 18 up / 13 down, the same as R.
+- `FilterResult.is_leave_one_out` now reports whether the leave-one-out rule
+  was actually applied. It is `False` when leave-one-out results are missing
+  or there are only two datasets, as in R.
+
+### Added
+- Automated R parity tests (`pytest -m parity`) that replay R golden sets.
+  See *Contributing > R Parity Testing*.
+
+### Fixed
+- Probes with no usable effect size no longer turn a multi-probe gene's
+  pooled effect into NaN (R drops them first).
+- When a platform table has no gene-symbol column, probe IDs used as keys
+  now go through the Ensembl check, as in R.
+
 ### Planned
 - Interactive web dashboard for meta-analysis results
 - Support for RNA-seq data normalization
