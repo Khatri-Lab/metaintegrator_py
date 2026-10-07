@@ -165,6 +165,7 @@ markers = [
     "nonparametric: tests using non-parametric priors",
     "performance: marks performance-sensitive tests",
     "regression: marks regression tests",
+    "parity: R parity tests that replay R golden sets (run alone with -m parity)",
 ]
 
 # Minimum version
