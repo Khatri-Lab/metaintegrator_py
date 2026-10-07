@@ -7,7 +7,7 @@ Covers:
 - filter_genes() threshold logic:  FDR, effect size, numStudies, heterogeneity
 - Fisher FDR directional filtering (fisherFDRUp / fisherFDRDown)
 - Graceful handling when Fisher columns are absent
-- Leave-one-out consistency filtering
+- Leave-one-out filtering (R rule: pass in every leave-one-out run)
 - LOO disabled / LOO results absent
 - Edge cases: empty pooledResults, all genes filtered, zero-effectSize genes
 - Standalone convenience function filter_genes()
@@ -510,7 +510,7 @@ class TestFilterGenesFisher:
 
 
 class TestFilterGenesLOO:
-    """Test leave-one-out consistency checking."""
+    """Test the leave-one-out rule, a port of R ``filterGenes(isLeaveOneOut = TRUE)``."""
 
     def setup_method(self):
         """Give each test a fresh MetaAnalyzer."""
@@ -605,6 +605,117 @@ class TestFilterGenesLOO:
         meta = _make_meta_object(pooled, loo=loo)
         result = self.analyzer.filter_genes(meta, fdr_thresh=1.0, is_leave_one_out=True)
         assert result["filterResults"].total_genes == 2
+
+    # -- R leave-one-out rule ---------------------------------------
+
+    @staticmethod
+    def _table(rows: dict) -> pd.DataFrame:
+        """Build a full pooledResults table from {gene: (es, fdr, n_studies)}."""
+        genes = list(rows)
+        es = [rows[g][0] for g in genes]
+        fdr = [rows[g][1] for g in genes]
+        return pd.DataFrame(
+            {
+                "effectSize": es,
+                "effectSizeFDR": fdr,
+                "numStudies": [rows[g][2] for g in genes],
+                "heterogeneityPval": [0.5] * len(genes),
+                "fisherFDRUp": [f if e > 0 else 1.0 for e, f in zip(es, fdr)],
+                "fisherFDRDown": [f if e < 0 else 1.0 for e, f in zip(es, fdr)],
+            },
+            index=genes,
+        )
+
+    def _meta(self, main: dict, loo_runs: list, n_datasets: int = 3) -> dict:
+        """Build a meta_object with a main table, LOO tables and dataset stubs."""
+        return {
+            "originalData": {f"ds{i}": {} for i in range(n_datasets)},
+            "metaAnalysis": {"pooledResults": self._table(main)},
+            "leaveOneOutAnalysis": {
+                f"removed_ds{i}": {"pooledResults": self._table(run)}
+                for i, run in enumerate(loo_runs)
+            },
+        }
+
+    def test_loo_does_not_filter_the_main_result(self):
+        """R ignores the main result in LOO mode: passing every LOO run is enough."""
+        main = {"G": (1.0, 0.9, 3)}  # fails FDR in the main analysis
+        run = {"G": (1.0, 0.01, 2)}
+        meta = self._meta(main, [run, run, run])
+        fr = self.analyzer.filter_genes(meta, is_leave_one_out=True)["filterResults"]
+        assert fr.pos_gene_names == ["G"]
+        assert fr.is_leave_one_out is True
+
+    def test_loo_gene_failing_one_run_is_removed(self):
+        """A gene that fails the FDR filter in a single LOO run is dropped."""
+        main = {"Keep": (1.0, 0.01, 3), "Drop": (1.0, 0.01, 3)}
+        good = {"Keep": (1.0, 0.01, 2), "Drop": (1.0, 0.01, 2)}
+        bad = {"Keep": (1.0, 0.01, 2), "Drop": (1.0, 0.20, 2)}
+        meta = self._meta(main, [good, bad, good])
+        fr = self.analyzer.filter_genes(meta, is_leave_one_out=True)["filterResults"]
+        assert fr.pos_gene_names == ["Keep"]
+
+    def test_loo_uses_one_fewer_study(self):
+        """LOO runs require number_studies_thresh - 1 studies, as in R."""
+        main = {"G": (1.0, 0.01, 3)}
+        run = {"G": (1.0, 0.01, 2)}  # one study left out
+        meta = self._meta(main, [run, run, run])
+        fr = self.analyzer.filter_genes(meta, number_studies_thresh=3, is_leave_one_out=True)[
+            "filterResults"
+        ]
+        assert fr.pos_gene_names == ["G"]
+
+        fr = self.analyzer.filter_genes(meta, number_studies_thresh=4, is_leave_one_out=True)[
+            "filterResults"
+        ]
+        assert fr.pos_gene_names == []
+
+    def test_loo_keeps_order_of_first_run(self):
+        """Gene order follows the first LOO run, like R's sequential intersect()."""
+        main = {"A": (1.0, 0.01, 3), "B": (1.0, 0.01, 3)}
+        first = {"B": (1.0, 0.01, 2), "A": (1.0, 0.01, 2)}
+        other = {"A": (1.0, 0.01, 2), "B": (1.0, 0.01, 2)}
+        meta = self._meta(main, [first, other, other])
+        fr = self.analyzer.filter_genes(meta, is_leave_one_out=True)["filterResults"]
+        assert fr.pos_gene_names == ["B", "A"]
+
+    def test_loo_handles_negative_genes(self):
+        """Down genes follow the same rule, using fisherFDRDown."""
+        main = {"Down": (-1.0, 0.01, 3)}
+        good = {"Down": (-1.0, 0.01, 2)}
+        flipped = {"Down": (0.4, 0.01, 2)}
+        meta = self._meta(main, [good, good, good])
+        assert self.analyzer.filter_genes(meta)["filterResults"].neg_gene_names == ["Down"]
+        meta = self._meta(main, [good, flipped, good])
+        assert self.analyzer.filter_genes(meta)["filterResults"].neg_gene_names == []
+
+    def test_loo_skipped_with_two_datasets(self):
+        """With two datasets R never uses the LOO rule, even when asked."""
+        main = {"G": (1.0, 0.01, 2)}
+        run = {"G": (1.0, 0.90, 1)}  # would fail the LOO rule
+        meta = self._meta(main, [run, run], n_datasets=2)
+        fr = self.analyzer.filter_genes(meta, is_leave_one_out=True)["filterResults"]
+        assert fr.pos_gene_names == ["G"]
+        assert fr.is_leave_one_out is False
+
+    def test_is_leave_one_out_reports_what_was_applied(self):
+        """Requesting LOO without LOO results reports False, like R."""
+        meta = self._meta({"G": (1.0, 0.01, 3)}, [])
+        meta["leaveOneOutAnalysis"] = None
+        fr = self.analyzer.filter_genes(meta, is_leave_one_out=True)["filterResults"]
+        assert fr.is_leave_one_out is False
+        assert "LOO=False" in fr.filter_description
+
+    def test_loo_uses_only_successful_runs(self):
+        """A failed (None) LOO run is ignored; the others still apply."""
+        main = {"Keep": (1.0, 0.01, 3), "Drop": (1.0, 0.01, 3)}
+        good = {"Keep": (1.0, 0.01, 2), "Drop": (1.0, 0.01, 2)}
+        bad = {"Keep": (1.0, 0.01, 2), "Drop": (1.0, 0.20, 2)}
+        meta = self._meta(main, [good, bad, good])
+        meta["leaveOneOutAnalysis"]["removed_ds0"] = None
+        fr = self.analyzer.filter_genes(meta, is_leave_one_out=True)["filterResults"]
+        assert fr.pos_gene_names == ["Keep"]
+        assert fr.is_leave_one_out is True
 
 
 # ===================================================================
@@ -746,80 +857,104 @@ class TestFilterGenesEdgeCases:
 
 
 # ===================================================================
-# _loo_consistent_genes(): direct unit tests
+# Filter helpers: direct unit tests
 # ===================================================================
 
 
-class TestLOOConsistentGenesHelper:
-    """Direct tests for the static helper method."""
+class TestFilterHelpers:
+    """Direct tests for _filter_pooled_results() and _usable_loo_tables()."""
 
-    def test_empty_gene_list(self):
-        """An empty candidate gene list returns an empty result."""
-        result = MetaAnalyzer._loo_consistent_genes([], {}, "pos")
-        assert result == []
+    @staticmethod
+    def _pooled(**cols) -> pd.DataFrame:
+        """Build a small pooledResults table for genes G1..Gn."""
+        n = len(next(iter(cols.values())))
+        return pd.DataFrame(cols, index=[f"G{i + 1}" for i in range(n)])
 
-    def test_empty_loo_results(self):
-        """An empty LOO results dict leaves every gene passing (nothing to check against)."""
-        result = MetaAnalyzer._loo_consistent_genes(["G1"], {}, "pos")
-        assert result == ["G1"]
+    def test_filter_applies_every_r_threshold(self):
+        """Each gene fails exactly one R filter, except G1, which passes all."""
+        pooled = self._pooled(
+            effectSize=[1.0, 0.2, 1.0, 1.0, 1.0, 1.0],
+            effectSizeFDR=[0.01, 0.01, 0.20, 0.01, 0.01, 0.01],
+            numStudies=[3, 3, 3, 1, 3, 3],
+            heterogeneityPval=[0.5, 0.5, 0.5, 0.5, 0.01, 0.5],
+            fisherFDRUp=[0.01, 0.01, 0.01, 0.01, 0.01, 0.20],
+            fisherFDRDown=[1.0] * 6,
+        )
+        pos, neg = MetaAnalyzer._filter_pooled_results(
+            pooled,
+            effect_size_thresh=0.5,
+            fdr_thresh=0.05,
+            number_studies_thresh=2,
+            heterogeneity_pval_thresh=0.05,
+        )
+        assert pos == ["G1"]
+        assert neg == []
 
-    def test_none_loo_results(self):
-        """LOO results of None is treated the same as an empty dict."""
-        result = MetaAnalyzer._loo_consistent_genes(["G1"], None, "pos")
-        assert result == ["G1"]
+    def test_filter_drops_nan_rows_like_r_which(self):
+        """NaN effect sizes or FDRs never pass, matching R's which()."""
+        pooled = self._pooled(
+            effectSize=[np.nan, 1.0, -1.0],
+            effectSizeFDR=[0.01, np.nan, 0.01],
+            fisherFDRUp=[0.01, 0.01, 1.0],
+            fisherFDRDown=[1.0, 1.0, 0.01],
+        )
+        pos, neg = MetaAnalyzer._filter_pooled_results(pooled, 0.0, 0.05, 1, 0.0)
+        assert pos == []
+        assert neg == ["G3"]
 
-    def test_consistent_pos_gene_kept(self):
-        """A positive gene that stays positive across every LOO sub-analysis is kept."""
+    def test_filter_zero_studies_threshold_keeps_single_study_genes(self):
+        """In LOO runs the threshold can be 0, so one-study genes still pass."""
+        pooled = self._pooled(effectSize=[1.0], effectSizeFDR=[0.01], numStudies=[1])
+        pos, _ = MetaAnalyzer._filter_pooled_results(pooled, 0.0, 0.05, 0, 0.0)
+        assert pos == ["G1"]
+
+    def test_usable_loo_tables_empty_without_results(self):
+        """No LOO results means the plain rule is used."""
+        assert MetaAnalyzer._usable_loo_tables({"leaveOneOutAnalysis": None}) == []
+        assert MetaAnalyzer._usable_loo_tables({"leaveOneOutAnalysis": {}}) == []
+        assert MetaAnalyzer._usable_loo_tables({}) == []
+
+    def test_usable_loo_tables_needs_more_than_two_datasets(self):
+        """R uses the LOO rule only with more than two datasets."""
+        table = self._pooled(effectSize=[1.0], effectSizeFDR=[0.01])
+        loo = {"removed_a": {"pooledResults": table}, "removed_b": {"pooledResults": table}}
+        two = {"originalData": {"a": {}, "b": {}}, "leaveOneOutAnalysis": loo}
+        three = {"originalData": {"a": {}, "b": {}, "c": {}}, "leaveOneOutAnalysis": loo}
+        assert MetaAnalyzer._usable_loo_tables(two) == []
+        assert len(MetaAnalyzer._usable_loo_tables(three)) == 2
+
+    def test_usable_loo_tables_skips_failed_runs(self):
+        """None runs and runs without pooledResults are left out."""
+        table = self._pooled(effectSize=[1.0], effectSizeFDR=[0.01])
         loo = {
-            "r1": {"pooledResults": pd.DataFrame({"effectSize": [0.5]}, index=["G1"])},
-            "r2": {"pooledResults": pd.DataFrame({"effectSize": [1.2]}, index=["G1"])},
+            "removed_a": {"pooledResults": table},
+            "removed_b": None,
+            "removed_c": {"pooledResults": None},
         }
-        result = MetaAnalyzer._loo_consistent_genes(["G1"], loo, "pos")
-        assert result == ["G1"]
+        tables = MetaAnalyzer._usable_loo_tables({"leaveOneOutAnalysis": loo})
+        assert len(tables) == 1
+        assert tables[0] is table
 
-    def test_inconsistent_pos_gene_removed(self):
-        """A positive gene that flips to negative in any LOO sub-analysis is removed."""
-        loo = {
-            "r1": {"pooledResults": pd.DataFrame({"effectSize": [0.5]}, index=["G1"])},
-            "r2": {"pooledResults": pd.DataFrame({"effectSize": [-0.3]}, index=["G1"])},
-        }
-        result = MetaAnalyzer._loo_consistent_genes(["G1"], loo, "pos")
-        assert result == []
+    def test_gene_missing_from_a_loo_run_is_dropped(self):
+        """R rule: a gene absent from one LOO table cannot pass that run.
 
-    def test_consistent_neg_gene_kept(self):
-        """A negative gene that stays negative across every LOO sub-analysis is kept."""
-        loo = {
-            "r1": {"pooledResults": pd.DataFrame({"effectSize": [-0.5]}, index=["N1"])},
-            "r2": {"pooledResults": pd.DataFrame({"effectSize": [-1.0]}, index=["N1"])},
+        The old sign-only check let such genes through. R does not.
+        """
+        meta = {
+            "metaAnalysis": {"pooledResults": self._pooled(effectSize=[1.0], effectSizeFDR=[0.01])},
+            "leaveOneOutAnalysis": {
+                "removed_a": {
+                    "pooledResults": self._pooled(effectSize=[1.0], effectSizeFDR=[0.01])
+                },
+                "removed_b": {
+                    "pooledResults": pd.DataFrame(
+                        {"effectSize": [1.0], "effectSizeFDR": [0.01]}, index=["Other"]
+                    )
+                },
+            },
         }
-        result = MetaAnalyzer._loo_consistent_genes(["N1"], loo, "neg")
-        assert result == ["N1"]
-
-    def test_inconsistent_neg_gene_removed(self):
-        """A negative gene that flips to positive in any LOO sub-analysis is removed."""
-        loo = {
-            "r1": {"pooledResults": pd.DataFrame({"effectSize": [-0.5]}, index=["N1"])},
-            "r2": {"pooledResults": pd.DataFrame({"effectSize": [0.1]}, index=["N1"])},
-        }
-        result = MetaAnalyzer._loo_consistent_genes(["N1"], loo, "neg")
-        assert result == []
-
-    def test_gene_missing_from_loo_pooled_passes(self):
-        """A gene absent from a LOO sub-analysis should still pass."""
-        loo = {
-            "r1": {"pooledResults": pd.DataFrame({"effectSize": [0.5]}, index=["Other"])},
-        }
-        result = MetaAnalyzer._loo_consistent_genes(["G1"], loo, "pos")
-        assert result == ["G1"]
-
-    def test_loo_sub_result_with_none_pooled(self):
-        """A LOO sub-result with pooledResults=None should be skipped."""
-        loo = {
-            "r1": {"pooledResults": None},
-            "r2": {"pooledResults": pd.DataFrame({"effectSize": [0.5]}, index=["G1"])},
-        }
-        result = MetaAnalyzer._loo_consistent_genes(["G1"], loo, "pos")
-        assert result == ["G1"]
+        fr = MetaAnalyzer().filter_genes(meta, is_leave_one_out=True)["filterResults"]
+        assert fr.pos_gene_names == []
 
 
 # ===================================================================

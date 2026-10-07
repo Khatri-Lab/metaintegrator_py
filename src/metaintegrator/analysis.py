@@ -595,7 +595,7 @@ class FilterResult:
         fdr_thresh: FDR threshold used.
         number_studies_thresh: Minimum-studies threshold used.
         heterogeneity_pval_thresh: Heterogeneity p-value threshold used.
-        is_leave_one_out: Whether leave-one-out consistency was applied.
+        is_leave_one_out: Whether R's leave-one-out rule was applied.
         filter_description: Human-readable description of the filter.
     """
 
@@ -906,22 +906,33 @@ class MetaAnalyzer:
     ) -> Dict:
         """Filter meta-analysis results to identify significant genes.
 
-        This is the Python equivalent of R ``filterGenes()``.  It applies
-        a series of threshold filters to the pooled results produced by
-        :meth:`run_meta_analysis` and stores the outcome under the
-        ``'filterResults'`` key of *meta_object*.
+        This is the Python equivalent of R ``filterGenes()``. It stores the
+        outcome under the ``'filterResults'`` key of *meta_object*.
 
-        Filters applied (in order):
+        The core rule is a port of R's ``.filterMetaRun()``. A gene passes
+        when all of these hold:
 
-        1. **Effect-size FDR** ≤ *fdr_thresh*
-        2. **|Effect size|** ≥ *effect_size_thresh*
-        3. **Number of studies** ≥ *number_studies_thresh*
-        4. **Heterogeneity p-value** ≥ *heterogeneity_pval_thresh*
-           (0 disables this filter)
-        5. **Fisher FDR** ≤ *fdr_thresh* (directional: ``fisherFDRUp``
-           for positive genes, ``fisherFDRDown`` for negative genes)
-        6. **Leave-one-out consistency** (optional): the gene must keep
-           the same sign in every LOO sub-analysis.
+        1. ``|effectSize|`` >= *effect_size_thresh*
+        2. ``effectSizeFDR`` <= *fdr_thresh*
+        3. ``numStudies`` >= the studies threshold
+        4. ``heterogeneityPval`` >= *heterogeneity_pval_thresh*
+           (skipped when the threshold is 0)
+        5. Fisher FDR <= *fdr_thresh* in the gene's direction:
+           ``fisherFDRUp`` for up genes, ``fisherFDRDown`` for down genes.
+
+        Without leave-one-out, the rule runs once on the main
+        ``pooledResults`` with *number_studies_thresh*.
+
+        With leave-one-out, R works differently, and so do we. The main
+        result is **not** filtered. Instead the rule runs on every
+        leave-one-out ``pooledResults``, with *number_studies_thresh* - 1
+        because one study is missing. A gene is kept only if it passes in
+        **every** leave-one-out run. The gene order comes from the first run.
+
+        Leave-one-out is used only when it was requested, its results
+        exist, and there are more than two datasets. Otherwise the plain
+        rule runs, as in R, and ``is_leave_one_out`` in the result is
+        ``False``.
 
         Args:
             meta_object: Dict returned by :meth:`run_meta_analysis`.
@@ -933,8 +944,8 @@ class MetaAnalyzer:
                 studies (default 1).
             heterogeneity_pval_thresh: Minimum heterogeneity p-value
                 (default 0 = disabled).
-            is_leave_one_out: If ``True`` and LOO results are present,
-                require directional consistency (default ``True``).
+            is_leave_one_out: If ``True`` and leave-one-out results are
+                present, use R's leave-one-out rule (default ``True``).
 
         Returns:
             The *meta_object* dict with an added or updated
@@ -973,10 +984,10 @@ class MetaAnalyzer:
                 "metaAnalysis must contain 'pooledResults'. " "Run run_meta_analysis() first."
             )
 
-        pooled: pd.DataFrame = meta_analysis["pooledResults"].copy()
+        pooled: pd.DataFrame = meta_analysis["pooledResults"]
         logger.info(
-            "filter_genes: starting with %d genes, thresholds: "
-            "|ES|≥%.2f, FDR≤%.4f, nStudies≥%d, hetPval≥%.2f, LOO=%s",
+            "filter_genes: %d genes, thresholds: "
+            "|ES|>=%.2f, FDR<=%.4f, nStudies>=%d, hetPval>=%.2f, LOO requested=%s",
             len(pooled),
             effect_size_thresh,
             fdr_thresh,
@@ -985,66 +996,48 @@ class MetaAnalyzer:
             is_leave_one_out,
         )
 
-        # ---- step 1: effect-size FDR ---------------------------------
-        mask = pooled["effectSizeFDR"] <= fdr_thresh
-        pooled = pooled[mask]
-        logger.debug("After FDR filter: %d genes", len(pooled))
+        loo_tables = self._usable_loo_tables(meta_object) if is_leave_one_out else []
+        applied_loo = bool(loo_tables)
 
-        # ---- step 2: absolute effect size ----------------------------
-        if effect_size_thresh > 0:
-            mask = pooled["effectSize"].abs() >= effect_size_thresh
-            pooled = pooled[mask]
-            logger.debug("After effect-size filter: %d genes", len(pooled))
-
-        # ---- step 3: number of studies -------------------------------
-        if number_studies_thresh > 1 and "numStudies" in pooled.columns:
-            mask = pooled["numStudies"] >= number_studies_thresh
-            pooled = pooled[mask]
-            logger.debug("After n-studies filter: %d genes", len(pooled))
-
-        # ---- step 4: heterogeneity -----------------------------------
-        if heterogeneity_pval_thresh > 0 and "heterogeneityPval" in pooled.columns:
-            mask = pooled["heterogeneityPval"] >= heterogeneity_pval_thresh
-            pooled = pooled[mask]
-            logger.debug("After heterogeneity filter: %d genes", len(pooled))
-
-        # ---- step 5: Fisher FDR (directional) ------------------------
-        pos_candidates = pooled[pooled["effectSize"] > 0]
-        neg_candidates = pooled[pooled["effectSize"] < 0]
-
-        if "fisherFDRUp" in pos_candidates.columns:
-            pos_candidates = pos_candidates[pos_candidates["fisherFDRUp"] <= fdr_thresh]
-        else:
-            logger.debug("fisherFDRUp column absent; skipping Fisher filter for pos genes")
-
-        if "fisherFDRDown" in neg_candidates.columns:
-            neg_candidates = neg_candidates[neg_candidates["fisherFDRDown"] <= fdr_thresh]
-        else:
-            logger.debug("fisherFDRDown column absent; skipping Fisher filter for neg genes")
-
-        pos_genes = pos_candidates.index.tolist()
-        neg_genes = neg_candidates.index.tolist()
-        logger.debug("After Fisher FDR filter: %d pos, %d neg", len(pos_genes), len(neg_genes))
-
-        # ---- step 6: leave-one-out consistency -----------------------
-        if is_leave_one_out and meta_object.get("leaveOneOutAnalysis"):
-            pos_genes = self._loo_consistent_genes(
-                pos_genes, meta_object["leaveOneOutAnalysis"], direction="pos"
-            )
-            neg_genes = self._loo_consistent_genes(
-                neg_genes, meta_object["leaveOneOutAnalysis"], direction="neg"
-            )
+        if applied_loo:
+            # R filterGenes(isLeaveOneOut = TRUE): filter each LOO run with
+            # one fewer study required, then intersect. The main result is
+            # deliberately not filtered.
+            per_run = [
+                self._filter_pooled_results(
+                    table,
+                    effect_size_thresh=effect_size_thresh,
+                    fdr_thresh=fdr_thresh,
+                    number_studies_thresh=number_studies_thresh - 1,
+                    heterogeneity_pval_thresh=heterogeneity_pval_thresh,
+                )
+                for table in loo_tables
+            ]
+            pos_genes, neg_genes = per_run[0]
+            for run_pos, run_neg in per_run[1:]:
+                run_pos_set, run_neg_set = set(run_pos), set(run_neg)
+                pos_genes = [g for g in pos_genes if g in run_pos_set]
+                neg_genes = [g for g in neg_genes if g in run_neg_set]
             logger.debug(
-                "After LOO consistency: %d pos, %d neg",
+                "Leave-one-out rule over %d runs: %d pos, %d neg",
+                len(loo_tables),
                 len(pos_genes),
                 len(neg_genes),
+            )
+        else:
+            pos_genes, neg_genes = self._filter_pooled_results(
+                pooled,
+                effect_size_thresh=effect_size_thresh,
+                fdr_thresh=fdr_thresh,
+                number_studies_thresh=number_studies_thresh,
+                heterogeneity_pval_thresh=heterogeneity_pval_thresh,
             )
 
         # ---- build result --------------------------------------------
         desc = (
             f"filter_genes: |ES|≥{effect_size_thresh}, "
             f"FDR≤{fdr_thresh}, nStudies≥{number_studies_thresh}, "
-            f"hetPval≥{heterogeneity_pval_thresh}, LOO={is_leave_one_out}"
+            f"hetPval≥{heterogeneity_pval_thresh}, LOO={applied_loo}"
         )
         result = FilterResult(
             pos_gene_names=pos_genes,
@@ -1055,7 +1048,7 @@ class MetaAnalyzer:
             fdr_thresh=fdr_thresh,
             number_studies_thresh=number_studies_thresh,
             heterogeneity_pval_thresh=heterogeneity_pval_thresh,
-            is_leave_one_out=is_leave_one_out,
+            is_leave_one_out=applied_loo,
             filter_description=desc,
         )
 
@@ -1068,49 +1061,102 @@ class MetaAnalyzer:
         )
         return meta_object
 
-    # ---- leave-one-out consistency helper -------------------------
+    # ---- gene-filter helpers ---------------------------------------
 
     @staticmethod
-    def _loo_consistent_genes(
-        gene_list: List[str],
-        loo_results: Dict,
-        direction: str,
-    ) -> List[str]:
-        """Keep only genes whose effect direction is consistent across LOO analyses.
+    def _filter_pooled_results(
+        pooled: pd.DataFrame,
+        effect_size_thresh: float,
+        fdr_thresh: float,
+        number_studies_thresh: int,
+        heterogeneity_pval_thresh: float,
+    ) -> Tuple[List[str], List[str]]:
+        """Apply R's ``.filterMetaRun()`` rule to one ``pooledResults`` table.
 
-        For each gene, checks that the sign of the pooled effect size
-        is the same in every leave-one-out sub-analysis.
+        Comparisons with NaN are False, so genes with missing values drop
+        out. R's ``which()`` does the same. Optional columns
+        (``numStudies``, ``heterogeneityPval`` and the Fisher FDRs) are
+        skipped with a debug message when absent. R would fail instead,
+        but older or hand-built tables may lack them.
 
         Args:
-            gene_list: Candidate gene names.
-            loo_results: Dict mapping LOO names to result dicts.
-            direction: ``'pos'`` or ``'neg'``.
+            pooled: A ``pooledResults`` table indexed by gene.
+            effect_size_thresh: Minimum absolute effect size.
+            fdr_thresh: Maximum effect-size FDR and Fisher FDR.
+            number_studies_thresh: Minimum number of studies. May be 0 in
+                leave-one-out runs.
+            heterogeneity_pval_thresh: Minimum heterogeneity p-value
+                (0 disables this filter).
 
         Returns:
-            Filtered list of genes that are consistent.
+            ``(pos_gene_names, neg_gene_names)`` in table order.
         """
-        if not loo_results or not gene_list:
-            return gene_list
+        res = pooled[pooled["effectSize"].abs() >= effect_size_thresh]
+        res = res[res["effectSizeFDR"] <= fdr_thresh]
 
-        consistent = []
-        for gene in gene_list:
-            passes = True
-            for loo_name, loo_result in loo_results.items():
-                if loo_result is None:
-                    continue
-                loo_pooled = loo_result.get("pooledResults")
-                if loo_pooled is None or gene not in loo_pooled.index:
-                    continue
-                es = loo_pooled.loc[gene, "effectSize"]
-                if direction == "pos" and es <= 0:
-                    passes = False
-                    break
-                if direction == "neg" and es >= 0:
-                    passes = False
-                    break
-            if passes:
-                consistent.append(gene)
-        return consistent
+        if "numStudies" in res.columns:
+            res = res[res["numStudies"] >= number_studies_thresh]
+        else:
+            logger.debug("numStudies column absent; skipping studies filter")
+
+        if heterogeneity_pval_thresh > 0:
+            if "heterogeneityPval" in res.columns:
+                res = res[res["heterogeneityPval"] >= heterogeneity_pval_thresh]
+            else:
+                logger.debug("heterogeneityPval column absent; skipping heterogeneity filter")
+
+        pos = res[res["effectSize"] > 0]
+        neg = res[res["effectSize"] < 0]
+        if "fisherFDRUp" in pos.columns:
+            pos = pos[pos["fisherFDRUp"] <= fdr_thresh]
+        else:
+            logger.debug("fisherFDRUp column absent; skipping Fisher filter for pos genes")
+        if "fisherFDRDown" in neg.columns:
+            neg = neg[neg["fisherFDRDown"] <= fdr_thresh]
+        else:
+            logger.debug("fisherFDRDown column absent; skipping Fisher filter for neg genes")
+
+        return pos.index.tolist(), neg.index.tolist()
+
+    @staticmethod
+    def _usable_loo_tables(meta_object: Dict) -> List[pd.DataFrame]:
+        """Return the leave-one-out tables that R's rule can use.
+
+        R applies its leave-one-out rule only when leave-one-out results
+        exist and there are more than two datasets. A sub-analysis that
+        failed (``None``) is left out with a warning, because the rule can
+        then only use the runs that succeeded.
+
+        Args:
+            meta_object: Dict that may hold ``leaveOneOutAnalysis`` and
+                ``originalData``.
+
+        Returns:
+            The usable ``pooledResults`` tables. An empty list means "use
+            the plain rule instead".
+        """
+        loo = meta_object.get("leaveOneOutAnalysis") or {}
+        original_data = meta_object.get("originalData")
+        if not loo or (original_data is not None and len(original_data) <= 2):
+            return []
+
+        tables = [
+            result["pooledResults"]
+            for result in loo.values()
+            if result is not None and result.get("pooledResults") is not None
+        ]
+        n_missing = len(loo) - len(tables)
+        if tables and n_missing:
+            logger.warning(
+                "%d of %d leave-one-out runs have no results. The leave-one-out "
+                "filter uses only the %d runs that succeeded.",
+                n_missing,
+                len(loo),
+                len(tables),
+            )
+        elif not tables:
+            logger.warning("All leave-one-out runs are empty. Falling back to the plain filter.")
+        return tables
 
     # ---- leave-one-out -------------------------------------------
 
@@ -1230,23 +1276,22 @@ class MetaAnalyzer:
                 if result is not None
             }
 
-            # Make a silent-degradation failure mode loud instead of quiet:
-            # `filter_genes()`'s leave-one-out consistency step only runs
-            # `if meta_object.get("leaveOneOutAnalysis")`, which is falsy for
-            # an *empty* dict. If every subset failed (as happened for the
-            # pickling bug this warning was added alongside: see
-            # `_run_loo_subset`), that step is skipped entirely with no
-            # indication in the log that LOO-based filtering never ran even
-            # though `is_leave_one_out=True` was requested.
+            # Make a silent-degradation failure mode loud instead of quiet.
+            # `filter_genes()` uses only the leave-one-out runs that
+            # succeeded, and falls back to the plain filter when none did
+            # (see `_usable_loo_tables`). Without this warning, a run where
+            # every subset failed (as happened for the pickling bug: see
+            # `_run_loo_subset`) would quietly lose its leave-one-out
+            # filtering even though `is_leave_one_out=True` was requested.
             n_failed = sum(1 for r in loo_results if r is None)
             if n_failed:
                 n_total = len(loo_results)
                 logger.warning(
                     "%d/%d leave-one-out subset(s) failed to compute (see the "
                     "'Subset N generated exception' error(s) above for the cause). "
-                    "Gene-direction leave-one-out consistency filtering in "
-                    "filter_genes() will only consider the %d subset(s) that "
-                    "succeeded, and will be skipped entirely if all subsets failed.",
+                    "Leave-one-out filtering in filter_genes() will use only the "
+                    "%d subset(s) that succeeded, and falls back to the plain "
+                    "filter if all subsets failed.",
                     n_failed,
                     n_total,
                     n_total - n_failed,
@@ -1370,7 +1415,7 @@ def filter_genes(
         fdr_thresh: Maximum FDR threshold.
         number_studies_thresh: Minimum contributing studies.
         heterogeneity_pval_thresh: Minimum heterogeneity p-value.
-        is_leave_one_out: Require LOO consistency.
+        is_leave_one_out: Use R's leave-one-out rule when results exist.
 
     Returns:
         The *meta_object* with ``'filterResults'`` added.
