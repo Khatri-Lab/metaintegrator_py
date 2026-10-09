@@ -501,12 +501,13 @@ class TestCoconutMainFunction:
             "pheno": pd.DataFrame({"control_disease": [1] * 5}),  # No controls
         }
 
-        # with pytest.raises(ValueError, match="has < 1 control"):
-        with pytest.raises(ValueError, match="No objects to concatenate"):
+        # By-study mode now names the dataset in a clear error, like R COCONUT().
+        # Before, this case ended in pandas' "No objects to concatenate".
+        with pytest.raises(ValueError, match="Dataset 'dataset_1' has < 1 control"):
             coconut([gse], control_0_col="control_disease")
 
-    def test_coconut_insufficient_batches_multi_batch(self):
-        """Test error when one of multiple datasets has insufficient batches after filtering."""
+    def test_coconut_missing_controls_multi_batch(self):
+        """Test the clear error when one of several datasets has no controls (by-study mode)."""
         # Dataset 0 has controls
         gse0 = {
             "genes": pd.DataFrame(np.random.randn(10, 4), columns=[f"S0_{i}" for i in range(4)]),
@@ -522,28 +523,14 @@ class TestCoconutMainFunction:
             ),
         }
 
-        # LOGIC:
-        # 1. Filtering: In coconut(), the code first calls _get_data_subset() to isolate control samples.
-        # For gse1, since there are no controls (all values are 1),
-        # _get_data_subset returns an empty list or a list where the gse1 subset is skipped/empty.
-        #
-        # 2. Skipped validation: The "has < 1 control" check in _validate_platforms_and_controls iterates over
-        # the result of the subsetting. If the subsetting logic simply skips datasets with no samples
-        # (or produces an empty DataFrame that doesn't trigger the specific shape check as expected),
-        # it proceeds to step 4.
-        #
-        # 3. ComBat Requirement: Step 4 calls _combat_custom (the "Get" phase). ComBat requires at least 2 batches
-        # to perform normalization. Since gse1 effectively vanished from the control list
-        # (because it had 0 controls), _combat_custom only saw 1 batch (gse0).
-        #
-        # 4. Error Precedence: _combat_get_params_no_cov (called by ComBat) raises "At least 2 batches are required..."
-        # before the coconut function ever finished its own logic.
-
-        # Should raise error specifically mentioning "at least 2 batches""
-        with pytest.raises(
-            ValueError,
-            match="At least 2 batches are required for ComBat normalization.",
-        ):
+        # Logic:
+        # 1. coconut() gives every input dataset a name ("dataset_1", "dataset_2").
+        # 2. gse1 has no controls, so it is missing from the control list.
+        # 3. In by-study mode each dataset is one batch, and batches are numbered by list
+        #    position. A missing dataset would shift later batches, so coconut() stops early.
+        # 4. The message names the dataset. Before, the user saw a confusing ComBat error
+        #    ("At least 2 batches are required") or, worse, a silent mis-pairing.
+        with pytest.raises(ValueError, match="Dataset 'dataset_2' has < 1 control"):
             coconut([gse0, gse1], control_0_col="control_disease")
 
 

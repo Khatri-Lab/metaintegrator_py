@@ -2,7 +2,7 @@ import os
 import pprint
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 # Cross-package import: resolved via src/ on sys.path (see src/__init__.py bootstrap)
 from utils.convert_floats_to_ints import run_convert_floats_to_int64
 
-from .coconut import CombatControlOutput, coconut, combine_coco_output
+from .coconut import DATASET_NAME_KEY, CombatControlOutput, coconut, combine_coco_output
 
 # ------------------------------------------------------------------
 # Global debug flag & helper
@@ -31,12 +31,16 @@ def load_gse_data_from_csv_directory(
     genes_pattern: str = "_genes.csv",
     pheno_pattern: str = "_pheno.csv",
     object_prefix: str = "GSEs.test_",
-) -> List[Dict[str, pd.DataFrame]]:
+) -> List[Dict[str, Any]]:
     """
     Load GSE datasets from CSV files in a directory for use with COCONUT algorithm.
 
     This function reconstructs the nested GSE data structure from CSV files that were exported from R
     using the convert_nested_rdata.R script.
+
+    Each dataset also gets a 'name', taken from its file name.
+    COCONUT copies the name to its output blocks, which lets
+    `combine_coco_output()` pair the control and disease blocks of one dataset.
 
     Args:
         csv_directory: Path to directory containing CSV files
@@ -48,6 +52,8 @@ def load_gse_data_from_csv_directory(
         List of dictionaries, each containing:
             - 'genes': DataFrame with genes as rows, samples as columns
             - 'pheno': DataFrame with sample metadata
+            - 'name': Dataset name taken from the file name. It is left out
+              if any dataset name would be blank, because names must be all or none.
 
     Example:
         >>> gse_data = load_gse_data_from_csv_directory("data_txt/")
@@ -75,17 +81,22 @@ def load_gse_data_from_csv_directory(
     datasets = _group_files_by_dataset(csv_files, genes_pattern, pheno_pattern, object_prefix)
 
     # Load each dataset
-    gse_list = []
+    gse_list: List[Dict[str, Any]] = []
     for dataset_name, file_info in datasets.items():
         debug_msg(f"\n📊 Loading dataset: {dataset_name}")
 
         try:
-            gse_dict = _load_single_dataset(dataset_name, file_info)
+            gse_dict: Dict[str, Any] = dict(_load_single_dataset(dataset_name, file_info))
             gse_list.append(gse_dict)
 
         except Exception as e:
             print(f"❌ Failed to load {dataset_name}: {e}")
             raise
+
+    # Dataset names are all or none, so skip them if any name is blank.
+    if all(name.strip() for name in datasets):
+        for dataset_name, gse_dict in zip(datasets, gse_list):
+            gse_dict[DATASET_NAME_KEY] = dataset_name
 
     debug_msg(f"\n✅ Successfully loaded {len(gse_list)} datasets")
     _print_dataset_summary(gse_list)

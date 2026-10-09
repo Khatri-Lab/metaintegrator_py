@@ -1,11 +1,17 @@
 import warnings
 from functools import reduce
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TypedDict, Union
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from scipy import stats
+
+# Key that names a dataset.
+# Callers may set it on each input dataset passed to `coconut()`.
+# `coconut()` copies it onto every control and disease block it returns.
+# `combine_coco_output()` uses it to pair the blocks of one dataset.
+DATASET_NAME_KEY = "name"
 
 
 class BayesParams(TypedDict):
@@ -19,10 +25,27 @@ class BayesParams(TypedDict):
 
 
 # Use functional TypedDict syntax to handle reserved keyword 'class'
-GeneExpressionData = TypedDict(
-    "GeneExpressionData",
+_GeneExpressionDataRequired = TypedDict(
+    "_GeneExpressionDataRequired",
     {"genes": pd.DataFrame, "pheno": pd.DataFrame, "class_labels": NDArray[float]},
 )
+
+
+class GeneExpressionData(_GeneExpressionDataRequired, total=False):
+    """One dataset, or one block (controls or disease samples) of a dataset.
+
+    The keys `genes`, `pheno` and `class_labels` are always present in the
+    blocks that `coconut()` returns.
+
+    Attributes:
+        name: Optional dataset name.
+            Set it on the input datasets to get readable error messages.
+            `coconut()` adds it to every block it returns.
+            If you leave it out, `coconut()` names the datasets
+            `dataset_1`, `dataset_2` and so on, in input order.
+    """
+
+    name: str
 
 
 class CombatOutput(TypedDict):
@@ -57,6 +80,92 @@ class CombinedCoconutOutput(TypedDict):
 
 
 CONTROL_LABEL = 0
+
+
+def _default_dataset_name(position: int) -> str:
+    """Return the automatic name of the dataset at a zero-based input position.
+
+    Args:
+        position: Zero-based position of the dataset in the input list.
+
+    Returns:
+        A name such as `dataset_1` for position 0.
+    """
+    return f"dataset_{position + 1}"
+
+
+def _resolve_dataset_names(datasets: Sequence[Dict[str, Any]]) -> List[str]:
+    """Return one unique name per input dataset.
+
+    Names come from the optional `name` key of each dataset.
+    Either every dataset has a name, or none has one.
+    When none has one, the names are `dataset_1`, `dataset_2` and so on.
+    The automatic names follow the input order, so they stay stable
+    even when a dataset later drops out of the control or disease list.
+
+    Args:
+        datasets: The input datasets, as passed to `coconut()`.
+
+    Returns:
+        A list of names, in the same order as `datasets`.
+
+    Raises:
+        ValueError: If only some datasets have a name, if a name is not
+            a non-empty string, or if two datasets share a name.
+    """
+    raw_names = [ds.get(DATASET_NAME_KEY) if isinstance(ds, dict) else None for ds in datasets]
+    if all(name is None for name in raw_names):
+        return [_default_dataset_name(i) for i in range(len(datasets))]
+
+    invalid = [
+        i for i, name in enumerate(raw_names) if not isinstance(name, str) or not name.strip()
+    ]
+    if invalid:
+        raise ValueError(
+            f"Either give every dataset a non-empty string '{DATASET_NAME_KEY}', or give none. "
+            f"Missing or invalid name at input position(s): {invalid}."
+        )
+
+    duplicates = sorted({name for name in raw_names if raw_names.count(name) > 1})
+    if duplicates:
+        raise ValueError(f"Dataset names must be unique. Duplicated: {duplicates}.")
+    return [str(name) for name in raw_names]
+
+
+def _check_every_dataset_has_block(
+    dataset_names: Sequence[str], blocks: Sequence[Dict[str, Any]], group: str
+) -> None:
+    """Fail if a dataset has no samples in the given group.
+
+    This check is for by-study mode (`by_platform=False`).
+    In that mode, ComBat treats each dataset as one batch.
+    The batches are numbered by position, separately for the control list
+    and the disease list.
+    A dataset that is missing from one list would shift every later batch,
+    so the parameters of one dataset could be applied to another.
+    R `COCONUT()` stops in the same situation for datasets without controls.
+
+    Args:
+        dataset_names: Names of all input datasets, in input order.
+        blocks: The blocks of one group, as returned by `_get_data_subset()`.
+        group: Either `"control"` or `"disease"`. Used in the message.
+
+    Raises:
+        ValueError: If a dataset has no block in `blocks`.
+    """
+    present = {block[DATASET_NAME_KEY] for block in blocks}
+    missing = [name for name in dataset_names if name not in present]
+    if not missing:
+        return
+
+    listed = ", ".join(repr(name) for name in missing)
+    subject = f"Dataset {listed} has" if len(missing) == 1 else f"Datasets {listed} have"
+    raise ValueError(
+        f"{subject} < 1 {group} sample. "
+        f"With by_platform=False, every dataset needs at least one {group} sample, "
+        "because each dataset is one batch. "
+        "Remove the dataset from the input, or use by_platform=True."
+    )
 
 
 def _get_common_genes(datasets: List[Dict[str, pd.DataFrame]]) -> List[str]:
@@ -109,6 +218,7 @@ def _get_data_subset(
     filter_col: str,
     filter_val: Optional[str] = None,
     is_control: bool = True,
+    names: Optional[Sequence[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Extract subset of data based on control/disease classification from a list of GSE‑style dictionaries.
@@ -129,24 +239,39 @@ def _get_data_subset(
         is_control : bool, default True
             If True the function keeps samples where pheno[filter_col] == CONTROL_LABEL.  If False it keeps either all
             non‑control samples or, if filter_val is supplied, samples where pheno[filter_val] is not null.
+        names : list[str], optional
+            One name per input dataset, in input order. If omitted, the names are taken from the optional
+            "name" key of each dataset, or generated as "dataset_1", "dataset_2" and so on.
 
     Returns:
         list[dict[str, Any]]
-            One dictionary per input dataset containing:
+            One dictionary per input dataset that has at least one selected sample. A dataset without
+            selected samples is left out of the list. Each dictionary contains:
             - "genes" : pandas.DataFrame – sub‑matrix of genes (rows) × selected samples (columns).
             - "pheno" : pandas.DataFrame – phenotype data for the selected samples.
             - "class_labels" : numpy.ndarray – numeric class labels for each sample. For controls
                 the label is 0; for disease samples the label comes from the disease column (if present) or is inferred
                 as 1 by default.
+            - "name" : str – name of the dataset the block came from. This lets
+                `combine_coco_output()` pair the control and disease blocks of one dataset,
+                even when other datasets are left out of one of the two lists.
 
     Raises:
         ValueError
             - If a dataset does not contain the required "genes" or "pheno" keys.
             - If filter_col is missing from the phenotype data.
             - If filter_val is supplied but the corresponding column does not exist.
+            - If names is given and its length differs from the number of datasets.
+            - If the dataset names are only partly given, blank, or duplicated.
     """
+    dataset_names = list(names) if names is not None else _resolve_dataset_names(datasets)
+    if len(dataset_names) != len(datasets):
+        raise ValueError(
+            f"Got {len(dataset_names)} names for {len(datasets)} datasets. Give one name per dataset."
+        )
+
     subsets = []
-    for gse in datasets:
+    for position, gse in enumerate(datasets):
         # Validate input data structure
         if "genes" not in gse or "pheno" not in gse:
             raise ValueError("Each dataset must contain 'genes' and 'pheno' DataFrames")
@@ -185,6 +310,7 @@ def _get_data_subset(
                 "pheno": pheno_df.loc[available_samples].copy(),
                 "genes": subset_genes,
                 "class_labels": class_vals[: len(available_samples)].astype(float),
+                DATASET_NAME_KEY: dataset_names[position],
             }
         )
     return subsets
@@ -278,7 +404,12 @@ def coconut(
     accidentally removing the biological signal you are trying to study.
 
     Args:
-        gses: List of gene expression datasets, each containing 'genes' and 'pheno' DataFrames
+        gses: List of gene expression datasets, each containing 'genes' and 'pheno' DataFrames.
+            Each dataset may also have a 'name' string.
+            Names must be unique, and either all datasets have one or none has one.
+            If no dataset has a name, they are called 'dataset_1', 'dataset_2' and so on.
+            The name is copied to every block in the result, so that
+            `combine_coco_output()` can pair the control and disease blocks of one dataset.
         control_0_col: Column name indicating control samples (value 0 = control)
         disease_col: Column name for disease samples. If None, uses non-control samples
         by_platform: Whether to treat platforms as separate batches
@@ -294,19 +425,34 @@ def coconut(
             - rawDiseaseList: Original unnormalized disease samples
             - controlList: Normalized control samples and parameters
 
+        A dataset that has no control samples is missing from the control list.
+        A dataset that has no disease samples is missing from the disease list.
+        This can only happen when `by_platform=True`.
+        Every block carries the 'name' of its dataset, so the two lists can be paired safely.
+
     Raises:
-        ValueError: If platform_col is required but not provided, or if datasets
-                   have insufficient control samples
+        ValueError: If platform_col is required but not provided, if datasets
+                   have insufficient control samples, or if the dataset names are invalid.
+                   When by_platform=False, it is also raised if any dataset has
+                   no control samples or no disease samples.
     """
 
     # Main COCONUT algorithm steps
+    # 0. Dataset names. They travel with every block, so the lists can be paired later.
+    dataset_names = _resolve_dataset_names(gses)
+
     # 1. Gene alignment
     common_genes = _get_common_genes(gses)
     if not common_genes:
         raise ValueError("No common genes found across datasets")
 
     # 2. Isolate control samples
-    control_datasets = _get_data_subset(gses, common_genes, control_0_col, is_control=True)
+    control_datasets = _get_data_subset(
+        gses, common_genes, control_0_col, is_control=True, names=dataset_names
+    )
+    if not by_platform:
+        # By-study batches are numbered by list position, so no dataset may be missing.
+        _check_every_dataset_has_block(dataset_names, control_datasets, "control")
 
     # 3. Validation
     _validate_config(gses, control_datasets, by_platform, platform_col)
@@ -326,8 +472,15 @@ def coconut(
 
     # 5. Isolate disease samples
     disease_datasets = _get_data_subset(
-        gses, common_genes, control_0_col, filter_val=disease_col, is_control=False
+        gses,
+        common_genes,
+        control_0_col,
+        filter_val=disease_col,
+        is_control=False,
+        names=dataset_names,
     )
+    if not by_platform:
+        _check_every_dataset_has_block(dataset_names, disease_datasets, "disease")
 
     # 6. Apply normalization (the "Have" phase)
     disease_datasets_combat = _combat_custom(
@@ -347,27 +500,214 @@ def coconut(
     }
 
 
-def combine_coco_output(coconut_out: CoconutOutput) -> CombinedCoconutOutput:
+def _block_name(block: Dict[str, Any]) -> Optional[str]:
+    """Return the dataset name stored in a block, or None if the block has none.
+
+    Args:
+        block: One control or disease block from `coconut()`.
+
+    Returns:
+        The name, or None if the block has no `name` key.
+
+    Raises:
+        ValueError: If the block has a `name` that is not a non-empty string.
+    """
+    name = block.get(DATASET_NAME_KEY)
+    if name is None:
+        return None
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError(f"A block has an invalid dataset name: {name!r}.")
+    return name
+
+
+def _raise_on_duplicate_names(names: Sequence[str], group: str) -> None:
+    """Fail if a dataset name appears twice in one list of blocks.
+
+    Args:
+        names: Dataset names of one list, in list order.
+        group: Either `"control"` or `"disease"`. Used in the message.
+
+    Raises:
+        ValueError: If a name appears more than once.
+    """
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    if duplicates:
+        raise ValueError(
+            f"The {group} list has more than one block for dataset(s): {duplicates}. "
+            "Each dataset may have at most one block per list."
+        )
+
+
+def _merge_dataset_order(control_names: Sequence[str], disease_names: Sequence[str]) -> List[str]:
+    """Return every dataset name once, in the order the datasets were given to `coconut()`.
+
+    `coconut()` writes both lists in input order.
+    A dataset can be missing from one list, so neither list alone is complete.
+    The control order is the base.
+    A name that only the disease list has goes right after the name
+    that comes before it in the disease list.
+    If it is first in the disease list, it goes right before the first later
+    name that is already placed, or at the end if there is none.
+
+    Args:
+        control_names: Dataset names of the control list, in list order.
+        disease_names: Dataset names of the disease list, in list order.
+
+    Returns:
+        All distinct names, without repeats.
+    """
+    order = list(control_names)
+    for position, name in enumerate(disease_names):
+        if name in order:
+            continue
+        if position > 0:
+            # The previous disease name is already placed, by induction.
+            order.insert(order.index(disease_names[position - 1]) + 1, name)
+            continue
+        following = next((later for later in disease_names[1:] if later in order), None)
+        if following is None:
+            order.append(name)
+        else:
+            order.insert(order.index(following), name)
+    return order
+
+
+def _quote_names(names: Sequence[str]) -> str:
+    """Format dataset names for a message, for example `'A', 'B'`."""
+    return ", ".join(repr(name) for name in names)
+
+
+def _pair_blocks_by_name(
+    control_list: Sequence[Dict[str, Any]],
+    disease_list: Sequence[Dict[str, Any]],
+    strict: bool = False,
+) -> List[Tuple[str, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]]:
+    """Pair the control block and the disease block of each dataset.
+
+    Blocks are matched by their `name`, never by list position.
+    The lists may be in different orders, and either list may lack datasets.
+
+    Blocks without any `name` are accepted only for output that was made
+    by hand or by an older version.
+    In that case the two lists must have the same length, and are paired by position.
+
+    Args:
+        control_list: The control blocks, from `controlList["GSEs"]`.
+        disease_list: The disease blocks, from `COCONUTList`.
+        strict: If True, a dataset that is in only one list is an error.
+            If False, it is kept and a `UserWarning` names it.
+
+    Returns:
+        A list of `(name, control_block, disease_block)`.
+        One of the two blocks is None for a dataset that is in only one list.
+
+    Raises:
+        ValueError: If only some blocks have a name, if a list repeats a name,
+            if unnamed lists differ in length, or if `strict` is True and
+            a dataset is in only one list.
+    """
+    control_names = [_block_name(block) for block in control_list]
+    disease_names = [_block_name(block) for block in disease_list]
+
+    if all(name is None for name in control_names + disease_names):
+        if len(control_list) != len(disease_list):
+            raise ValueError(
+                f"The control list has {len(control_list)} blocks and the disease list has "
+                f"{len(disease_list)}, and the blocks have no '{DATASET_NAME_KEY}'. "
+                "They cannot be paired safely by position. "
+                "Use the output of `coconut()`, which names every block."
+            )
+        return [
+            (_default_dataset_name(i), control, disease)
+            for i, (control, disease) in enumerate(zip(control_list, disease_list))
+        ]
+
+    if any(name is None for name in control_names + disease_names):
+        raise ValueError(
+            f"Some blocks have a '{DATASET_NAME_KEY}' and some do not. "
+            "Use the output of `coconut()`, which names every block."
+        )
+
+    named_controls = [str(name) for name in control_names]
+    named_diseases = [str(name) for name in disease_names]
+    _raise_on_duplicate_names(named_controls, "control")
+    _raise_on_duplicate_names(named_diseases, "disease")
+
+    control_by_name = dict(zip(named_controls, control_list))
+    disease_by_name = dict(zip(named_diseases, disease_list))
+    order = _merge_dataset_order(named_controls, named_diseases)
+
+    control_only = [name for name in order if name not in disease_by_name]
+    disease_only = [name for name in order if name not in control_by_name]
+    if control_only or disease_only:
+        details = []
+        if control_only:
+            details.append(f"Controls only: {_quote_names(control_only)}.")
+        if disease_only:
+            details.append(f"Disease samples only: {_quote_names(disease_only)}.")
+        message = "Some datasets are in only one of the two lists. " + " ".join(details)
+        if strict:
+            raise ValueError(message + " strict=True does not allow this.")
+        warnings.warn(
+            message + " Their samples are kept, with the class label of the side they have.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+    return [(name, control_by_name.get(name), disease_by_name.get(name)) for name in order]
+
+
+def combine_coco_output(
+    coconut_out: CoconutOutput, *, strict: bool = False
+) -> CombinedCoconutOutput:
     """
     Merge COCONUT-normalized data into a single consolidated object.
     This function takes the output from the COCONUT algorithm and combines all
     the individual datasets into unified matrices for downstream analysis.
+
+    The control block and the disease block of a dataset are paired by the
+    dataset name, never by list position.
+    `coconut()` puts the name on every block.
+    The output lists the datasets in input order, and within a dataset
+    the controls come first, then the disease samples.
+
+    A dataset can be in only one list.
+    For example, with `by_platform=True` a dataset without controls borrows
+    the controls of its platform.
+    By default such a dataset is kept, and a `UserWarning` names it.
+    Its samples get the class label of the side they have.
+    No sample is dropped.
+
     Args:
         coconut_out: Output dictionary from the coconut() function
+        strict: If True, raise a ValueError when a dataset is in only one list,
+            instead of keeping it with a warning.
+
     Returns:
         Dictionary containing:
             - genes: Combined gene expression matrix (all studies)
             - pheno: Combined phenotype metadata (common columns only)
             - class_cntl0_dis1: Combined classification vector (0=control, 1=disease)
+
+    Raises:
+        ValueError: If there are no datasets to combine, if the blocks cannot be paired
+            by name (see `_pair_blocks_by_name()`), or if `strict` is True and
+            a dataset is in only one list.
+
+    Warns:
+        UserWarning: If a dataset is in only one list and `strict` is False.
     """
     # 1. Data extraction
     disease_list = coconut_out["COCONUTList"]
     control_list = coconut_out["controlList"]["GSEs"]
 
-    # 2. Intra-dataset merging
-    processed_datasets = []
-    for control_data, disease_data in zip(control_list, disease_list):
-        processed_datasets.append(_process_dataset_pair(control_data, disease_data))
+    # 2. Intra-dataset merging, paired by dataset name
+    pairs = _pair_blocks_by_name(control_list, disease_list, strict=strict)
+    if not pairs:
+        raise ValueError("coconut_out has no datasets to combine.")
+    processed_datasets = [
+        _process_dataset_pair(control_data, disease_data) for _, control_data, disease_data in pairs
+    ]
 
     # 3. Global aggregation
     genes_mat = pd.concat([ds["genes"] for ds in processed_datasets], axis=1)
@@ -387,9 +727,15 @@ def combine_coco_output(coconut_out: CoconutOutput) -> CombinedCoconutOutput:
     }
 
 
-def _process_dataset_pair(control_data: dict, disease_data: dict) -> dict:
+def _process_dataset_pair(control_data: Optional[dict], disease_data: Optional[dict]) -> dict:
     """
     Internal helper to merge control and disease components of a single dataset.
+
+    One of the two inputs may be None, when the dataset has samples on one side only.
+    The dataset is then returned as it is, with the label of the side it has
+    (0.0 for controls only, 1.0 for disease only).
+    All of its phenotype columns are kept here.
+    `combine_coco_output()` later keeps only the columns common to all datasets.
 
     The function expects each input dictionary to contain at least the keys "genes" (a pandas.DataFrame with
     genes in rows and samples in columns) and "pheno" (a pandas.DataFrame whose index corresponds to the sample
@@ -419,6 +765,19 @@ def _process_dataset_pair(control_data: dict, disease_data: dict) -> dict:
                             samples and 1.0 for disease samples.
 
     """
+
+    if control_data is None and disease_data is None:
+        raise ValueError("At least one of control_data and disease_data is required.")
+
+    if control_data is None or disease_data is None:
+        # Samples on one side only: nothing to merge, just label them.
+        one_sided = disease_data if control_data is None else control_data
+        label = 1.0 if control_data is None else 0.0
+        return {
+            "genes": one_sided["genes"],
+            "pheno": one_sided["pheno"],
+            "class_labels": np.full(one_sided["genes"].shape[1], label, dtype=float),
+        }
 
     # Combine genes (column-wise concatenation)
     # Gene identifiers (row indices) are assumed to be identical and aligned between the two input matrices.

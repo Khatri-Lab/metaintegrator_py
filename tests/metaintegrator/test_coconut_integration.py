@@ -128,6 +128,16 @@ class TestCOCONUTIntegrator:
         assert "rawDiseaseList" in result
         assert "controlList" in result
 
+    def test_coconut_meta_integrator_names_blocks_after_datasets(self, sample_meta_object):
+        """Every COCONUT block carries the name of its dataset (the key in originalData)."""
+        result = COCONUTIntegrator().coconut_meta_integrator(sample_meta_object)
+
+        assert [block["name"] for block in result["controlList"]["GSEs"]] == [
+            "dataset1",
+            "dataset2",
+        ]
+        assert [block["name"] for block in result["COCONUTList"]] == ["dataset1", "dataset2"]
+
     def test_gene_level_meta_success(self, sample_meta_object):
         """Test successful gene_level_meta conversion."""
         integrator = COCONUTIntegrator()

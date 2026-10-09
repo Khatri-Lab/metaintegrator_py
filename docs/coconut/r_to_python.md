@@ -166,6 +166,21 @@ print(f"Correlation: {correlation:.6f}")  # Should be >0.999
 | *(no equivalent)* | `runner()` ⭐ |
 | *(no equivalent)* | `load_gse_data_from_csv_directory()` ⭐ |
 
+**Differences you may notice.**
+
+R `combineCOCOoutput()` pairs the control and disease lists by position.
+Python `combine_coco_output()` pairs them by dataset name.
+R keeps the names of the input list.
+A Python input is a plain list, so `coconut()` reads an optional `'name'` key from each dataset.
+If you give no names, it calls the datasets `dataset_1`, `dataset_2` and so on.
+
+With `by_platform=True`, a dataset without controls can be in the disease list only.
+Python keeps its samples and warns.
+By position, as in R, one such dataset shifts every later pair.
+
+With `by_platform=False`, both R and Python stop when a dataset has no controls.
+Python also stops when a dataset has no disease samples, with a message that names the dataset.
+
 ### Data Access
 
 | Operation | R | Python |

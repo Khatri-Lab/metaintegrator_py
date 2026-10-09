@@ -431,6 +431,12 @@ class TestLoadGseDataFromCsvDirectory:
         assert all("genes" in gse for gse in result)
         assert all("pheno" in gse for gse in result)
 
+    def test_load_adds_dataset_names_from_file_names(self, valid_csv_files, temp_csv_directory):
+        """Each loaded dataset carries its name, so COCONUT blocks can be paired by name."""
+        result = load_gse_data_from_csv_directory(temp_csv_directory)
+
+        assert sorted(gse["name"] for gse in result) == ["GSE1", "GSE2"]
+
     def test_load_nonexistent_directory(self):
         """Test error when directory doesn't exist."""
         with pytest.raises(FileNotFoundError, match="Directory not found"):

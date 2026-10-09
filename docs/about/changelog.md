@@ -51,6 +51,13 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
 - `FilterResult.is_leave_one_out` now reports whether the leave-one-out rule
   was actually applied. It is `False` when leave-one-out results are missing
   or there are only two datasets, as in R.
+- **`coconut()` stops early in by-study mode (`by_platform=False`) if a dataset
+  has no control samples or no disease samples.** The message names the dataset,
+  for example `Dataset 'GSE123' has < 1 control sample`. R `COCONUT()` also
+  stops when a dataset has no controls. Before, the dataset was skipped, and
+  the run ended in a confusing ComBat error, or, when two different datasets
+  were missing, ran with the wrong batch parameters. With `by_platform=True`
+  nothing changes.
 
 ### Added
 - `SignatureScoringEngine.DEFAULT_METHOD` and `SignatureScoringEngine.METHODS`,
@@ -62,8 +69,23 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
   (`tests/parity/test_scoring_parity.py`).
 - Automated R parity tests (`pytest -m parity`) that replay R golden sets.
   See *Contributing > R Parity Testing*.
+- **Dataset names in COCONUT.** Each dataset passed to `coconut()` may have an
+  optional `'name'`. Without names, the datasets are called `dataset_1`,
+  `dataset_2` and so on. The name is copied to every control and disease block
+  in the result. `load_gse_data_from_csv_directory()` and
+  `COCONUTIntegrator` now set it from the file name or the dataset key.
+- `combine_coco_output(..., strict=False)`. With `strict=True`, a dataset that
+  is in only one of the two lists raises a `ValueError`.
 
 ### Fixed
+- **`combine_coco_output()` pairs control and disease blocks by dataset name.**
+  Before, it paired the two lists by position. A dataset with no controls
+  (possible with `by_platform=True`) is missing from the control list, so every
+  later pair shifted. Samples were dropped and mislabeled without any message.
+  On a three-dataset example, 17 of 21 samples came back. Now all 21 do.
+  A dataset that is in only one list is kept, and a `UserWarning` names it.
+  Output with no names, for example built by hand, is still paired by position
+  if both lists have the same length. Otherwise a `ValueError` is raised.
 - Probes with no usable effect size no longer turn a multi-probe gene's
   pooled effect into NaN (R drops them first).
 - When a platform table has no gene-symbol column, probe IDs used as keys

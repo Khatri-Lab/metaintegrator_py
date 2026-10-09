@@ -48,9 +48,11 @@ class COCONUTIntegrator:
         gene_level_data_dict = self.gene_level_meta(meta_object)
 
         # Convert from dict-of-dicts to list-of-dicts format expected by coconut
-        # coconut expects: List[Dict[str, pd.DataFrame]] with "genes" and "pheno" keys
+        # coconut expects a list of dicts with "genes" and "pheno" DataFrames.
+        # The optional "name" lets coconut and combine_coco_output() pair the control
+        # and disease blocks of one dataset by name instead of by list position.
         gses_list = [
-            {"genes": dataset["genes"], "pheno": dataset["pheno"]}
+            {"genes": dataset["genes"], "pheno": dataset["pheno"], "name": str(dataset_name)}
             for dataset_name, dataset in gene_level_data_dict.items()
         ]
 

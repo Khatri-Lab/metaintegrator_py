@@ -233,7 +233,13 @@ def coconut(
 **Parameters:**
 
 - **gses** *(list[dict], required)*  
-  List of GSE dictionaries, each containing `'genes'` and `'pheno'` DataFrames
+  List of GSE dictionaries, each containing `'genes'` and `'pheno'` DataFrames.
+  Each dictionary may also have a `'name'` string.
+  Names must be unique, and either every dataset has one or none has one.
+  Without names, the datasets are called `'dataset_1'`, `'dataset_2'` and so on,
+  in input order.
+  The name is copied to every block in the result.
+  `combine_coco_output()` uses it to pair the control and disease blocks of one dataset.
 
 - **control_0_col** *(str, required)*  
   Column name in pheno indicating controls (0) vs disease (1)
@@ -267,7 +273,8 @@ def coconut(
         {
             'genes': pd.DataFrame,
             'pheno': pd.DataFrame,
-            'class_labels': np.ndarray
+            'class_labels': np.ndarray,
+            'name': str              # Dataset name (given, or 'dataset_1', ...)
         },
         # ... more datasets
     ],
@@ -315,8 +322,19 @@ result = coconut(
 
 **Raises:**
 
-- `ValueError` - Missing required columns, insufficient data, or invalid parameters
+- `ValueError` - Missing required columns, insufficient data, invalid parameters, or invalid dataset names
+- `ValueError` - With `by_platform=False`, a dataset has no control samples or no disease samples.
+  The message names the dataset, for example `Dataset 'GSE123' has < 1 control sample`.
+  R `COCONUT()` also stops when a dataset has no controls.
+  With `by_platform=True` such a dataset is allowed, because it can borrow the controls of its platform.
 - `RuntimeError` - Convergence failure or numerical issues
+
+**Which datasets are in which list.**
+A dataset with no control samples is missing from `controlList['GSEs']`.
+A dataset with no disease samples is missing from `COCONUTList`.
+This can only happen with `by_platform=True`.
+Do not pair the two lists by position.
+Pair them by the `'name'` of each block, or let `combine_coco_output()` do it.
 
 ---
 
@@ -326,7 +344,9 @@ Combine COCONUT results into a single unified dataset.
 
 ```python
 def combine_coco_output(
-    coconut_out: CoconutOutput
+    coconut_out: CoconutOutput,
+    *,
+    strict: bool = False,
 ) -> CombinedCoconutOutput
 ```
 
@@ -335,6 +355,28 @@ def combine_coco_output(
 - **coconut_out** *(dict, required)*
   Output from `coconut()` function (call positionally: `combine_coco_output(result)`: the
   parameter name differs slightly from `coconut()`'s own `gses` naming)
+
+- **strict** *(bool, default: False)*
+  What to do with a dataset that is in only one of the two lists.
+  With `False`, the dataset is kept and a `UserWarning` names it.
+  With `True`, a `ValueError` is raised instead.
+
+**How the blocks are paired.**
+The control block and the disease block of a dataset are paired by their `'name'`.
+The order of the two lists does not matter.
+The output lists the datasets in input order.
+Within a dataset, the controls come first, then the disease samples.
+
+A dataset can be in only one list.
+For example, with `by_platform=True` a dataset without controls borrows the controls of its platform.
+By default such a dataset is kept, and its samples get the class label of the side they have.
+No sample is dropped.
+Before version 0.12.0 the lists were paired by position.
+One missing dataset then shifted every later pair, and samples were lost without any message.
+
+Output that has no names, for example output built by hand, is still accepted.
+Both lists must then have the same length, and are paired by position.
+Lists of different length raise a `ValueError`.
 
 **Returns:**
 
@@ -345,6 +387,17 @@ def combine_coco_output(
     'class_cntl0_dis1': np.ndarray     # Binary labels (0=control, 1=disease)
 }
 ```
+
+**Raises:**
+
+- `ValueError` - There are no datasets to combine.
+- `ValueError` - Only some blocks have a `'name'`, a list has two blocks with the same name,
+  or unnamed lists differ in length.
+- `ValueError` - `strict=True` and a dataset is in only one list.
+
+**Warns:**
+
+- `UserWarning` - A dataset is in only one list and `strict=False`.
 
 **Example:**
 

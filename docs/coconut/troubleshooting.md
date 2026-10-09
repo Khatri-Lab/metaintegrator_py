@@ -256,10 +256,14 @@ for gse in gse_data:
 
 **Full Error:**
 ```
-ValueError: Dataset at index 0 has < 1 control
+ValueError: Dataset 'GSE123' has < 1 control sample. With by_platform=False, every dataset needs at least one control sample, because each dataset is one batch. Remove the dataset from the input, or use by_platform=True.
 ```
 
 **Cause:** No samples marked as controls (value 0) in the specified column.
+
+The same message appears with `disease` in place of `control` when a dataset has no disease samples.
+The dataset name is the `'name'` you gave it, or `dataset_1`, `dataset_2` and so on, in input order.
+With `by_platform=True` this check does not apply, because a dataset can borrow the controls of its platform.
 
 **Solutions:**
 
@@ -783,6 +787,19 @@ for i, gse in enumerate(gse_data):
     
 print(f"\nCombined pheno columns: {list(combined['pheno'].columns)}")
 ```
+
+4. **A dataset is in only one list (by platform):**
+```python
+# With by_platform=True, a dataset without controls is missing from the control list.
+# combine_coco_output() keeps its samples and warns, for example:
+#   UserWarning: Some datasets are in only one of the two lists.
+#   Disease samples only: 'GSE123'.
+# Use strict=True if you want an error instead:
+combined = combine_coco_output(result, strict=True)
+```
+Versions before 0.12.0 paired the control and disease lists by position.
+One such dataset then shifted every later pair, and the output silently lost samples.
+Upgrade to 0.12.0 or later.
 
 ---
 
