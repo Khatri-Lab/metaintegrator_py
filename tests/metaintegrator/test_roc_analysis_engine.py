@@ -542,10 +542,12 @@ class TestSignatureScoringEngine:
         assert isinstance(scoring_engine, SignatureScoringEngine)
 
     def test_calculate_scores_basic(self, scoring_engine, expression_data):
-        """Test basic signature score calculation."""
+        """The legacy mean_difference method is a plain mean difference."""
         expr_matrix, gene_keys, pos_genes, neg_genes = expression_data
 
-        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, pos_genes, neg_genes)
+        scores = scoring_engine.calculate_scores(
+            expr_matrix, gene_keys, pos_genes, neg_genes, method="mean_difference"
+        )
 
         # Check output format
         assert isinstance(scores, np.ndarray)
@@ -598,10 +600,12 @@ class TestSignatureScoringEngine:
         np.testing.assert_array_equal(scores, np.zeros(expr_matrix.shape[1]))
 
     def test_calculate_scores_only_positive_genes(self, scoring_engine, expression_data):
-        """Test score calculation with only positive genes."""
+        """Legacy method with only positive genes."""
         expr_matrix, gene_keys, pos_genes, _ = expression_data
 
-        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, pos_genes, [])
+        scores = scoring_engine.calculate_scores(
+            expr_matrix, gene_keys, pos_genes, [], method="mean_difference"
+        )
 
         # Should be positive gene means (no negative subtraction)
         expected_scores = []
@@ -612,10 +616,12 @@ class TestSignatureScoringEngine:
         np.testing.assert_array_almost_equal(scores, expected_scores)
 
     def test_calculate_scores_only_negative_genes(self, scoring_engine, expression_data):
-        """Test score calculation with only negative genes."""
+        """Legacy method with only negative genes."""
         expr_matrix, gene_keys, _, neg_genes = expression_data
 
-        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, [], neg_genes)
+        scores = scoring_engine.calculate_scores(
+            expr_matrix, gene_keys, [], neg_genes, method="mean_difference"
+        )
 
         # Should be negative of negative gene means
         expected_scores = []
@@ -656,7 +662,9 @@ class TestSignatureScoringEngine:
         pos_genes = ["geneA"]  # Should use both probe1 and probe2
         neg_genes = ["geneB"]
 
-        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, pos_genes, neg_genes)
+        scores = scoring_engine.calculate_scores(
+            expr_matrix, gene_keys, pos_genes, neg_genes, method="mean_difference"
+        )
 
         # Calculate expected: mean of geneA probes - mean of geneB probes
         expected_scores = []
@@ -1965,10 +1973,16 @@ class TestEdgeCases:
         expr_matrix = pd.DataFrame({"sample1": [5.0]}, index=["gene1"])
         gene_keys = ["gene1"]
 
-        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, ["gene1"], [])
+        # The legacy method has a closed form for one sample. The R-parity
+        # default z-scores, which is undefined for a single sample.
+        scores = scoring_engine.calculate_scores(
+            expr_matrix, gene_keys, ["gene1"], [], method="mean_difference"
+        )
         assert scores[0] == 5.0  # Only positive gene
 
-        scores = scoring_engine.calculate_scores(expr_matrix, gene_keys, [], ["gene1"])
+        scores = scoring_engine.calculate_scores(
+            expr_matrix, gene_keys, [], ["gene1"], method="mean_difference"
+        )
         assert scores[0] == -5.0  # Only negative gene
 
     def test_meta_analysis_edge_cases(self):

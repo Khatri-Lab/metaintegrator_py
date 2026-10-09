@@ -371,54 +371,99 @@ class ROCAnalysisEngine:
 
 
 # ============================================================================
-# Gene Signature Scoring Engine
+# Signature scoring
 # ============================================================================
+
+#: R-parity scoring. Matches R MetaIntegrator's ``calculateScore()``: shift the
+#: dataset to positive values, take the geometric mean of the positive genes
+#: minus the geometric mean of the negative genes, then z-score per dataset.
+SCORING_METHOD_GEOMETRIC_MEAN_ZSCORE = "geometric_mean_zscore"
+
+#: Legacy scoring. A plain arithmetic mean of the positive genes minus the
+#: arithmetic mean of the negative genes, with no shift and no z-score. It is
+#: not used by R MetaIntegrator. It is kept only as an explicit opt-in, so old
+#: numbers can be reproduced.
+SCORING_METHOD_MEAN_DIFFERENCE = "mean_difference"
+
+#: Every method ``SignatureScoringEngine.calculate_scores()`` accepts.
+SCORING_METHODS: Tuple[str, ...] = (
+    SCORING_METHOD_GEOMETRIC_MEAN_ZSCORE,
+    SCORING_METHOD_MEAN_DIFFERENCE,
+)
+
+#: The method used when a caller does not name one.
+DEFAULT_SCORING_METHOD = SCORING_METHOD_GEOMETRIC_MEAN_ZSCORE
 
 
 class SignatureScoringEngine:
-    """
-    Engine for calculating gene signature scores from expression data.
+    """Turn a gene signature into one score per sample.
 
-    Handles various scoring methods and provides consistent interface
-    for all ROC analysis components.
+    By default this class delegates to
+    :meth:`metaintegrator.score_calculation.ScoreCalculator.calculate_score`,
+    the Python port of R's ``calculateScore()``. That is the same score R's
+    ``pooledROCPlot()``, ``multipleROCPlot()`` and ``violinPlot()`` use. So every ROC
+    curve, PRC curve and pooled AUC built on top of this class matches R.
+
+    Before version 0.12.0 the default was ``"mean_difference"``, a plain
+    arithmetic mean. That gave different AUCs from R and from the gene search.
+    It is still available, but only when a caller asks for it by name.
+
+    Attributes:
+        DEFAULT_METHOD: The method used when ``calculate_scores()`` is called
+            without ``method``. Callers can read it to record which scoring
+            produced a result. A library older than 0.12.0 has no such
+            attribute, which also tells the caller it used the legacy method.
+        METHODS: Every accepted method name.
     """
+
+    DEFAULT_METHOD: str = DEFAULT_SCORING_METHOD
+    METHODS: Tuple[str, ...] = SCORING_METHODS
 
     def __init__(self) -> None:
-        """Initialize signature scoring engine."""
-        pass
+        """Initialize the scoring engine. It holds no state."""
 
     def calculate_scores(
         self,
         expr_data: Union[pd.DataFrame, np.ndarray],
-        gene_keys: List[str],
+        gene_keys: Union[List[str], np.ndarray, pd.Series],
         pos_genes: List[str],
         neg_genes: List[str],
-        method: str = "mean_difference",
+        method: Optional[str] = None,
     ) -> np.ndarray:
-        """
-        Calculate signature scores from expression data.
+        """Calculate one signature score per sample.
 
         Args:
-            expr_data: Expression matrix (genes x samples or samples x genes)
-            gene_keys: List of gene identifiers corresponding to expression rows
-            pos_genes: Positive signature genes
-            neg_genes: Negative signature genes
-            method: Scoring method ("mean_difference", "weighted", etc.)
+            expr_data: Expression matrix with probes or genes as rows and
+                samples as columns. Pass the whole dataset, not a subset of
+                rows. The R-parity method shifts by the dataset's own
+                minimum, so a row subset can change the scores.
+            gene_keys: Gene symbol for each row of ``expr_data``. A key may
+                list several genes separated by commas, as in R.
+            pos_genes: Up-regulated signature genes.
+            neg_genes: Down-regulated signature genes.
+            method: One of :data:`SCORING_METHODS`. ``None`` (the default)
+                means :data:`DEFAULT_SCORING_METHOD`.
 
         Returns:
-            Array of scores for each sample
+            A float array with one score per sample (column). If no
+            signature gene is found in ``gene_keys``, all scores are zero
+            and a warning is raised.
 
         Raises:
-            ValueError: If method is unknown or data is invalid
+            ValueError: If ``gene_keys`` is empty, if its length does not
+                match the number of rows, or if ``method`` is unknown.
         """
-        # Input validation
+        if method is None:
+            method = self.DEFAULT_METHOD
+        if method not in SCORING_METHODS:
+            raise ValueError(
+                f"Unknown scoring method: {method}. Expected one of {SCORING_METHODS}."
+            )
+
+        gene_keys = list(gene_keys)
         if len(gene_keys) == 0:
             raise ValueError("gene_keys cannot be empty")
 
-        if method not in ["mean_difference"]:
-            raise ValueError(f"Unknown scoring method: {method}")
-
-        # Get gene indices
         pos_indices = self._get_gene_indices(gene_keys, pos_genes)
         neg_indices = self._get_gene_indices(gene_keys, neg_genes)
 
@@ -426,29 +471,68 @@ class SignatureScoringEngine:
             warnings.warn("No genes found in expression data, returning zero scores")
             return np.zeros(self._get_n_samples(expr_data))
 
-        if method == "mean_difference":
+        if method == SCORING_METHOD_MEAN_DIFFERENCE:
             return self._mean_difference_score(expr_data, pos_indices, neg_indices)
-        else:
-            raise ValueError(f"Method {method} not implemented")
+        return self._geometric_mean_zscore(expr_data, gene_keys, pos_genes, neg_genes)
+
+    def _geometric_mean_zscore(
+        self,
+        expr_data: Union[pd.DataFrame, np.ndarray],
+        gene_keys: List[str],
+        pos_genes: List[str],
+        neg_genes: List[str],
+    ) -> np.ndarray:
+        """Score with the R-parity method by calling ``ScoreCalculator``.
+
+        Args:
+            expr_data: Expression matrix, rows aligned with ``gene_keys``.
+            gene_keys: Gene symbol for each row.
+            pos_genes: Up-regulated signature genes.
+            neg_genes: Down-regulated signature genes.
+
+        Returns:
+            Z-scored signature scores, one per sample.
+
+        Raises:
+            ValueError: If ``gene_keys`` and ``expr_data`` have different
+                numbers of rows.
+        """
+        # Imported here to avoid a circular import at module load time.
+        from .score_calculation import ScoreCalculator
+
+        expr_df = expr_data if isinstance(expr_data, pd.DataFrame) else pd.DataFrame(expr_data)
+        if len(gene_keys) != expr_df.shape[0]:
+            raise ValueError(
+                f"gene_keys has {len(gene_keys)} entries but expr_data has "
+                f"{expr_df.shape[0]} rows"
+            )
+
+        dataset = {"expr": expr_df, "keys": gene_keys}
+        filter_object = {"posGeneNames": list(pos_genes), "negGeneNames": list(neg_genes)}
+        scores = ScoreCalculator.calculate_score(filter_object, dataset, suppress_messages=True)
+        return np.asarray(scores, dtype=float)
 
     def _get_gene_indices(self, gene_keys: List[str], target_genes: List[str]) -> List[int]:
-        """Get indices of target genes in gene_keys list."""
-        indices = []
-        for gene in target_genes:
-            try:
-                # Get all indices for genes that appear multiple times
-                gene_indices = [i for i, key in enumerate(gene_keys) if key == gene]
-                indices.extend(gene_indices)
-            except ValueError:
-                continue
-        return indices
+        """Return the row index of every key that exactly equals a target gene.
+
+        Exact matching mirrors R's ``calculateScore()`` check,
+        ``sum(pos.genes %in% datasetObject$keys) > 0``, which decides whether
+        any signature gene is present at all.
+
+        Args:
+            gene_keys: Gene symbol for each row.
+            target_genes: Genes to look for.
+
+        Returns:
+            Matching row indices. A gene with several rows gives several
+            indices. Genes that are not found are skipped.
+        """
+        targets = set(target_genes)
+        return [i for i, key in enumerate(gene_keys) if key in targets]
 
     def _get_n_samples(self, expr_data: Union[pd.DataFrame, np.ndarray]) -> int:
-        """Get number of samples from expression data."""
-        if isinstance(expr_data, pd.DataFrame):
-            return expr_data.shape[1]  # Assumes genes x samples
-        else:
-            return expr_data.shape[1]  # Assumes genes x samples
+        """Return the number of samples (columns) in a genes x samples matrix."""
+        return int(expr_data.shape[1])
 
     def _mean_difference_score(
         self,
@@ -456,20 +540,20 @@ class SignatureScoringEngine:
         pos_indices: List[int],
         neg_indices: List[int],
     ) -> np.ndarray:
-        """
-        Calculate mean difference score (pos_mean - neg_mean).
+        """Legacy score: mean of the positive rows minus mean of the negative rows.
+
+        This is not R's score. See :data:`SCORING_METHOD_MEAN_DIFFERENCE`.
 
         Args:
-            expr_data: Expression matrix (genes x samples)
-            pos_indices: Indices of positive genes
-            neg_indices: Indices of negative genes
+            expr_data: Expression matrix (genes x samples).
+            pos_indices: Row indices of positive genes.
+            neg_indices: Row indices of negative genes.
 
         Returns:
-            Array of scores for each sample
+            Array of scores, one per sample.
         """
         n_samples = self._get_n_samples(expr_data)
 
-        # Calculate positive gene mean
         if pos_indices:
             if isinstance(expr_data, pd.DataFrame):
                 pos_mean = expr_data.iloc[pos_indices].mean(axis=0).values
@@ -478,7 +562,6 @@ class SignatureScoringEngine:
         else:
             pos_mean = np.zeros(n_samples)
 
-        # Calculate negative gene mean
         if neg_indices:
             if isinstance(expr_data, pd.DataFrame):
                 neg_mean = expr_data.iloc[neg_indices].mean(axis=0).values
@@ -1837,9 +1920,21 @@ def calculate_signature_scores(
     gene_keys: List[str],
     pos_genes: List[str],
     neg_genes: List[str],
-    method: str = "mean_difference",
+    method: Optional[str] = None,
 ) -> np.ndarray:
-    """Calculate signature scores using the core engine."""
+    """Calculate signature scores using :class:`SignatureScoringEngine`.
+
+    Args:
+        expr_data: Expression matrix (genes x samples).
+        gene_keys: Gene symbol for each row of ``expr_data``.
+        pos_genes: Up-regulated signature genes.
+        neg_genes: Down-regulated signature genes.
+        method: Scoring method. ``None`` means the R-parity default,
+            :data:`DEFAULT_SCORING_METHOD`.
+
+    Returns:
+        One score per sample.
+    """
     engine = SignatureScoringEngine()
     return engine.calculate_scores(expr_data, gene_keys, pos_genes, neg_genes, method)
 
@@ -1889,6 +1984,10 @@ __all__ = [
     "SummaryROCAnalyzer",  # Alias for UnifiedROCAnalyzer
     "ROCAnalysisEngine",
     "SignatureScoringEngine",
+    "SCORING_METHOD_GEOMETRIC_MEAN_ZSCORE",
+    "SCORING_METHOD_MEAN_DIFFERENCE",
+    "SCORING_METHODS",
+    "DEFAULT_SCORING_METHOD",
     "KesterBuntinxEngine",
     "MetaAnalysisUtilities",
     "analyze_roc_curve",

@@ -738,7 +738,7 @@ scores = ScoreCalculator.calculate_score(
 
 **Algorithm:**
 
-1. Shift expression values to positive: `expr + |min(expr)| + 1`
+1. If the dataset has values below zero, shift it to positive: `expr + |min(expr)| + 1`
 2. Pass **all** signature genes to `SampleLevelGeneDataProcessor` (missing genes filled with 1)
 3. Compute geometric mean per sample: `exp(mean(log(values)))`
 4. Score = `pos_geometric_mean - neg_geometric_mean`
@@ -760,6 +760,48 @@ from sklearn.metrics import roc_auc_score
 auc = roc_auc_score(dataset['class'], scores)
 print(f"AUC = {auc:.3f}")
 ```
+
+---
+
+## SignatureScoringEngine
+
+Scores a signature from an expression matrix and a list of gene keys.
+`ROCAnalysisEngine` and the pooled ROC tools use it, and so do callers such
+as the MetaIntegrator web app.
+
+```python
+from metaintegrator.roc_analysis_engine import SignatureScoringEngine
+
+engine = SignatureScoringEngine()
+scores = engine.calculate_scores(
+    dataset["expr"],      # genes x samples, the whole dataset
+    dataset["keys"],      # gene symbol for each row
+    pos_genes,
+    neg_genes,
+)
+print(engine.DEFAULT_METHOD)  # "geometric_mean_zscore"
+```
+
+**Methods:**
+
+| `method` | What it does | Matches R |
+|---|---|---|
+| `"geometric_mean_zscore"` (default) | Delegates to `ScoreCalculator.calculate_score()` | Yes |
+| `"mean_difference"` | Arithmetic mean of positive genes minus arithmetic mean of negative genes. No shift, no z-score. | No |
+
+Pass the whole dataset, not a subset of rows.
+The default method shifts by the dataset's own minimum, so a row subset can change the scores.
+
+!!! warning "Changed in 0.12.0"
+    Before 0.12.0 the default was `"mean_difference"`.
+    AUCs computed through this class by older versions do not match R.
+    Store `DEFAULT_METHOD` with your results if you need to tell old and new numbers apart.
+
+!!! note "Search AUC versus ROC AUC"
+    R's gene search and R's `calculateScore()` handle values at or below zero differently.
+    The search replaces them with 1. `calculateScore()` shifts the dataset first.
+    On positive data the two scores are identical.
+    On data with values at or below zero, R itself reports different search and ROC AUCs, and so does this port.
 
 ---
 

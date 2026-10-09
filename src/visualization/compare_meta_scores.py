@@ -15,7 +15,7 @@ Panels
 2. **Bland–Altman** – mean of the two scores (x) vs their difference
    (y).  Systematic bias shows up as a non-zero mean line; heteroscedasticity
    shows up as a funnel shape.
-3. **Residual histogram** – distribution of (Python − R) differences.
+3. **Residual histogram** – distribution of (Python - R) differences.
    A tight, symmetric bell centred on zero is ideal.
 4. **Summary statistics** – Pearson *r*, *R²*, RMSE, MAE,
    max |Δ|, and the number of matched samples.
@@ -223,10 +223,10 @@ def compare_meta_scores(
             linewidth=0.8,
             linestyle=":",
             zorder=2,
-            label=f"−1.96 SD = {mean_diff - 1.96*std_diff:.2e}",
+            label=f"-1.96 SD = {mean_diff - 1.96*std_diff:.2e}",
         )
     ax2.set_xlabel("Mean of Python & R", fontsize=11, fontweight="medium")
-    ax2.set_ylabel("Difference (Python − R)", fontsize=11, fontweight="medium")
+    ax2.set_ylabel("Difference (Python - R)", fontsize=11, fontweight="medium")
     ax2.set_title("Bland–Altman Plot", fontsize=12, fontweight="bold", pad=10)
     ax2.legend(fontsize=8, loc="upper left")
     ax2.yaxis.set_major_locator(mticker.MaxNLocator(nbins=8))
@@ -244,7 +244,7 @@ def compare_meta_scores(
         zorder=3,
     )
     ax3.axvline(0, color=_LINE_C, linewidth=1.0, linestyle="--", alpha=0.8, zorder=2)
-    ax3.set_xlabel("Difference (Python − R)", fontsize=11, fontweight="medium")
+    ax3.set_xlabel("Difference (Python - R)", fontsize=11, fontweight="medium")
     ax3.set_ylabel("Count", fontsize=11, fontweight="medium")
     ax3.set_title("Distribution of Differences", fontsize=12, fontweight="bold", pad=10)
 
