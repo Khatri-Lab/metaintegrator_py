@@ -14,7 +14,6 @@ Scope: Data download & loading validation
 - Platform compatibility checks
 
 Author: metaIntegrator-py team
-Version: 1.0.0
 """
 
 import warnings

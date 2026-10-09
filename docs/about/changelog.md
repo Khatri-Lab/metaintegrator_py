@@ -6,9 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
-## [Unreleased]
+## Version numbering
+
+Every release before the first on-prem deployment of the MetaIntegrator web
+app is numbered 0.x.x. The on-prem deployment will be **1.0.0**.
+
+On 2026-10-08 the two earlier releases were renumbered to fit this plan:
+
+| Old number | New number | Date |
+|---|---|---|
+| 1.0.0 | 0.10.0 | 2026-04-22 |
+| 1.1.0 | 0.11.0 | 2026-06-10 |
+
+Nothing about those releases changed except the number.
+The installed package metadata said 0.1.0 the whole time, so `pip` sees
+0.12.0 as an upgrade from any earlier install.
+
+---
+
+## [0.12.0] - Unreleased
 
 ### Changed
+- **`SignatureScoringEngine` now scores like R `calculateScore()` by default.**
+  The default method is `"geometric_mean_zscore"`. It delegates to
+  `ScoreCalculator.calculate_score()`: shift the dataset to positive values,
+  take the geometric mean of the positive genes minus that of the negative
+  genes, then z-score per dataset. The old default, `"mean_difference"`
+  (a plain arithmetic mean), is still available as an explicit opt-in.
+  Every ROC curve, PRC curve and pooled AUC built on this class now matches
+  R. On `tinyMetaObject` the per-dataset AUCs are 0.856, 0.867 and 0.955,
+  the same as R's own unit tests. Expect different AUCs from earlier runs.
+- `calculate_signature_scores()` follows the same new default.
+- Package version is now 0.12.0. Before, the package metadata still said
+  0.1.0 while this changelog listed 1.0.0 and 1.1.0. See
+  "Version numbering" above. `CITATION.cff` now follows the package version,
+  and a test (`tests/test_version_consistency.py`) keeps them in sync.
 - **`filter_genes()` leave-one-out now follows R `filterGenes()`.**
   With `is_leave_one_out=True`, a gene must pass every threshold in every
   leave-one-out run, with one fewer study required. The main result is not
@@ -21,6 +53,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   or there are only two datasets, as in R.
 
 ### Added
+- `SignatureScoringEngine.DEFAULT_METHOD` and `SignatureScoringEngine.METHODS`,
+  plus the module constants `DEFAULT_SCORING_METHOD`, `SCORING_METHODS`,
+  `SCORING_METHOD_GEOMETRIC_MEAN_ZSCORE` and `SCORING_METHOD_MEAN_DIFFERENCE`.
+  Callers can store the method with their results, so old and new numbers
+  can be told apart.
+- R parity tests for signature scores, per-dataset AUC and pooled AUC
+  (`tests/parity/test_scoring_parity.py`).
 - Automated R parity tests (`pytest -m parity`) that replay R golden sets.
   See *Contributing > R Parity Testing*.
 
@@ -39,7 +78,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
-## [1.1.0] - 2026-06-10
+## [0.11.0] - 2026-06-10 (formerly 1.1.0)
 
 ### 🎯 R End-to-End Workflow Parity Release
 
@@ -88,11 +127,11 @@ evaluation.
 
 ---
 
-## [1.0.0] - 2026-04-22
+## [0.10.0] - 2026-04-22 (formerly 1.0.0)
 
 ### 🎉 Initial Feature Completion Release
 
-MetaIntegrator-py v1.0.0 represents a complete Python port of the R MetaIntegrator package, bringing modern performance and usability to meta-analysis of gene expression data.
+MetaIntegrator-py v0.10.0 (formerly v1.0.0) represents a complete Python port of the R MetaIntegrator package, bringing modern performance and usability to meta-analysis of gene expression data.
 
 ### Added
 
@@ -147,7 +186,9 @@ MetaIntegrator-py v1.0.0 represents a complete Python port of the R MetaIntegrat
 
 | Version | Date | Key Features                        |
 |---------|------|-------------------------------------|
-| 1.0.0 | 2026-04-22 | Internal feature completion testing |
+| 0.12.0 | Unreleased | R-parity signature scoring, R-parity LOO filter |
+| 0.11.0 | 2026-06-10 | R end-to-end parity (formerly 1.1.0) |
+| 0.10.0 | 2026-04-22 | Internal feature completion testing (formerly 1.0.0) |
 | 0.9.0 | 2026-03-15 | Initial gap analysis testing        |
 | 0.5.0 | 2026-02-01 | Core meta-analysis completion       |
 | 0.1.0 | 2025-12-10 | Project initiation                  |

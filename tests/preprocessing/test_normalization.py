@@ -5,7 +5,6 @@ Comprehensive test suite for quantile normalization, log-scale detection,
 and data cleaning utilities.
 
 Author: metaIntegrator-py team
-Version: 1.0.0
 """
 
 import os

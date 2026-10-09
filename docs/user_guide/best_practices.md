@@ -534,12 +534,13 @@ def save_environment():
     import pandas as pd
     import numpy as np
     import scipy
+    import metaintegrator
     
     env_info = {
         'date': pd.Timestamp.now().isoformat(),
         'python_version': sys.version,
         'packages': {
-            'metaintegrator-py': '1.0.0',  # Your package version
+            'metaintegrator-py': metaintegrator.__version__,
             'pandas': pd.__version__,
             'numpy': np.__version__,
             'scipy': scipy.__version__

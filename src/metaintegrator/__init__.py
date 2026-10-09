@@ -64,7 +64,7 @@ from .validation import (
     validate_and_report,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.12.0"
 __author__ = "Khatri Lab - Python port of R MetaIntegrator"
 
 # Main functions for easy access.

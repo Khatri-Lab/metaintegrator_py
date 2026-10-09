@@ -10,7 +10,6 @@ This module provides production-grade functions for:
 Extracted from the original geo_data_loader.py implementation.
 
 Author: metaIntegrator-py team
-Version: 1.0.0
 """
 
 import warnings

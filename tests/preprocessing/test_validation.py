@@ -4,7 +4,6 @@ Production-Grade Unit Tests for validation.py
 Comprehensive test suite for data validation utilities.
 
 Author: metaIntegrator-py team
-Version: 1.0.0
 """
 
 import os
