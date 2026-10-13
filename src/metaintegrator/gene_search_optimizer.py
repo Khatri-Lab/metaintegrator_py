@@ -5,8 +5,9 @@ gene search optimization, and related statistical computations.
 """
 
 import logging
+import math
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -341,6 +342,154 @@ class GeneSearchOptimizer:
 
         return self._get_weighted_aucs_genes_list(discovery_genes, pos_genes, neg_genes, weights)
 
+    def per_dataset_aucs(
+        self,
+        meta_object: Dict,
+        filter_object: Dict,
+        ratio: Optional[float] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return the AUC of a gene signature in each discovery dataset.
+
+        ``score_signature`` returns one number: the sample-count-weighted
+        sum of the per-dataset AUCs. This method returns the parts of that
+        sum. Use it to see which dataset drives a search's final AUC.
+
+        It prepares the data exactly like ``backward_search`` and
+        ``forward_search``. It also scores each dataset with the same
+        helper (``_dataset_auc``). So the numbers cannot drift from the
+        ones the search itself used.
+
+        What ``ratio`` means:
+
+        - ``ratio=None`` gives the plain score, ``posScore - negScore``.
+          This is the Python twin of R's ``.getAUCsGenesList``, the
+          function behind the AUCs R prints at the end of a search. One
+          difference: R rounds those AUCs with ``signif(..., 3)`` after
+          a forward search, and this method does not round. Do not
+          compare 0.856 from R with 0.8561 from here and call it a bug.
+        - A number gives ``posScore - ratio * negScore``. This is how
+          the search scores every candidate move. To reproduce the last
+          AUC of a finished search, pass ``search_ratio(...)`` here.
+
+        Datasets that cannot be converted are left out, and a warning is
+        logged for each one. Compare the result with
+        ``meta_object["originalData"]`` to find them.
+
+        Args:
+            meta_object: A dict with an ``originalData`` mapping of
+                dataset name to dataset. Each dataset needs ``expr``,
+                ``keys`` and ``class``.
+            filter_object: A dict with ``posGeneNames`` and
+                ``negGeneNames`` lists. They name the signature to score.
+            ratio: Optional weight for the negative-gene score. Must be a
+                finite number that is not negative. ``None`` means the
+                plain score.
+
+        Returns:
+            One dict per usable dataset, in ``originalData`` order, with
+            these keys:
+
+            - ``dataset``: The dataset name, as in ``originalData``.
+            - ``n``: The number of samples. This is the weight the
+              search gives the dataset.
+            - ``auc``: The dataset's AUC, between 0 and 1.
+
+            The weighted sum of ``auc`` times ``n`` equals the value
+            ``score_signature`` returns for the same inputs.
+
+        Raises:
+            ValueError: If ``meta_object`` or ``filter_object`` is
+                invalid, if the signature has no genes, or if ``ratio``
+                is negative or not finite.
+        """
+        self._validate_meta_object(meta_object)
+        self._validate_filter_object(filter_object)
+
+        pos_genes = filter_object.get("posGeneNames", [])
+        neg_genes = filter_object.get("negGeneNames", [])
+        if not pos_genes and not neg_genes:
+            raise ValueError(
+                "Cannot compute per-dataset AUCs for an empty signature. "
+                "Provide at least one gene in posGeneNames or negGeneNames."
+            )
+        if ratio is not None and (not math.isfinite(ratio) or ratio < 0):
+            raise ValueError(f"ratio must be a finite number that is not negative, got {ratio!r}")
+
+        discovery_genes = self._convert_discovery_list_to_genes(meta_object, pos_genes, neg_genes)
+        self._match_all_genes(discovery_genes, pos_genes, neg_genes, None, None)
+
+        return [
+            {
+                "dataset": dataset["name"],
+                "n": len(dataset["class"]),
+                "auc": float(
+                    self._dataset_auc(
+                        dataset, pos_genes, neg_genes, ratio=ratio, dataset_index=index
+                    )
+                ),
+            }
+            for index, dataset in enumerate(discovery_genes)
+        ]
+
+    @staticmethod
+    def search_ratio(
+        pos_genes: Sequence[str],
+        neg_genes: Sequence[str],
+        moves_made: int,
+    ) -> Optional[float]:
+        """Return the ratio the search used to score its last accepted move.
+
+        A search scores each candidate move with
+        ``posScore - ratio * negScore``. The ratio balances the up and
+        down genes by their counts. This method rebuilds the ratio of the
+        last accepted move from the final gene lists. No search state is
+        needed.
+
+        Why that works. These are the ratios in the search code. Here
+        ``pos`` and ``neg`` are the gene lists before the move:
+
+        - Forward, add an up gene: ``len(neg) / (len(pos) + 1)``.
+        - Forward, add a down gene: ``(len(neg) + 1) / len(pos)``.
+        - Backward, remove an up gene: ``len(neg) / (len(pos) - 1)``.
+        - Backward, remove a down gene: ``(len(neg) - 1) / len(pos)``.
+
+        Apply the move, and every line becomes ``n_neg / n_pos`` of the
+        final lists.
+
+        The edge cases need no special handling. If no up genes are left,
+        the search drops the up-gene term and scores ``-negScore``. That
+        is the plain score. If no down genes are left, the ratio has no
+        effect because ``negScore`` is zero. So both cases return
+        ``None``, which means the plain score.
+
+        When the search made no move, its final AUC is the starting AUC.
+        The search scores the starting signature without a ratio. So this
+        method returns ``None`` then too.
+
+        Args:
+            pos_genes: Up-regulated genes in the final signature.
+            neg_genes: Down-regulated genes in the final signature.
+            moves_made: How many moves the search accepted. This is
+                ``iterationsRun`` in the dict a search returns.
+
+        Returns:
+            ``n_neg / n_pos`` when the search made at least one move and
+            both gene lists are non-empty. Otherwise ``None``, which
+            means the plain score.
+
+        Raises:
+            ValueError: If ``moves_made`` is negative.
+        """
+        if moves_made < 0:
+            raise ValueError(f"moves_made must not be negative, got {moves_made}")
+        if moves_made == 0:
+            return None
+        n_pos = len(pos_genes)
+        n_neg = len(neg_genes)
+        if n_pos == 0 or n_neg == 0:
+            return None
+        return n_neg / n_pos
+
     def _validate_meta_object(self, meta_object: Dict) -> None:
         """Validate meta object structure.
 
@@ -392,10 +541,17 @@ class GeneSearchOptimizer:
         negative genes. If any gene values are negative, an offset
         is added to ensure all values are positive. The processed
         datasets are stored as dictionaries containing a
-        DataFrame named 'genes' and a NumPy array named 'class'.
-        Any dataset that cannot be processed is skipped and a
-        warning is logged. Finally, the method returns a list
-        of the successfully processed dataset dictionaries.
+        DataFrame named 'genes', a NumPy array named 'class', and
+        the dataset's name. Any dataset that cannot be processed is
+        skipped and a warning is logged. Finally, the method returns
+        a list of the successfully processed dataset dictionaries.
+
+        The name is the key of the dataset in ``meta_object["originalData"]``.
+        R keeps this name too. It matters here because a skipped
+        dataset leaves no gap in the returned list. So a list position
+        cannot be trusted to match the position in ``originalData``.
+        The name lets a caller join these results to other per-dataset
+        results, such as ROC curves keyed by the same name.
 
         Args:
             meta_object (Dict): A dictionary containing discovery
@@ -405,7 +561,8 @@ class GeneSearchOptimizer:
 
         Returns:
             List[Dict]: A list where each element is a dictionary
-            with keys 'genes' (DataFrame) and 'class' (NumPy array).
+            with keys 'genes' (DataFrame), 'class' (NumPy array) and
+            'name' (the ``originalData`` key of the dataset).
         """
         # Use the already imported getSampleLevelGeneData function
         if getSampleLevelGeneData is None:
@@ -430,6 +587,7 @@ class GeneSearchOptimizer:
                 dataset_dict = {
                     "genes": gene_data,  # DataFrame with genes as rows, samples as columns
                     "class": np.array(dataset["class"]),  # Class labels
+                    "name": name,  # Key in meta_object["originalData"]
                 }
 
                 # Verify data consistency
@@ -942,6 +1100,86 @@ class GeneSearchOptimizer:
 
         return pd.DataFrame(results)
 
+    def _dataset_auc(
+        self,
+        dataset: Dict,
+        pos_genes: List[str],
+        neg_genes: List[str],
+        ratio: Optional[float] = None,
+        pos_only_neg_sign: bool = False,
+        dataset_index: int = 0,
+    ) -> float:
+        """Score one discovery dataset and return its AUC.
+
+        This is the per-dataset step of the weighted AUC.
+        ``_get_weighted_aucs_genes_list`` calls it once per dataset.
+        ``per_dataset_aucs`` calls it too. Sharing one code path means
+        the search and the reported per-dataset numbers cannot drift
+        apart.
+
+        The behavior is unchanged from the loop body it replaced:
+
+        - A score vector and a class vector of different length are cut
+          to the shorter length, and a warning is issued.
+        - If only one class remains, the AUC is 0.5.
+
+        Args:
+            dataset: A converted discovery dataset with a gene-level
+                ``genes`` DataFrame and a ``class`` array.
+            pos_genes: Positive gene names.
+            neg_genes: Negative gene names.
+            ratio: Optional weight for the negative-gene score. ``None``
+                means the plain score, ``posScore - negScore``. A number
+                means ``posScore - ratio * negScore``, as in R's inner
+                search functions.
+            pos_only_neg_sign: If True, score is ``scale(-negScore)``
+                only. This is the R edge case when the last positive
+                gene is removed in a backward search.
+            dataset_index: Zero-based position of the dataset. Used only
+                to word the length-mismatch warning.
+
+        Returns:
+            The AUC of this dataset, between 0 and 1.
+        """
+        if pos_only_neg_sign:
+            # R edge case: score = scale(-negScore) when no pos genes remain
+            score = self._score_genes_matrix(dataset["genes"], [], neg_genes, ratio=None)
+            # _score_genes_matrix with empty pos returns -negScore (standardized)
+            # which is correct since 0 - negScore = -negScore
+        else:
+            # use the corrected scoring method (geometric mean + ddof=1)
+            score = self._score_genes_matrix(dataset["genes"], pos_genes, neg_genes, ratio=ratio)
+        y_true = dataset["class"]
+
+        # Validate that dimensions match
+        if len(score) != len(y_true):
+            min_length = min(len(score), len(y_true))
+            if min_length == 0:
+                auc_val = 0.5
+            else:
+                score = score[:min_length]
+                y_true = y_true[:min_length]
+
+                if len(np.unique(y_true)) < 2:
+                    auc_val = 0.5
+                else:
+                    # use roc_auc_score for speed
+                    auc_val = roc_auc_score(y_true, score)
+
+            warnings.warn(
+                f"Dataset {dataset_index + 1}: Length mismatch between scores "
+                f"({len(dataset['genes'].columns)}) "
+                f"and class labels ({len(dataset['class'])}). Using {min_length} samples."
+            )
+        else:
+            if len(np.unique(y_true)) < 2:
+                auc_val = 0.5
+            else:
+                # use roc_auc_score for speed
+                auc_val = roc_auc_score(y_true, score)
+
+        return auc_val
+
     def _get_weighted_aucs_genes_list(
         self,
         genes_list: List[Dict],
@@ -977,44 +1215,14 @@ class GeneSearchOptimizer:
 
         aucs = []
         for i, dataset in enumerate(genes_list):
-            if pos_only_neg_sign:
-                # R edge case: score = scale(-negScore) when no pos genes remain
-                score = self._score_genes_matrix(dataset["genes"], [], neg_genes, ratio=None)
-                # _score_genes_matrix with empty pos returns -negScore (standardized)
-                # which is correct since 0 - negScore = -negScore
-            else:
-                # use the corrected scoring method (geometric mean + ddof=1)
-                score = self._score_genes_matrix(
-                    dataset["genes"], pos_genes, neg_genes, ratio=ratio
-                )
-            y_true = dataset["class"]
-
-            # Validate that dimensions match
-            if len(score) != len(y_true):
-                min_length = min(len(score), len(y_true))
-                if min_length == 0:
-                    auc_val = 0.5
-                else:
-                    score = score[:min_length]
-                    y_true = y_true[:min_length]
-
-                    if len(np.unique(y_true)) < 2:
-                        auc_val = 0.5
-                    else:
-                        # use roc_auc_score for speed
-                        auc_val = roc_auc_score(y_true, score)
-
-                warnings.warn(
-                    f"Dataset {i + 1}: Length mismatch between scores ({len(dataset['genes'].columns)}) "
-                    f"and class labels ({len(dataset['class'])}). Using {min_length} samples."
-                )
-            else:
-                if len(np.unique(y_true)) < 2:
-                    auc_val = 0.5
-                else:
-                    # use roc_auc_score for speed
-                    auc_val = roc_auc_score(y_true, score)
-
+            auc_val = self._dataset_auc(
+                dataset,
+                pos_genes,
+                neg_genes,
+                ratio=ratio,
+                pos_only_neg_sign=pos_only_neg_sign,
+                dataset_index=i,
+            )
             aucs.append(auc_val)
 
             if print_results:

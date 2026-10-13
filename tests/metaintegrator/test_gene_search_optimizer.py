@@ -1325,6 +1325,355 @@ class TestScoreSignature:
         assert len(recwarn) == 0
 
 
+# ----------------------------------------------------------------------
+# Per-dataset AUCs of a search result (R1-12)
+# ----------------------------------------------------------------------
+# These tests build real probe-level data and run the real conversion,
+# so they cover the whole path from ``meta_object`` to a per-dataset AUC.
+# The data is positive, so R's clamping of values at or below zero does
+# not come into play.
+
+_UP_GENES = ("U1", "U2", "U3", "U4")
+_DOWN_GENES = ("D1", "D2", "D3")
+_NOISE_GENES = ("N1", "N2")
+_ALL_GENES = _UP_GENES + _DOWN_GENES + _NOISE_GENES
+
+
+def _make_search_meta_object(seed: int = 7, sizes=(24, 18, 30)) -> dict:
+    """Build a small meta object where up and down genes carry real signal.
+
+    Each dataset has one probe per gene. Up genes rise in class 1 and
+    down genes fall. Noise genes carry no signal. Signal strength differs
+    from gene to gene, so a search has real choices to make.
+
+    Args:
+        seed: Seed of the random generator.
+        sizes: Sample count of each dataset. Datasets are named DS1, DS2
+            and so on.
+
+    Returns:
+        A meta object with an ``originalData`` mapping.
+    """
+    rng = np.random.default_rng(seed)
+    original = {}
+    for position, n_samples in enumerate(sizes, start=1):
+        labels = np.array([0] * (n_samples // 2) + [1] * (n_samples - n_samples // 2))
+        matrix = rng.normal(6.0, 1.0, size=(len(_ALL_GENES), n_samples))
+        for row, gene in enumerate(_ALL_GENES):
+            sign = 1 if gene in _UP_GENES else (-1 if gene in _DOWN_GENES else 0)
+            matrix[row] += sign * 0.8 * labels * (0.4 + 0.15 * (row % 4))
+        original[f"DS{position}"] = {
+            "formattedName": f"DS{position}",
+            "expr": pd.DataFrame(
+                matrix,
+                index=[f"probe_{i}" for i in range(len(_ALL_GENES))],
+                columns=[f"s{j}" for j in range(n_samples)],
+            ),
+            "keys": list(_ALL_GENES),
+            "class": labels,
+        }
+    return {"originalData": original}
+
+
+def _weighted_sum(rows: list) -> float:
+    """Sample-count-weighted sum of per-dataset AUCs, as the search computes it."""
+    return float(np.sum(np.array([r["auc"] for r in rows]) * np.array([r["n"] for r in rows])))
+
+
+class TestConvertKeepsDatasetName:
+    """``_convert_discovery_list_to_genes`` must carry the dataset name."""
+
+    def test_every_converted_dataset_has_its_original_data_key(self):
+        meta_object = _make_search_meta_object()
+        search_result = GeneSearchOptimizer()._convert_discovery_list_to_genes(
+            meta_object, ["U1", "U2"], ["D1"]
+        )
+        assert [d["name"] for d in search_result] == ["DS1", "DS2", "DS3"]
+
+    def test_failed_dataset_is_absent_and_the_others_keep_their_names(self):
+        meta_object = _make_search_meta_object()
+        del meta_object["originalData"]["DS2"]["keys"]  # Makes conversion fail.
+        search_result = GeneSearchOptimizer()._convert_discovery_list_to_genes(
+            meta_object, ["U1", "U2"], ["D1"]
+        )
+        assert [d["name"] for d in search_result] == ["DS1", "DS3"]
+
+
+class TestSearchRatio:
+    """``GeneSearchOptimizer.search_ratio`` rebuilds the last move's ratio."""
+
+    @pytest.mark.parametrize(
+        "pos, neg, moves, expected",
+        [
+            (["a", "b"], ["c"], 0, None),  # No move: starting AUC has no ratio.
+            (["a", "b"], ["c"], 1, 0.5),  # n_neg / n_pos.
+            (["a"], ["c", "d", "e"], 4, 3.0),
+            (["a", "b", "c"], ["d", "e", "f"], 2, 1.0),
+            ([], ["c"], 3, None),  # No up genes: plain score.
+            (["a"], [], 3, None),  # No down genes: ratio has no effect.
+            ([], [], 3, None),
+        ],
+    )
+    def test_rule(self, pos, neg, moves, expected):
+        assert GeneSearchOptimizer.search_ratio(pos, neg, moves) == expected
+
+    def test_negative_moves_is_rejected(self):
+        with pytest.raises(ValueError, match="must not be negative"):
+            GeneSearchOptimizer.search_ratio(["a"], ["b"], -1)
+
+    @pytest.mark.parametrize(
+        "last_move, pos_before, neg_before, expected",
+        [
+            # Ratios as written in the search code, using the lists BEFORE the
+            # move. After the move, each equals n_neg / n_pos of the final lists.
+            ("forward add up", (2, 3), None, "len(neg) / (len(pos) + 1)"),
+            ("forward add down", (2, 3), None, "(len(neg) + 1) / len(pos)"),
+            ("backward remove up", (3, 3), None, "len(neg) / (len(pos) - 1)"),
+            ("backward remove down", (3, 3), None, "(len(neg) - 1) / len(pos)"),
+        ],
+    )
+    def test_matches_the_four_search_formulas(self, last_move, pos_before, neg_before, expected):
+        """Check the table in the docstring against the real formulas."""
+        n_pos, n_neg = pos_before
+        if last_move == "forward add up":
+            searched = n_neg / (n_pos + 1)
+            final = (n_pos + 1, n_neg)
+        elif last_move == "forward add down":
+            searched = (n_neg + 1) / n_pos
+            final = (n_pos, n_neg + 1)
+        elif last_move == "backward remove up":
+            searched = n_neg / (n_pos - 1)
+            final = (n_pos - 1, n_neg)
+        else:
+            searched = (n_neg - 1) / n_pos
+            final = (n_pos, n_neg - 1)
+        pos = [f"p{i}" for i in range(final[0])]
+        neg = [f"n{i}" for i in range(final[1])]
+        assert GeneSearchOptimizer.search_ratio(pos, neg, 1) == searched
+
+
+class TestDatasetAuc:
+    """Edge branches of the extracted per-dataset helper."""
+
+    def setup_method(self):
+        self.optimizer = GeneSearchOptimizer()
+        self.matrix = pd.DataFrame(
+            np.random.default_rng(0).normal(5, 1, size=(2, 6)),
+            index=["G1", "G2"],
+            columns=[f"s{i}" for i in range(6)],
+        )
+
+    def test_single_class_gives_chance_level(self):
+        dataset = {"genes": self.matrix, "class": np.zeros(6, dtype=int)}
+        assert self.optimizer._dataset_auc(dataset, ["G1"], ["G2"]) == 0.5
+
+    def test_length_mismatch_warns_and_uses_the_shorter_length(self):
+        dataset = {"genes": self.matrix, "class": np.array([0, 1, 0, 1])}
+        with pytest.warns(UserWarning, match="Dataset 3: Length mismatch"):
+            value = self.optimizer._dataset_auc(dataset, ["G1"], ["G2"], dataset_index=2)
+        assert 0.0 <= value <= 1.0
+
+    def test_weighted_sum_equals_dataset_aucs_times_weights(self):
+        """The refactor must keep ``_get_weighted_aucs_genes_list`` unchanged."""
+        datasets = [
+            {"genes": self.matrix, "class": np.array([0, 0, 0, 1, 1, 1])},
+            {"genes": self.matrix.iloc[:, :4], "class": np.array([0, 1, 0, 1])},
+        ]
+        weights = np.array([6, 4])
+        expected = sum(
+            self.optimizer._dataset_auc(d, ["G1"], ["G2"], ratio=0.5) * w
+            for d, w in zip(datasets, weights)
+        )
+        actual = self.optimizer._get_weighted_aucs_genes_list(
+            datasets, ["G1"], ["G2"], weights, ratio=0.5
+        )
+        assert actual == pytest.approx(expected, abs=1e-12)
+
+
+class TestPerDatasetAucs:
+    """Tests for ``GeneSearchOptimizer.per_dataset_aucs``."""
+
+    # Allowed gap between a rebuilt search AUC and the one the search reported.
+    # The sums are about 70, so one floating-point step is about 1e-14.
+    TRAJECTORY_TOL = 1e-12
+
+    def setup_method(self):
+        self.optimizer = GeneSearchOptimizer()
+        self.meta_object = _make_search_meta_object()
+        self.signature = {
+            "posGeneNames": ["U1", "U2", "U3"],
+            "negGeneNames": ["D1", "D2"],
+        }
+
+    def _run_search(self, direction, meta_object, filter_object, **kwargs):
+        """Run a search and return its search_result plus the reported AUC of each move."""
+        steps = []
+
+        def record(iteration, gene, auc_before, auc_after, remaining):
+            steps.append({"gene": gene, "auc_after": auc_after})
+
+        search = (
+            self.optimizer.backward_search
+            if direction == "backward"
+            else self.optimizer.forward_search
+        )
+        search_result = search(meta_object, filter_object, progress_callback=record, **kwargs)
+        return search_result, steps
+
+    def _rebuild_final_auc(self, meta_object, search_result) -> float:
+        """Rebuild the search's last AUC from the final signature alone."""
+        ratio = GeneSearchOptimizer.search_ratio(
+            search_result["posGeneNames"],
+            search_result["negGeneNames"],
+            search_result["iterationsRun"],
+        )
+        rows = self.optimizer.per_dataset_aucs(
+            meta_object,
+            {
+                "posGeneNames": search_result["posGeneNames"],
+                "negGeneNames": search_result["negGeneNames"],
+            },
+            ratio=ratio,
+        )
+        return _weighted_sum(rows)
+
+    def test_returns_name_n_and_auc_for_each_dataset_in_order(self):
+        rows = self.optimizer.per_dataset_aucs(self.meta_object, self.signature)
+        assert [r["dataset"] for r in rows] == ["DS1", "DS2", "DS3"]
+        assert [r["n"] for r in rows] == [24, 18, 30]
+        assert all(0.0 <= r["auc"] <= 1.0 for r in rows)
+        assert all(isinstance(r["auc"], float) for r in rows)
+
+    def test_plain_weighted_sum_equals_score_signature(self):
+        rows = self.optimizer.per_dataset_aucs(self.meta_object, self.signature)
+        expected = self.optimizer.score_signature(self.meta_object, self.signature)
+        assert _weighted_sum(rows) == pytest.approx(expected, abs=self.TRAJECTORY_TOL)
+
+    def test_ratio_changes_the_result_when_both_gene_sets_are_present(self):
+        """Guards the trajectory tests below against passing for no reason."""
+        plain = self.optimizer.per_dataset_aucs(self.meta_object, self.signature)
+        scaled = self.optimizer.per_dataset_aucs(self.meta_object, self.signature, ratio=3.0)
+        assert [r["auc"] for r in plain] != [r["auc"] for r in scaled]
+
+    def test_ratio_has_no_effect_with_only_up_genes(self):
+        only_up = {"posGeneNames": ["U1", "U2"], "negGeneNames": []}
+        plain = self.optimizer.per_dataset_aucs(self.meta_object, only_up)
+        scaled = self.optimizer.per_dataset_aucs(self.meta_object, only_up, ratio=0.7)
+        assert [r["auc"] for r in plain] == [r["auc"] for r in scaled]
+
+    def test_ratio_has_no_effect_with_only_down_genes(self):
+        only_down = {"posGeneNames": [], "negGeneNames": ["D1", "D2"]}
+        plain = self.optimizer.per_dataset_aucs(self.meta_object, only_down)
+        scaled = self.optimizer.per_dataset_aucs(self.meta_object, only_down, ratio=2.5)
+        assert [r["auc"] for r in plain] == [r["auc"] for r in scaled]
+
+    @pytest.mark.parametrize("seed", [0, 1, 2, 3, 4, 5])
+    def test_column_a_reproduces_forward_trajectory(self, seed):
+        meta_object = _make_search_meta_object(seed)
+        candidates = {
+            "posGeneNames": ["U1", "U2", "U3", "U4", "N1"],
+            "negGeneNames": ["D1", "D2", "D3", "N2"],
+        }
+        search_result, steps = self._run_search("forward", meta_object, candidates)
+        assert steps, "fixture must make at least one move"
+        rebuilt = self._rebuild_final_auc(meta_object, search_result)
+        assert rebuilt == pytest.approx(steps[-1]["auc_after"], abs=self.TRAJECTORY_TOL)
+
+    @pytest.mark.parametrize("seed", [0, 1, 2, 3, 4, 5])
+    def test_column_a_reproduces_backward_trajectory(self, seed):
+        meta_object = _make_search_meta_object(seed)
+        start = {
+            "posGeneNames": ["U1", "U2", "U3", "U4", "N1"],
+            "negGeneNames": ["D1", "D2", "D3", "N2"],
+        }
+        search_result, steps = self._run_search("backward", meta_object, start)
+        assert steps, "fixture must make at least one move"
+        rebuilt = self._rebuild_final_auc(meta_object, search_result)
+        assert rebuilt == pytest.approx(steps[-1]["auc_after"], abs=self.TRAJECTORY_TOL)
+
+    def test_backward_last_move_removes_the_last_down_gene(self):
+        meta_object = _make_search_meta_object(0)
+        start = {"posGeneNames": ["U1", "U2"], "negGeneNames": ["N2"]}
+        search_result, steps = self._run_search("backward", meta_object, start)
+        assert steps[-1]["gene"] == "N2"
+        assert search_result["negGeneNames"] == []
+        rebuilt = self._rebuild_final_auc(meta_object, search_result)
+        assert rebuilt == pytest.approx(steps[-1]["auc_after"], abs=self.TRAJECTORY_TOL)
+
+    def test_backward_last_move_removes_the_last_up_gene(self):
+        meta_object = _make_search_meta_object(3)
+        start = {"posGeneNames": ["N1"], "negGeneNames": ["D1", "D2", "D3"]}
+        search_result, steps = self._run_search("backward", meta_object, start)
+        assert steps[-1]["gene"] == "N1"
+        assert search_result["posGeneNames"] == []
+        rebuilt = self._rebuild_final_auc(meta_object, search_result)
+        assert rebuilt == pytest.approx(steps[-1]["auc_after"], abs=self.TRAJECTORY_TOL)
+
+    def test_backward_last_move_removes_a_down_gene_and_both_sets_remain(self):
+        meta_object = _make_search_meta_object(0)
+        start = {
+            "posGeneNames": ["U1", "U2", "U3", "U4", "N1"],
+            "negGeneNames": ["D1", "D2", "D3", "N2"],
+        }
+        search_result, steps = self._run_search("backward", meta_object, start)
+        assert steps[-1]["gene"] in ("D1", "D2", "D3", "N2")
+        assert search_result["posGeneNames"] and search_result["negGeneNames"]
+        rebuilt = self._rebuild_final_auc(meta_object, search_result)
+        assert rebuilt == pytest.approx(steps[-1]["auc_after"], abs=self.TRAJECTORY_TOL)
+
+    @pytest.mark.parametrize("direction", ["backward", "forward"])
+    def test_zero_moves_uses_the_plain_score(self, direction):
+        """With no move, the search's final AUC is its starting AUC, scored without a ratio."""
+        meta_object = _make_search_meta_object(2)
+        start = {
+            "posGeneNames": ["U1", "U2", "N1"],
+            "negGeneNames": ["D1", "N2"],
+        }
+        kwargs = {"max_iterations": 0}
+        if direction == "forward":
+            # A forward search needs a seed, or the signature stays empty.
+            kwargs.update(yes_pos=["U1", "U2"], yes_neg=["D1"])
+        search_result, steps = self._run_search(direction, meta_object, start, **kwargs)
+        assert steps == []
+        assert search_result["iterationsRun"] == 0
+        final = {
+            "posGeneNames": search_result["posGeneNames"],
+            "negGeneNames": search_result["negGeneNames"],
+        }
+        assert final["posGeneNames"] and final["negGeneNames"]
+        assert (
+            GeneSearchOptimizer.search_ratio(
+                final["posGeneNames"], final["negGeneNames"], search_result["iterationsRun"]
+            )
+            is None
+        )
+        plain = self.optimizer.per_dataset_aucs(meta_object, final)
+        expected = self.optimizer.score_signature(meta_object, final)
+        assert _weighted_sum(plain) == pytest.approx(expected, abs=self.TRAJECTORY_TOL)
+
+    def test_dataset_that_fails_conversion_is_left_out(self):
+        del self.meta_object["originalData"]["DS2"]["keys"]
+        rows = self.optimizer.per_dataset_aucs(self.meta_object, self.signature)
+        assert [r["dataset"] for r in rows] == ["DS1", "DS3"]
+        assert [r["n"] for r in rows] == [24, 30]
+
+    def test_empty_signature_raises(self):
+        empty = {"posGeneNames": [], "negGeneNames": []}
+        with pytest.raises(ValueError, match="empty signature"):
+            self.optimizer.per_dataset_aucs(self.meta_object, empty)
+
+    @pytest.mark.parametrize("bad", [-0.1, float("nan"), float("inf")])
+    def test_invalid_ratio_raises(self, bad):
+        with pytest.raises(ValueError, match="ratio must be"):
+            self.optimizer.per_dataset_aucs(self.meta_object, self.signature, ratio=bad)
+
+    def test_rejects_invalid_inputs(self):
+        with pytest.raises(ValueError, match="must be a dictionary"):
+            self.optimizer.per_dataset_aucs("not_a_dict", self.signature)
+        with pytest.raises(ValueError, match="must contain 'posGeneNames'"):
+            self.optimizer.per_dataset_aucs(self.meta_object, {"negGeneNames": []})
+
+
 if __name__ == "__main__":
     # Run the tests
     pytest.main([__file__, "-v", "--tb=short"])

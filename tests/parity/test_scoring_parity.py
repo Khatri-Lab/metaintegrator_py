@@ -27,6 +27,18 @@ with 1. ``calculateScore()`` shifts the whole dataset to positive values
 first. On data that is already positive, the two scores are identical. On
 data with negative values, R itself reports different search and ROC AUCs.
 The Python port keeps both R behaviors. The last two tests pin that.
+
+Per-dataset search AUCs
+-----------------------
+``GeneSearchOptimizer.per_dataset_aucs()`` returns the parts of the search's
+weighted AUC. Called without a ratio, it is the Python twin of R's
+``.getAUCsGenesList()``. The two tests at the end of this file compare it with
+R's frozen ``calculateScore()`` AUCs. They show where the search AUC and the
+ROC AUC agree and where they split.
+
+R sources: ``R/calculateScore.R``, ``R/getSampleLevelGeneData.R`` and
+``R/ROC_and_search_functions.R`` (``.convertDiscoveryListToGenes``,
+``.scoreGenesMtx``, ``.getAUCsGenesList``).
 """
 
 from __future__ import annotations
@@ -174,3 +186,56 @@ def test_search_auc_differs_on_negative_data_as_in_r(golden, signature) -> None:
     search = _search_auc(meta_object, signature)
     pooled = _pooled_auc(meta_object["originalData"], signature)
     assert pooled - search > 0.2
+
+
+def _shift_negative_datasets(meta_object: Dict) -> Dict:
+    """Return a copy where only datasets with negative values are shifted.
+
+    This is exactly R's ``calculateScore()`` rule. It adds ``abs(min) + 1`` to
+    a dataset only when the dataset minimum is below zero. Compare with
+    ``_shift_positive()`` above, which shifts every dataset.
+    """
+    shifted = copy.deepcopy(meta_object)
+    for dataset in shifted["originalData"].values():
+        minimum = dataset["expr"].min().min()
+        if minimum < 0:
+            dataset["expr"] = dataset["expr"] + abs(minimum) + 1
+    return shifted
+
+
+def _plain_search_aucs(meta_object: Dict, signature: Dict[str, List[str]]) -> Dict[str, float]:
+    """Per-dataset AUCs of the search's scorer, without a ratio, by dataset name."""
+    rows = GeneSearchOptimizer().per_dataset_aucs(meta_object, signature)
+    return {row["dataset"]: row["auc"] for row in rows}
+
+
+def test_plain_search_auc_matches_r_on_positive_data(golden, signature) -> None:
+    """After R's own shift, each search AUC equals R's ``calculateScore()`` AUC."""
+    meta_object = _shift_negative_datasets(golden.to_meta_object())
+    aucs = _plain_search_aucs(meta_object, signature)
+    assert list(aucs) == list(R_AUC_BY_DATASET)
+    for name, expected in R_AUC_BY_DATASET.items():
+        assert aucs[name] == pytest.approx(expected, abs=R_TOL)
+
+
+def test_plain_search_auc_differs_from_r_only_on_negative_datasets(golden, signature) -> None:
+    """On the data as shipped, only the datasets with negative values split.
+
+    The search clamps values at or below zero to 1, then scores. R's
+    ``calculateScore()`` shifts the dataset instead. This pins that the two
+    agree on the all-positive dataset and disagree on the other two.
+    """
+    meta_object = golden.to_meta_object()
+    negative = [
+        name
+        for name, dataset in meta_object["originalData"].items()
+        if dataset["expr"].min().min() < 0
+    ]
+    assert negative == ["Whole.Blood.Study.2", "PBMC.Study.1"]
+
+    aucs = _plain_search_aucs(meta_object, signature)
+    for name, expected in R_AUC_BY_DATASET.items():
+        if name in negative:
+            assert abs(aucs[name] - expected) > 2 * R_TOL
+        else:
+            assert aucs[name] == pytest.approx(expected, abs=R_TOL)
