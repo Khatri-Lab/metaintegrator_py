@@ -59,7 +59,30 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
   were missing, ran with the wrong batch parameters. With `by_platform=True`
   nothing changes.
 
+- **The GEO loaders now decide "log2 or not" exactly as R `getGEOData()`
+  does.** `HybridMicroarrayHandler` (the `"hybrid"` strategy) and
+  `MicroarrayHandler` used "log2 when the median of all values is above 20".
+  They now use `preprocessing.utils.log_scale.apply_r_log2()`, an exact port
+  of R's `.GEM_log_check` (a QQ-plot test on the first usable sample column)
+  and of its transform (shift up when the minimum is negative, then `log2`).
+  The two rules can disagree on borderline datasets, in both directions, so
+  expect a different log2 decision for some datasets. Every
+  `ProcessedDataset` from these handlers now carries
+  `metadata["log_scale_check"]`: the decision, R's score and correlations,
+  the median before, any shift, and what the former rule would have done.
+  One documented difference from R remains: an exact zero becomes `NaN`
+  instead of `-Inf`, and the report counts how many.
+  `MicroarrayHandler` also no longer clips negative values to zero before
+  `log2`. It shifts them up, as R does.
+
 ### Added
+- `preprocessing.utils.log_scale`: `gem_log_check()`, `apply_r_log2()`,
+  `LogScaleCheck`, `LogScaleReport`, and exact ports of R `ppoints()`,
+  `qqnorm()` and `cor(use = "pairwise.complete")`.
+- Log-scale parity test (`tests/parity/test_log_check_parity.py`) with ten
+  fixed input matrices and an R script that writes R's own decisions
+  (`tests/parity/r_scripts/make_log_check_golden.R`). The test is skipped
+  until the R script has been run once.
 - `SignatureScoringEngine.DEFAULT_METHOD` and `SignatureScoringEngine.METHODS`,
   plus the module constants `DEFAULT_SCORING_METHOD`, `SCORING_METHODS`,
   `SCORING_METHOD_GEOMETRIC_MEAN_ZSCORE` and `SCORING_METHOD_MEAN_DIFFERENCE`.
@@ -77,7 +100,31 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
 - `combine_coco_output(..., strict=False)`. With `strict=True`, a dataset that
   is in only one of the two lists raises a `ValueError`.
 
+- **`GeneSearchOptimizer.per_dataset_aucs()`.** Returns the AUC and sample
+  count of each discovery dataset for a given signature. The weighted sum of
+  these AUCs is the number a search reports as its final AUC. Pass
+  `ratio=None` for the plain score (R's end-of-search printout, without R's
+  rounding). Pass a ratio to rebuild a search's last move. A dataset that
+  cannot be converted is left out. An empty signature raises `ValueError`.
+- **`GeneSearchOptimizer.search_ratio()`.** Rebuilds the ratio a search used
+  for its last accepted move from the final gene lists. No search state is
+  needed. The rule is `n_neg / n_pos`, or `None` when the search made no move
+  or one gene list is empty. Tests show it reproduces the last AUC of forward
+  and backward searches to 1e-12.
+- Datasets converted for a search now carry a `name` (the key in
+  `originalData`), as R does. Before, a skipped dataset left no trace in the
+  list, so a position could not be matched to a dataset. The per-dataset
+  scoring step is now one private helper shared by the search and
+  `per_dataset_aucs()`. Search results do not change.
+- Parity tests that compare the plain search AUC of each dataset with R's
+  `calculateScore()` AUCs on `tinyMetaObject`. They match for the all-positive
+  dataset, and after R's own shift for the other two. On the data as shipped
+  they split for the two datasets with negative values.
+
 ### Fixed
+- `check_log_scale()`'s docstring said it matches R's `.GEM_log_check`. It
+  does not (it adds shortcut rules and samples at random). The docstring now
+  says so and points to `gem_log_check()`. Its behavior is unchanged.
 - **`combine_coco_output()` pairs control and disease blocks by dataset name.**
   Before, it paired the two lists by position. A dataset with no controls
   (possible with `by_platform=True`) is missing from the control list, so every

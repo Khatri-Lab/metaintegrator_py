@@ -148,6 +148,51 @@ refined = optimizer.forward_search(meta_object, filter_object, forward_thresh=0.
 refined = optimizer.backward_search(meta_object, refined, back_thresh=0.0)
 ```
 
+#### Per-dataset AUCs of a search result
+
+A search reports one number: the weighted AUC across all discovery datasets.
+`per_dataset_aucs()` returns the parts of that number, one row per dataset.
+
+```python
+ratio = GeneSearchOptimizer.search_ratio(
+    refined["posGeneNames"], refined["negGeneNames"], refined["iterationsRun"]
+)
+rows = optimizer.per_dataset_aucs(meta_object, refined, ratio=ratio)
+# [{"dataset": "GSE1", "n": 120, "auc": 0.91}, ...]
+```
+
+Each row has the dataset name, its sample count `n` and its `auc`.
+The sum of `auc * n` is the weighted AUC the search reported for its last
+move. Divide it by the total sample count to get a mean between 0 and 1.
+
+Which `ratio` to pass:
+
+- **`search_ratio(...)`** rebuilds the AUC of the search's last move.
+  The search balances up and down genes by their counts when it scores a
+  move. The ratio is `n_neg / n_pos` of the final signature. It is `None`
+  when the search made no move, or when one gene list is empty.
+- **`None`** (the default) gives the plain score, `posScore - negScore`.
+  This is the score behind the AUCs R prints at the end of a search.
+
+Things to know:
+
+- A dataset that cannot be converted is left out, and a warning is logged.
+  Compare the rows with `meta_object["originalData"]` to find it.
+- An empty signature raises a `ValueError`. There is nothing to score.
+- R rounds the AUCs it prints after a forward search to three digits.
+  This method does not round. Do not compare 0.856 with 0.8561 and file a
+  bug.
+- The search clamps values at or below zero to 1 before it scores. R's
+  `calculateScore()` shifts the dataset instead. On a dataset with negative
+  values the two AUCs differ. This is R's own behavior, and the port keeps it.
+
+R sources: `.getAUCsGenesList`, `.getWeightedAUCsGenesList` and
+`.convertDiscoveryListToGenes` in `ROC_and_search_functions.R`, and
+`calculateScore.R`. Method reference: Haynes WA, Vallania F, Liu C, et al.
+Empowering multi-cohort gene expression analysis to increase reproducibility.
+*Pacific Symposium on Biocomputing* 2017;22:144-153.
+[doi:10.1142/9789813207813_0015](https://doi.org/10.1142/9789813207813_0015).
+
 ## Generic Pre-Analysis QC Techniques
 
 The techniques below are common data-science practice for cleaning an

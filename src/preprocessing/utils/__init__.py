@@ -5,6 +5,12 @@ Provides validation, normalization, and data quality utilities
 for GEO data preprocessing.
 """
 
+from .log_scale import (
+    LogScaleCheck,
+    LogScaleReport,
+    apply_r_log2,
+    gem_log_check,
+)
 from .normalization import (
     check_log_scale,
     normalize_and_check,
@@ -22,6 +28,11 @@ from .validation import (
 )
 
 __all__ = [
+    # R-parity log-scale check (R getGEOData() / .GEM_log_check)
+    "LogScaleCheck",
+    "LogScaleReport",
+    "apply_r_log2",
+    "gem_log_check",
     # Normalization functions
     "quantile_normalize",
     "check_log_scale",

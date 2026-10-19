@@ -181,7 +181,12 @@ def check_log_scale(
     - Data with negative values is assumed to need offsetting
     - Very large values (mean > 1000) strongly suggest linear scale
 
-    The method matches the R metaIntegrator .GEM_log_check function.
+    This method is inspired by R MetaIntegrator's ``.GEM_log_check``, but
+    it is not an exact port: it adds shortcut rules (for example "mean
+    above 1000 means linear scale") and samples values at random, so two
+    calls can disagree on borderline data. For R parity, use
+    :func:`preprocessing.utils.log_scale.gem_log_check`, which the GEO
+    loaders use since 0.12.0.
     """
     # Convert to numpy if DataFrame
     if isinstance(expr_data, pd.DataFrame):

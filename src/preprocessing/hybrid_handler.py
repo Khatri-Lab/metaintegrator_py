@@ -6,7 +6,8 @@ Processes raw datasets produced by :class:`HybridGeoSource` into
 
 - Phenotype extraction from GEOparse per-sample metadata
 - Gene annotation via :class:`GeneAnnotator` + Ensembl validation
-- Auto log2 detection and transformation
+- Log2 detection and transformation, as R's getGEOData() does it
+  (see ``preprocessing.utils.log_scale``)
 - Standalone GPL fallback when family SOFT annotation yields 0 genes
 
 This handler expects ``RawDataset.raw_data`` to contain:
@@ -44,6 +45,7 @@ except ImportError:
 from .base import DataHandler, ProcessedDataset, RawDataset
 from .gene_annotator import GeneAnnotator
 from .gene_validation import EnsemblGeneValidator
+from .utils.log_scale import apply_r_log2
 
 log = logging.getLogger(__name__)
 
@@ -70,7 +72,8 @@ class HybridMicroarrayHandler(DataHandler):
     2. Build phenotype DataFrame from GEOparse per-sample metadata
     3. Annotate probes → gene symbols via :class:`GeneAnnotator`
     4. Validate symbols against Ensembl reference
-    5. Apply log2 transformation if data is raw intensity
+    5. Apply log2 when R's ``.GEM_log_check`` says the data is not on a
+       log scale, and record the decision in ``metadata['log_scale_check']``
     6. Fall back to standalone GPL download if family SOFT yields 0 genes
 
     """
@@ -136,8 +139,8 @@ class HybridMicroarrayHandler(DataHandler):
             validator=validator,  # R-parity: Ensembl + GenBank filtering
         )
 
-        # 3. Apply log2 if needed
-        expr_df = self._auto_log2(expr_df, dataset_name)
+        # 3. Apply log2 if needed, exactly as R's getGEOData() decides
+        expr_df, log_scale_check = self._auto_log2_with_report(expr_df, dataset_name)
 
         # 4. Create ProcessedDataset
         dataset = ProcessedDataset(
@@ -154,6 +157,9 @@ class HybridMicroarrayHandler(DataHandler):
                 "format": "SeriesMatrix",
                 "handler": self.data_type,
                 "cache_dir": raw_dataset.metadata.get("cache_dir", "~/.geo_cache"),
+                # What the R-parity log-scale check decided and did. See
+                # `preprocessing.utils.log_scale.LogScaleReport`.
+                "log_scale_check": log_scale_check,
             },
         )
 
@@ -235,30 +241,53 @@ class HybridMicroarrayHandler(DataHandler):
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def _auto_log2(expr_df: pd.DataFrame, label: str = "") -> pd.DataFrame:
-        """Auto-detect and apply log2 if data appears to be raw intensity."""
-        finite = expr_df.values[np.isfinite(expr_df.values)]
-        if len(finite) == 0:
-            return expr_df
+    def _auto_log2_with_report(expr_df: pd.DataFrame, label: str = "") -> tuple[pd.DataFrame, dict]:
+        """Log2-transform the matrix when R's rule says it is not log scale.
 
-        med = np.median(finite)
+        Delegates to :func:`preprocessing.utils.log_scale.apply_r_log2`,
+        an exact port of R MetaIntegrator's ``getGEOData()`` check and
+        transform. Before 0.12.0 this used "median above 20", which can
+        disagree with R on borderline datasets.
 
-        if med > 20:
-            log.info(f"    {label}: raw intensity (median={med:.1f}), applying log2")
-            min_val = np.nanmin(expr_df.values)
-            if min_val < 0:
-                expr_df = expr_df - min_val + 1
-            expr_df = expr_df.clip(lower=0).replace(0, np.nan)
-            expr_df = np.log2(expr_df)
-            fp = expr_df.values[np.isfinite(expr_df.values)]
+        Args:
+            expr_df: Expression matrix, probes x samples.
+            label: Dataset name, for the log.
+
+        Returns:
+            ``(matrix, report)``. ``report`` is the JSON-safe
+            :meth:`LogScaleReport.to_metadata` dict.
+        """
+        result, report = apply_r_log2(expr_df)
+        if report.log2_applied:
+            finite = result.values[np.isfinite(result.values)]
             log.info(
-                f"    → log2 range: [{np.min(fp):.2f}, {np.max(fp):.2f}], "
-                f"median={np.median(fp):.2f}"
+                f"    {label}: not on a log scale (R log check, "
+                f"{report.decided_by}, median={report.median_before:.1f}), "
+                f"applying log2 -> median {np.median(finite):.2f}"
             )
         else:
-            log.info(f"    {label}: already log-scale (median={med:.2f})")
+            log.info(f"    {label}: already on a log scale (R log check, " f"{report.decided_by})")
+        if report.zero_values_set_missing:
+            log.warning(
+                f"    {label}: {report.zero_values_set_missing} zero value(s) "
+                "set to missing before log2 (R would give -Inf)"
+            )
+        if report.differs_from_legacy:
+            log.warning(
+                f"    {label}: R's log check and the former median rule disagree "
+                f"(log2 applied: {report.log2_applied})"
+            )
+        return result, report.to_metadata()
 
-        return expr_df
+    @staticmethod
+    def _auto_log2(expr_df: pd.DataFrame, label: str = "") -> pd.DataFrame:
+        """Log2-transform the matrix when R's rule says it is not log scale.
+
+        Kept for callers that only need the matrix. See
+        :meth:`_auto_log2_with_report`.
+        """
+        result, _ = HybridMicroarrayHandler._auto_log2_with_report(expr_df, label)
+        return result
 
     # ------------------------------------------------------------------ #
     #  Standalone GPL fallback                                            #

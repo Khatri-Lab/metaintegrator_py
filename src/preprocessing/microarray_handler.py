@@ -15,6 +15,7 @@ import pandas as pd
 
 from .base import DataHandler, ProcessedDataset, RawDataset
 from .gene_validation import EnsemblGeneValidator
+from .utils.log_scale import apply_r_log2
 
 log = logging.getLogger(__name__)
 
@@ -101,6 +102,18 @@ class MicroarrayHandler(DataHandler):
         # Build expression matrix (may skip some samples)
         expr_df = self._build_expression_matrix(platform_samples, sample_ids)
 
+        # GEOparse SOFT files often hold raw intensities, while R's
+        # getGEOData() log2-transforms data that is not on a log scale.
+        # Decide and transform exactly as R does (see
+        # `preprocessing.utils.log_scale`). Before 0.12.0 this used
+        # "median above 20" and clipped negative values to zero.
+        expr_df, log_scale_report = apply_r_log2(expr_df)
+        if log_scale_report.log2_applied:
+            log.info(
+                f"  Not on a log scale (R log check, {log_scale_report.decided_by}, "
+                f"median={log_scale_report.median_before:.1f}): applied log2."
+            )
+
         # expr_df may have fewer samples than platform_samples if some
         # were skipped above; keep only the samples that succeeded.
         actual_sample_ids = expr_df.columns.tolist()
@@ -148,6 +161,7 @@ class MicroarrayHandler(DataHandler):
                 "n_samples_requested": len(platform_samples),
                 "n_samples_skipped": len(platform_samples) - len(expr_df.columns),
                 "handler": self.data_type,
+                "log_scale_check": log_scale_report.to_metadata(),
             },
         )
 
@@ -385,38 +399,8 @@ class MicroarrayHandler(DataHandler):
         # Convert to float64
         expr_df = expr_df.astype("float64")
 
-        # Auto-detect and apply log2 transformation (R parity): R's
-        # getGEOData() returns Series Matrix data that's typically already
-        # log2-transformed, while GEOparse SOFT format returns raw
-        # intensities for Affymetrix arrays. Heuristic: a median expression
-        # above 20 indicates raw intensity that still needs log2.
-        finite_values = expr_df.values[np.isfinite(expr_df.values)]
-        if len(finite_values) > 0:
-            median_expr = np.median(finite_values)
-            max_expr = np.max(finite_values)
-            if median_expr > 20:
-                log.info(
-                    f"  Expression data appears to be raw intensity "
-                    f"(median={median_expr:.1f}, max={max_expr:.1f}). "
-                    f"Applying log2 transformation for R parity."
-                )
-
-                # Replace non-positive values with NaN before log2
-                # (R handles this similarly with NA)
-                expr_df = expr_df.clip(lower=0)
-                expr_df = expr_df.replace(0, np.nan)
-                expr_df = np.log2(expr_df)
-                finite_post = expr_df.values[np.isfinite(expr_df.values)]
-                log.info(
-                    f"  After log2: range=[{np.min(finite_post):.2f}, "
-                    f"{np.max(finite_post):.2f}], "
-                    f"median={np.median(finite_post):.2f}"
-                )
-            else:
-                log.info(
-                    f"  Expression data appears log-transformed "
-                    f"(median={median_expr:.2f}, max={max_expr:.2f})"
-                )
+        # The log2 step (R getGEOData() parity) runs in `_parse_geoparse`,
+        # so its decision can be recorded in the dataset's metadata.
 
         log.info(
             f"Built expression matrix: {expr_df.shape[0]} features × "

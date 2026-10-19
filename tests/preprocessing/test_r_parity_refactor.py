@@ -258,10 +258,15 @@ class TestHybridMicroarrayHandler:
         assert h.normalize(ds) is ds
 
     def test_auto_log2_skips_log_scale(self):
-        """Data already on a log2-like scale is left unchanged."""
+        """Data already on a log2-like scale is left unchanged.
+
+        Since 0.12.0 the decision is R's QQ-plot check, which needs a
+        realistic number of values, so this uses 500 probes and a seed.
+        """
         from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
-        df = pd.DataFrame(np.random.normal(8.0, 1.5, (5, 3)), columns=["A", "B", "C"])
+        rng = np.random.RandomState(7)
+        df = pd.DataFrame(rng.normal(8.0, 1.5, (500, 3)), columns=["A", "B", "C"])
         result = HybridMicroarrayHandler._auto_log2(df.copy(), "test")
         np.testing.assert_array_almost_equal(result.values, df.values)
 
@@ -269,9 +274,24 @@ class TestHybridMicroarrayHandler:
         """Data on a raw (non-log) scale is log2-transformed."""
         from preprocessing.hybrid_handler import HybridMicroarrayHandler
 
-        df = pd.DataFrame(np.random.uniform(100, 1000, (5, 3)), columns=["A", "B", "C"])
+        rng = np.random.RandomState(7)
+        df = pd.DataFrame(rng.lognormal(7.0, 1.5, (500, 3)), columns=["A", "B", "C"])
         result = HybridMicroarrayHandler._auto_log2(df.copy(), "test")
-        assert np.median(result.values[np.isfinite(result.values)]) < 20
+        np.testing.assert_array_almost_equal(result.values, np.log2(df.values))
+
+    def test_parse_records_the_log_scale_decision(self):
+        """parse() stores R's decision in metadata['log_scale_check']."""
+        from preprocessing.gene_annotator import GeneAnnotator
+        from preprocessing.hybrid_handler import HybridMicroarrayHandler
+
+        h = HybridMicroarrayHandler(annotator=GeneAnnotator(), validator=None)
+        h._validator_loaded = True
+        ds = h.parse(self._make_raw())
+
+        report = ds.metadata["log_scale_check"]
+        assert report["rule"].startswith("R MetaIntegrator getGEOData()")
+        assert isinstance(report["log2_applied"], bool)
+        assert "legacy_median_rule_log2" in report
 
     def test_validator_lazy_loading(self):
         """The Ensembl validator is constructed on first use only, then reused."""
