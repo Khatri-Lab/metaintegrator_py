@@ -260,8 +260,10 @@ class SampleLevelGeneDataProcessor:
             # Ensure we return a Series with proper index
             return pd.Series(values.values, index=expression_cols, dtype=float)
 
-        # Calculate column means for multiple rows
-        return group_data[expression_cols].mean(axis=0)
+        # Calculate column means for multiple rows. R's colMeans() has no
+        # na.rm, so one missing probe value makes the gene missing for that
+        # sample (R parity register, REG-003). skipna=False does the same.
+        return group_data[expression_cols].mean(axis=0, skipna=False)
 
     @staticmethod
     def _replace_values(

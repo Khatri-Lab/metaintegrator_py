@@ -346,6 +346,12 @@ class SampleLevelGeneExtractor:
         # Aggregate data: Group by gene and take mean (summarize split)
         if not filtered_df.empty:
             result_df = filtered_df.groupby("keys").mean()
+            # R averages probes with colMeans() and no na.rm, so one missing
+            # probe value makes the gene missing for that sample. pandas
+            # skips it. Undo that here, so the gene gets R's filler of 1
+            # later on (R parity register, REG-003).
+            has_missing = filtered_df.drop(columns="keys").isna().groupby(filtered_df["keys"]).any()
+            result_df = result_df.mask(has_missing.reindex(result_df.index))
         else:
             result_df = pd.DataFrame(index=pd.Index([], name="keys"))
 
@@ -578,6 +584,16 @@ def gene_level_meta(meta_object: Dict) -> Dict:
 def get_sample_level_gene_data(dataset_object: Dict, gene_names: List[str]) -> pd.DataFrame:
     """
     Extract gene-level data from a dataset object.
+
+    Twin of R ``getSampleLevelGeneData()``: a gene's probes are averaged,
+    then values at or below zero, and missing values, become 1.
+
+    Note:
+        Like R's ``colMeans()``, the probe average does not skip missing
+        values. A gene with probes ``[missing, 8]`` is missing for that
+        sample, and so gets 1, as in R. Before 0.12.0 this library skipped
+        the missing probe. See entry REG-003 in the R parity register
+        (``docs/comparison/r_parity_register.md``).
 
     Args:
         dataset_object: Dataset object with expression data and gene keys
