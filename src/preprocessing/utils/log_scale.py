@@ -419,7 +419,8 @@ def apply_r_log2(expr: pd.DataFrame) -> Tuple[pd.DataFrame, LogScaleReport]:
     2. Take ``log2`` of every value.
 
     Exact zeros become ``NaN`` here, where R would give ``-Inf``. See
-    the module docstring.
+    the module docstring and entry REG-001 in the R parity register
+    (``docs/comparison/r_parity_register.md``).
 
     Args:
         expr: Expression matrix, features x samples. Not modified.

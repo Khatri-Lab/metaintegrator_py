@@ -158,6 +158,8 @@ nav:
   
   - Comparison:
     - R vs Python: comparison/r_vs_python.md
+    - R Parity Register: comparison/r_parity_register.md
+    - Potential Weaknesses in R: comparison/r_potential_weaknesses.md
     - Migration Guide: comparison/migration_guide.md
     - Performance: comparison/performance.md
   

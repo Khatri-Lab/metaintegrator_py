@@ -128,7 +128,16 @@ Python changes never need a new export.
 
 ## Known Gaps
 
-There are no known gaps today.
+No unexplained gaps are known today.
+
+Differences that we know about are listed in the
+[R Parity Register](../comparison/r_parity_register.md).
+Each entry names the test that pins it.
+Some are kept on purpose, and one is waiting for a decision.
+
+Behaviors of R itself that may surprise users are collected, with evidence
+flags, in
+[Potential Weaknesses in R](../comparison/r_potential_weaknesses.md).
 
 When a new difference is found and cannot be fixed right away, mark its test
 with `pytest.mark.xfail(strict=True, reason="...")`.
