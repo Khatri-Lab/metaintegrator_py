@@ -27,6 +27,15 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
 ## [0.12.0] - Unreleased
 
 ### Changed
+- **Gene-level values now match R when a probe value is missing.**
+  `get_sample_level_gene_data()` (both copies: `coconut_integration` and
+  `sample_level_gene_data`) averaged a gene's probes and skipped missing
+  values. R's `colMeans()` does not skip them, so a gene with probes
+  `[missing, 8]` is missing and then set to 1. The library now does the same.
+  An exact zero that the log2 step made missing (R holds `-Inf`) also gives 1
+  now. Expect different values, and possibly scores, in the cells where a gene
+  has two or more probes and one is missing. Simulated data: 0.04% of cells at
+  0.01% zero probe values, 3.2% at 1%. Register entry REG-003.
 - **`SignatureScoringEngine` now scores like R `calculateScore()` by default.**
   The default method is `"geometric_mean_zscore"`. It delegates to
   `ScoreCalculator.calculate_score()`: shift the dataset to positive values,
@@ -76,6 +85,22 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
   `log2`. It shifts them up, as R does.
 
 ### Added
+- **R parity register** (`docs/comparison/r_parity_register.md`): every known
+  difference from R, with what R does, what we do, the measured effect, and the
+  test that pins it. First entries: exact zeros before `log2` (REG-001), R's
+  log-scale rule (REG-002), and the probe average and missing values (REG-003,
+  resolved, see Changed).
+- `tests/parity/test_register_pins.py`, which pins those entries.
+- **Potential Weaknesses in R** (`docs/comparison/r_potential_weaknesses.md`):
+  a separate page with a stricter evidence bar than the register. Each entry
+  has a category, three evidence flags, an opt-in alternative and a pinned R
+  version (MetaIntegrator 2.1.3). First entries: the log-scale rule reads one
+  sample (W-01), and the shift for negative values that `.GEM_log_check()`
+  computes and does not use (W-02, pinned by `TestW02UnusedShift`). Fisher
+  `sum_of_logs` is a placeholder with no claim.
+- `tests/parity/measurements/measure_register_effects.py`, a tool (not a test)
+  that measures the size of REG-002 and of REG-001 and REG-003 on simulated
+  data or on your own raw matrix. The new `unused-shift` command measures W-02.
 - `preprocessing.utils.log_scale`: `gem_log_check()`, `apply_r_log2()`,
   `LogScaleCheck`, `LogScaleReport`, and exact ports of R `ppoints()`,
   `qqnorm()` and `cor(use = "pairwise.complete")`.
