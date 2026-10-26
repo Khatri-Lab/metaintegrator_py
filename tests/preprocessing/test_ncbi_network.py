@@ -164,6 +164,178 @@ class TestListFtpDirectory:
 
 
 # ============================================================================
+# HTTPS listing and list_directory (HTTPS first, FTP fallback)
+# ============================================================================
+
+#: A trimmed copy of a real NCBI matrix folder index page.
+NCBI_INDEX_PAGE = """<html><head><title>Index of /geo/series/GSE11nnn/GSE11909/matrix</title></head>
+<body><h1>Index of /geo/series/GSE11nnn/GSE11909/matrix</h1>
+<pre>Name                                     Last modified      Size
+<a href="?C=N;O=D">Name</a>  <a href="?C=M;O=A">Last modified</a>
+<hr><a href="/geo/series/GSE11nnn/GSE11909/">Parent Directory</a>
+<a href="GSE11909-GPL96_series_matrix.txt.gz">GSE11909-GPL96_series_matrix.txt.gz</a>  12M
+<a href="GSE11909-GPL97_series_matrix.txt.gz">GSE11909-GPL97_series_matrix.txt.gz</a>  12M
+<a href="README%20old.txt">README old.txt</a>  2019-03-25 12:00  1K
+<a href="old/">old/</a>
+<a href="https://www.ncbi.nlm.nih.gov/">NCBI</a>
+</pre></body></html>
+"""
+
+
+def _http_response(body: str) -> MagicMock:
+    """A urlopen() context manager that returns ``body``."""
+    response = MagicMock()
+    response.read.return_value = body.encode("utf-8")
+    response.__enter__ = MagicMock(return_value=response)
+    response.__exit__ = MagicMock(return_value=False)
+    return response
+
+
+def _http_error(code: int):
+    import urllib.error
+
+    return urllib.error.HTTPError("https://example/", code, "error", {}, None)
+
+
+class TestParseIndexPage:
+    """Pure parsing of NCBI's folder index page."""
+
+    def test_keeps_files_and_skips_navigation(self):
+        from preprocessing.ncbi_network import NCBINetwork
+
+        assert NCBINetwork.parse_index_page(NCBI_INDEX_PAGE) == [
+            "GSE11909-GPL96_series_matrix.txt.gz",
+            "GSE11909-GPL97_series_matrix.txt.gz",
+            "README old.txt",
+        ]
+
+    def test_duplicates_are_listed_once(self):
+        from preprocessing.ncbi_network import NCBINetwork
+
+        html = '<a href="a.gz">a</a><a HREF = "a.gz">again</a>'
+        assert NCBINetwork.parse_index_page(html) == ["a.gz"]
+
+    def test_empty_page_gives_empty_list(self):
+        from preprocessing.ncbi_network import NCBINetwork
+
+        assert NCBINetwork.parse_index_page("<html></html>") == []
+
+
+class TestListHttpsDirectory:
+    """HTTPS listing through urlopen, with no live connection."""
+
+    @patch("preprocessing.ncbi_network.urllib.request.urlopen")
+    def test_lists_and_filters_by_suffix(self, mock_urlopen, tmp_path):
+        from preprocessing.ncbi_network import NCBINetwork
+
+        mock_urlopen.return_value = _http_response(NCBI_INDEX_PAGE)
+        net = NCBINetwork(cache_dir=tmp_path)
+
+        files = net.list_https_directory(
+            "geo/series/GSE11nnn/GSE11909/matrix", suffix="_series_matrix.txt.gz"
+        )
+
+        assert files == [
+            "GSE11909-GPL96_series_matrix.txt.gz",
+            "GSE11909-GPL97_series_matrix.txt.gz",
+        ]
+        url = mock_urlopen.call_args[0][0]
+        assert url == "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE11nnn/GSE11909/matrix/"
+
+    @patch("preprocessing.ncbi_network.urllib.request.urlopen")
+    def test_retries_a_transient_failure(self, mock_urlopen, tmp_path):
+        from preprocessing.ncbi_network import NCBINetwork
+
+        mock_urlopen.side_effect = [OSError("reset"), _http_response(NCBI_INDEX_PAGE)]
+        net = NCBINetwork(cache_dir=tmp_path, max_retries=2, retry_backoff=0.01)
+
+        assert len(net.list_https_directory("some/path", suffix=".gz")) == 2
+        assert mock_urlopen.call_count == 2
+
+    @patch("preprocessing.ncbi_network.urllib.request.urlopen")
+    def test_not_found_is_not_retried(self, mock_urlopen, tmp_path):
+        from preprocessing.ncbi_network import DirectoryNotFoundError, NCBINetwork
+
+        mock_urlopen.side_effect = _http_error(404)
+        net = NCBINetwork(cache_dir=tmp_path, max_retries=3, retry_backoff=0.01)
+
+        with pytest.raises(DirectoryNotFoundError):
+            net.list_https_directory("geo/series/GSE0nnn/GSE0/matrix")
+        assert mock_urlopen.call_count == 1
+
+    @patch("preprocessing.ncbi_network.urllib.request.urlopen")
+    def test_raises_connection_error_after_retries(self, mock_urlopen, tmp_path):
+        from preprocessing.ncbi_network import NCBINetwork
+
+        mock_urlopen.side_effect = _http_error(503)
+        net = NCBINetwork(cache_dir=tmp_path, max_retries=2, retry_backoff=0.01)
+
+        with pytest.raises(ConnectionError, match="after 2 attempts"):
+            net.list_https_directory("some/path")
+
+
+class TestListDirectory:
+    """``list_directory`` tries HTTPS first and FTP second."""
+
+    @patch("preprocessing.ncbi_network.ftplib.FTP")
+    @patch("preprocessing.ncbi_network.urllib.request.urlopen")
+    def test_https_success_never_touches_ftp(self, mock_urlopen, MockFTP, tmp_path):
+        """Firewalls often block FTP, so a working HTTPS listing must not need it."""
+        from preprocessing.ncbi_network import NCBINetwork
+
+        mock_urlopen.return_value = _http_response(NCBI_INDEX_PAGE)
+        net = NCBINetwork(cache_dir=tmp_path)
+
+        files = net.list_directory("some/path", suffix="_series_matrix.txt.gz")
+
+        assert len(files) == 2
+        MockFTP.assert_not_called()
+
+    @patch("preprocessing.ncbi_network.ftplib.FTP")
+    @patch("preprocessing.ncbi_network.urllib.request.urlopen")
+    def test_falls_back_to_ftp(self, mock_urlopen, MockFTP, tmp_path):
+        from preprocessing.ncbi_network import NCBINetwork
+
+        mock_urlopen.side_effect = OSError("HTTPS blocked")
+        mock_ftp = MagicMock()
+        MockFTP.return_value.__enter__ = MagicMock(return_value=mock_ftp)
+        MockFTP.return_value.__exit__ = MagicMock(return_value=False)
+        mock_ftp.nlst.return_value = ["GSE1_series_matrix.txt.gz", "x.txt"]
+        net = NCBINetwork(cache_dir=tmp_path, max_retries=1, retry_backoff=0.01)
+
+        files = net.list_directory("some/path", suffix="_series_matrix.txt.gz")
+
+        assert files == ["GSE1_series_matrix.txt.gz"]
+
+    @patch("preprocessing.ncbi_network.ftplib.FTP")
+    @patch("preprocessing.ncbi_network.urllib.request.urlopen")
+    def test_not_found_skips_ftp(self, mock_urlopen, MockFTP, tmp_path):
+        from preprocessing.ncbi_network import DirectoryNotFoundError, NCBINetwork
+
+        mock_urlopen.side_effect = _http_error(404)
+        net = NCBINetwork(cache_dir=tmp_path, max_retries=2, retry_backoff=0.01)
+
+        with pytest.raises(DirectoryNotFoundError):
+            net.list_directory("some/path")
+        MockFTP.assert_not_called()
+
+    @patch("preprocessing.ncbi_network.ftplib.FTP")
+    @patch("preprocessing.ncbi_network.urllib.request.urlopen")
+    def test_both_failing_names_both_errors(self, mock_urlopen, MockFTP, tmp_path):
+        from preprocessing.ncbi_network import NCBINetwork
+
+        mock_urlopen.side_effect = OSError("https down")
+        MockFTP.side_effect = OSError("ftp blocked")
+        net = NCBINetwork(cache_dir=tmp_path, max_retries=1, retry_backoff=0.01)
+
+        with pytest.raises(ConnectionError) as excinfo:
+            net.list_directory("some/path")
+        message = str(excinfo.value)
+        assert "https down" in message
+        assert "ftp blocked" in message
+
+
+# ============================================================================
 # download_file (HTTPS with disk caching)
 # ============================================================================
 
@@ -375,13 +547,13 @@ class TestSourceNetworkInjection:
 
     @patch("preprocessing.hybrid_source.GEOparse")
     def test_source_uses_injected_network(self, mock_geoparse, tmp_path):
-        """Source delegates FTP listing and download to the network layer."""
+        """Source delegates the folder listing and download to the network layer."""
         from preprocessing.hybrid_source import HybridGeoSource
         from preprocessing.ncbi_network import NCBINetwork
 
         # Create mock network
         mock_net = MagicMock(spec=NCBINetwork)
-        mock_net.list_ftp_directory.return_value = [
+        mock_net.list_directory.return_value = [
             "GSE99999_series_matrix.txt.gz",
         ]
 
@@ -436,7 +608,8 @@ class TestSourceNetworkInjection:
         raw_datasets = source.fetch("GSE99999")
 
         # Verify network was used
-        mock_net.list_ftp_directory.assert_called_once()
+        mock_net.list_directory.assert_called_once()
+        mock_net.list_ftp_directory.assert_not_called()
         mock_net.download_file.assert_called_once()
         assert len(raw_datasets) == 1
 

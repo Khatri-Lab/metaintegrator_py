@@ -27,6 +27,16 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
 ## [0.12.0] - Unreleased
 
 ### Changed
+- **GEO folder listing now uses HTTPS first, with FTP as a fallback.**
+  `HybridGeoSource` listed each series' `matrix/` folder over plain FTP
+  (port 21). Many networks block FTP. Then every series waited about 90
+  seconds and guessed the single-platform file name, which is wrong for
+  series with more than one platform (`GSExxx-GPLyyy_series_matrix.txt.gz`),
+  so those series failed. The new `NCBINetwork.list_directory()` reads
+  NCBI's HTTPS index page and tries FTP only if HTTPS fails. A missing folder
+  (HTTP 404) raises `DirectoryNotFoundError` at once, without retries or FTP.
+  `list_ftp_directory()` is unchanged. New public helpers:
+  `list_https_directory()` and `parse_index_page()`.
 - **Gene-level values now match R when a probe value is missing.**
   `get_sample_level_gene_data()` (both copies: `coconut_integration` and
   `sample_level_gene_data`) averaged a gene's probes and skipped missing

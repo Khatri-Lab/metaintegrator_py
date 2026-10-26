@@ -1,8 +1,11 @@
 """
 Low-level NCBI network operations with retry, timeout, and disk caching.
 
-Encapsulates FTP directory listing, HTTPS file download (with FTP
-fallback), and GEO-specific path construction.  Designed for
+Encapsulates directory listing (HTTPS first, FTP fallback), HTTPS file
+download (with FTP fallback), and GEO-specific path construction.
+
+HTTPS comes first because many networks block plain FTP (port 21). NCBI
+serves the same tree over HTTPS, with an HTML index page per folder.  Designed for
 dependency injection so that callers (e.g. :class:`RParityGeoSource`)
 can be unit-tested with a mock network layer: no live connections
 required.
@@ -13,9 +16,9 @@ Usage
 
     net = NCBINetwork(cache_dir='~/.geo_cache')
 
-    # List Series Matrix files for a GSE
+    # List Series Matrix files for a GSE (HTTPS first, FTP fallback)
     ftp_path = NCBINetwork.geo_series_ftp_path('GSE11909', 'matrix')
-    files = net.list_ftp_directory(ftp_path, suffix='_series_matrix.txt.gz')
+    files = net.list_directory(ftp_path, suffix='_series_matrix.txt.gz')
 
     # Download with disk caching
     local_path = net.download_file(ftp_path, files[0])
@@ -30,13 +33,28 @@ import ftplib
 import gzip
 import io
 import logging
+import re
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import List, Optional
 
 log = logging.getLogger(__name__)
+
+#: ``href`` values in an NCBI (Apache-style) folder index page.
+_HREF_PATTERN = re.compile(r'href\s*=\s*"([^"]+)"', re.IGNORECASE)
+
+
+class DirectoryNotFoundError(ConnectionError):
+    """The folder does not exist on the server (HTTP 404).
+
+    A subclass of :class:`ConnectionError`, so callers that already catch
+    listing failures keep working. :meth:`NCBINetwork.list_directory` does
+    not retry or fall back to FTP for it, because FTP would not find the
+    folder either.
+    """
 
 
 class NCBINetwork:
@@ -49,7 +67,7 @@ class NCBINetwork:
     Examples:
         >>> net = NCBINetwork(cache_dir='~/.geo_cache')
         >>> ftp_path = NCBINetwork.geo_series_ftp_path('GSE11909', 'matrix')
-        >>> files = net.list_ftp_directory(ftp_path, suffix='_series_matrix.txt.gz')
+        >>> files = net.list_directory(ftp_path, suffix='_series_matrix.txt.gz')
         >>> local = net.download_file(ftp_path, files[0])
     """
 
@@ -84,6 +102,133 @@ class NCBINetwork:
         self.retry_backoff = retry_backoff
 
     # ------------------------------------------------------------------ #
+    #  Directory listing: HTTPS first, FTP fallback                       #
+    # ------------------------------------------------------------------ #
+
+    def list_directory(
+        self,
+        ftp_path: str,
+        suffix: Optional[str] = None,
+    ) -> List[str]:
+        """List files in an NCBI folder, over HTTPS first and FTP second.
+
+        Use this instead of :meth:`list_ftp_directory`. Plain FTP is often
+        blocked by firewalls, while HTTPS to NCBI usually works.
+
+        Args:
+            ftp_path: Path relative to the server root, e.g.
+                ``'geo/series/GSE11nnn/GSE11909/matrix'``.
+            suffix: If given, only return filenames ending with this
+                suffix, e.g. ``'_series_matrix.txt.gz'``.
+
+        Returns:
+            Filenames (not full paths) in the folder.
+
+        Raises:
+            DirectoryNotFoundError: If HTTPS reports that the folder does
+                not exist. FTP is not tried in that case.
+            ConnectionError: If both HTTPS and FTP fail. The message
+                names both errors.
+        """
+        try:
+            return self.list_https_directory(ftp_path, suffix=suffix)
+        except DirectoryNotFoundError:
+            raise
+        except ConnectionError as https_error:
+            log.warning(f"HTTPS listing failed for {ftp_path}, trying FTP: {https_error}")
+            try:
+                return self.list_ftp_directory(ftp_path, suffix=suffix)
+            except ConnectionError as ftp_error:
+                raise ConnectionError(
+                    f"Listing failed for {ftp_path}. " f"HTTPS: {https_error}. FTP: {ftp_error}"
+                ) from ftp_error
+
+    def list_https_directory(
+        self,
+        ftp_path: str,
+        suffix: Optional[str] = None,
+    ) -> List[str]:
+        """List files in an NCBI folder by reading its HTTPS index page.
+
+        Args:
+            ftp_path: Path relative to the server root, e.g.
+                ``'geo/series/GSE11nnn/GSE11909/matrix'``.
+            suffix: If given, only return filenames ending with this
+                suffix.
+
+        Returns:
+            Filenames (not full paths) in the folder, in page order.
+            Subfolders and navigation links are left out.
+
+        Raises:
+            DirectoryNotFoundError: On HTTP 404. Not retried.
+            ConnectionError: If every attempt fails for another reason.
+        """
+        url = f"https://{self.ftp_host}/{ftp_path.strip('/')}/"
+        last_error: Optional[Exception] = None
+
+        for attempt in range(self.max_retries):
+            try:
+                with urllib.request.urlopen(url, timeout=self.http_timeout) as resp:
+                    html = resp.read().decode("utf-8", errors="replace")
+                files = self.parse_index_page(html)
+                if suffix:
+                    files = [f for f in files if f.endswith(suffix)]
+                log.info(
+                    f"HTTPS listing {ftp_path}: {len(files)} file(s)"
+                    + (f" matching '*{suffix}'" if suffix else "")
+                )
+                return files
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    raise DirectoryNotFoundError(f"Folder not found: {url}") from e
+                last_error = e
+            except Exception as e:  # network errors, timeouts, bad pages
+                last_error = e
+            log.warning(
+                f"HTTPS listing attempt {attempt + 1}/{self.max_retries} "
+                f"failed for {ftp_path}: {last_error}"
+            )
+            if attempt < self.max_retries - 1:
+                time.sleep(self.retry_backoff**attempt)
+
+        raise ConnectionError(
+            f"HTTPS listing failed for {ftp_path} after "
+            f"{self.max_retries} attempts: {last_error}"
+        )
+
+    @staticmethod
+    def parse_index_page(html: str) -> List[str]:
+        """Extract filenames from an Apache-style folder index page.
+
+        Keeps plain relative links only. Leaves out subfolders (ending in
+        ``/``), the parent link, absolute paths, full URLs, sort links
+        (``?C=N;O=D``) and anchors.
+
+        Args:
+            html: The page's HTML text.
+
+        Returns:
+            Unique filenames, in page order, with URL escapes decoded.
+
+        Examples:
+            >>> NCBINetwork.parse_index_page(
+            ...     '<a href="../">Parent</a> <a href="?C=M;O=A">Sort</a>'
+            ...     '<a href="GSE1-GPL96_series_matrix.txt.gz">x</a>'
+            ...     '<a href="sub/">sub</a>'
+            ... )
+            ['GSE1-GPL96_series_matrix.txt.gz']
+        """
+        names: List[str] = []
+        for href in _HREF_PATTERN.findall(html):
+            if href.startswith(("?", "#", "/")) or "://" in href or "/" in href:
+                continue
+            name = urllib.parse.unquote(href)
+            if name and name not in names:
+                names.append(name)
+        return names
+
+    # ------------------------------------------------------------------ #
     #  FTP directory listing                                              #
     # ------------------------------------------------------------------ #
 
@@ -92,7 +237,10 @@ class NCBINetwork:
         ftp_path: str,
         suffix: Optional[str] = None,
     ) -> List[str]:
-        """List files in an NCBI FTP directory.
+        """List files in an NCBI FTP directory over plain FTP (port 21).
+
+        Prefer :meth:`list_directory`, which tries HTTPS first. This method
+        stays as the fallback and for callers that need FTP explicitly.
 
         Args:
             ftp_path: Path relative to the FTP root, e.g.

@@ -223,18 +223,21 @@ class HybridGeoSource(DataSource):
         """
         Download and parse Series Matrix files for a GSE.
 
-        Uses :class:`NCBINetwork` for FTP listing and HTTPS download.
+        Uses :class:`NCBINetwork` for the folder listing (HTTPS first, FTP
+        fallback) and the HTTPS download.
         """
         ftp_path = NCBINetwork.geo_series_ftp_path(gse_id, "matrix")
 
-        # List matrix files via FTP (with fallback to default filename)
+        # List matrix files. If listing fails, guess the single-platform name.
+        # The guess is wrong for series with more than one platform
+        # (GSExxx-GPLyyy_series_matrix.txt.gz), so listing must work for those.
         try:
-            matrix_files = self._network.list_ftp_directory(
+            matrix_files = self._network.list_directory(
                 ftp_path,
                 suffix=self.SERIES_MATRIX_SUFFIX,
             )
         except ConnectionError:
-            log.warning("FTP listing failed, trying default filename")
+            log.warning("Folder listing failed, trying default filename")
             matrix_files = [f"{gse_id}{self.SERIES_MATRIX_SUFFIX}"]
 
         if not matrix_files:
