@@ -406,6 +406,11 @@ class SampleLevelGeneExtractor:
 
         # Create a copy to avoid modifying original and add keys
         expanded_df = df.copy()
+        # Drop the index name. A gene-level matrix made by this library
+        # (for example COCONUT's corrected genes) has its index named
+        # "keys". With a "keys" column added too, pandas refuses
+        # groupby("keys") as ambiguous, and no value can be extracted.
+        expanded_df.index.names = [None] * expanded_df.index.nlevels
         expanded_df["keys"] = [str(k) if k is not None else "" for k in keys]
 
         # Filter out invalid keys

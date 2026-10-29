@@ -172,6 +172,12 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
   pooled effect into NaN (R drops them first).
 - When a platform table has no gene-symbol column, probe IDs used as keys
   now go through the Ensembl check, as in R.
+- **`get_sample_level_gene_data()` reads COCONUT's corrected genes.**
+  The corrected gene matrix comes back with its index named `keys`. The
+  extractor adds a `keys` column, so pandas refused the next
+  `groupby("keys")` as ambiguous, and no value could be extracted.
+  The extractor now drops the index name on its own copy. The caller's
+  matrix is unchanged.
 
 ### Planned
 - Interactive web dashboard for meta-analysis results

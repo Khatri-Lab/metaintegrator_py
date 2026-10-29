@@ -332,6 +332,28 @@ class TestSampleLevelGeneExtractor:
         assert "keys" in result.columns
         assert len(result) > len(sample_expression_data)  # Should expand due to multi-gene keys
 
+    def test_index_named_keys_does_not_break_extraction(self):
+        """A gene-level matrix whose index is named "keys" still works.
+
+        COCONUT's corrected genes come back from ``groupby("keys")`` with
+        that index name. Adding a "keys" column made the next
+        ``groupby("keys")`` ambiguous, and pandas raised ``ValueError``.
+        """
+        expr = pd.DataFrame(
+            [[1.0, 2.0], [3.0, 4.0]],
+            index=pd.Index(["GENE1", "GENE2"], name="keys"),
+            columns=["s1", "s2"],
+        )
+        dataset = {"expr": expr, "keys": ["GENE1", "GENE2"]}
+
+        result = SampleLevelGeneExtractor().get_sample_level_gene_data(dataset, ["GENE2", "GENE1"])
+
+        assert list(result.index) == ["GENE2", "GENE1"]
+        assert result.loc["GENE2"].tolist() == [3.0, 4.0]
+        assert result.loc["GENE1"].tolist() == [1.0, 2.0]
+        # The caller's matrix keeps its index name.
+        assert expr.index.name == "keys"
+
     def test_expand_df_sample_level_mismatched_length(self, sample_expression_data):
         """Test _expand_df_sample_level with mismatched key length."""
         extractor = SampleLevelGeneExtractor()
