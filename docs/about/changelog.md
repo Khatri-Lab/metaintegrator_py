@@ -172,6 +172,14 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
   pooled effect into NaN (R drops them first).
 - When a platform table has no gene-symbol column, probe IDs used as keys
   now go through the Ensembl check, as in R.
+- **GEO series and platform files are downloaded over HTTPS first.**
+  `GEOparse.get_GEO()` downloads a series' family SOFT file over FTP. Where
+  FTP is blocked, every load waited for its timeouts and failed. New
+  `preprocessing/geo_https.py` puts the file where GEOparse looks for it,
+  over HTTPS, before each `get_GEO()` call by accession: in
+  `HybridGeoSource`, `GEOparseSource` and the standalone GPL fallback.
+  Downloads go to a temporary name, a `.gz` file is read through once, and
+  only then is it renamed. If HTTPS fails, GEOparse tries FTP, as before.
 - **`get_sample_level_gene_data()` reads COCONUT's corrected genes.**
   The corrected gene matrix comes back with its index named `keys`. The
   extractor adds a `keys` column, so pandas refused the next

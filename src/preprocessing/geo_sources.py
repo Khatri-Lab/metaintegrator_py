@@ -26,6 +26,7 @@ except ImportError:
     GEOparse = None
 
 from .base import DataSource, RawDataset
+from .geo_https import prefetch_geo_file_or_warn
 from .ncbi_network import NCBINetwork
 
 log = logging.getLogger(__name__)
@@ -234,7 +235,12 @@ class GEOparseSource(DataSource):
         return self._process_gse(gse, validated_id, use_soft)
 
     def _fetch_with_geoparse(self, gse_id: str, use_soft: bool, **kwargs):
-        """Fetch using standard GEOparse."""
+        """Fetch using standard GEOparse, with the file downloaded over HTTPS.
+
+        GEOparse reads a series from its family SOFT file whatever ``how``
+        is, and would download it over FTP (see ``geo_https.py``).
+        """
+        prefetch_geo_file_or_warn(gse_id, str(self.cache_dir))
         gse = GEOparse.get_GEO(
             geo=gse_id,
             destdir=str(self.cache_dir),

@@ -32,6 +32,7 @@ Usage
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
@@ -45,6 +46,7 @@ except ImportError:
 from .base import DataHandler, ProcessedDataset, RawDataset
 from .gene_annotator import GeneAnnotator
 from .gene_validation import EnsemblGeneValidator
+from .geo_https import prefetch_geo_file_or_warn
 from .utils.log_scale import apply_r_log2
 
 log = logging.getLogger(__name__)
@@ -308,9 +310,13 @@ class HybridMicroarrayHandler(DataHandler):
         )
 
         try:
+            # Expand "~" here, so the HTTPS download and GEOparse use the
+            # same folder. GEOparse would fetch the table over plain HTTP.
+            destdir = str(Path(dataset.metadata.get("cache_dir", "~/.geo_cache")).expanduser())
+            prefetch_geo_file_or_warn(platform_id, destdir)
             standalone_gpl = GEOparse.get_GEO(
                 geo=platform_id,
-                destdir=str(dataset.metadata.get("cache_dir", "~/.geo_cache")),
+                destdir=destdir,
                 silent=True,
             )
             keys = self._annotator.annotate(

@@ -41,6 +41,7 @@ except ImportError:
     GEOparse = None
 
 from .base import DataSource, RawDataset
+from .geo_https import prefetch_geo_file_or_warn
 from .ncbi_network import NCBINetwork
 
 log = logging.getLogger(__name__)
@@ -314,7 +315,11 @@ class HybridGeoSource(DataSource):
 
         Must use ``how='full'`` and ``include_data=True`` to ensure
         GEOparse fully parses the GPL annotation tables.
+
+        The SOFT file is downloaded over HTTPS first. GEOparse itself would
+        use FTP, which many networks block (see ``geo_https.py``).
         """
+        prefetch_geo_file_or_warn(gse_id, str(self.cache_dir))
         gse = GEOparse.get_GEO(
             geo=gse_id,
             destdir=str(self.cache_dir),
