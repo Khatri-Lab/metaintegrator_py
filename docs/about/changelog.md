@@ -9,7 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## Version numbering
 
 Every release before the first on-prem deployment of the MetaIntegrator web
-app is numbered 0.x.x. The on-prem deployment will be **1.0.0**.
+app is numbered 0.x.x. The on-prem deployment is **1.0.0**, released on
+2026-11-04.
 
 On 2026-10-08 the two earlier releases were renumbered to fit this plan:
 
@@ -20,11 +21,23 @@ On 2026-10-08 the two earlier releases were renumbered to fit this plan:
 
 Nothing about those releases changed except the number.
 The installed package metadata said 0.1.0 the whole time, so `pip` sees
-0.12.0 as an upgrade from any earlier install.
+1.0.0 as an upgrade from any earlier install.
+
+This 1.0.0 is a new release. It is not the release of 2026-04-22
+that was once called 1.0.0 (now 0.10.0).
+
+The changes listed under 1.0.0 were developed under the working number
+0.12.0. No release was ever published as 0.12.0. Test builds of the web app
+installed it with that number, so runs made with them record
+`library_version` 0.12.0. Code comments that say "since 0.12.0" or
+"before 0.12.0" mean this release.
 
 ---
 
-## [0.12.0] - Unreleased
+## [1.0.0] - 2026-11-04
+
+First on-prem deployment, with the MetaIntegrator web app 1.0.0.
+Developed as 0.12.0 (see "Version numbering" above).
 
 ### Changed
 - **GEO folder listing now uses HTTPS first, with FTP as a fallback.**
@@ -56,7 +69,7 @@ The installed package metadata said 0.1.0 the whole time, so `pip` sees
   R. On `tinyMetaObject` the per-dataset AUCs are 0.856, 0.867 and 0.955,
   the same as R's own unit tests. Expect different AUCs from earlier runs.
 - `calculate_signature_scores()` follows the same new default.
-- Package version is now 0.12.0. Before, the package metadata still said
+- Package version is now 1.0.0. Before, the package metadata still said
   0.1.0 while this changelog listed 1.0.0 and 1.1.0. See
   "Version numbering" above. `CITATION.cff` now follows the package version,
   and a test (`tests/test_version_consistency.py`) keeps them in sync.
@@ -304,7 +317,7 @@ MetaIntegrator-py v0.10.0 (formerly v1.0.0) represents a complete Python port of
 
 | Version | Date | Key Features                        |
 |---------|------|-------------------------------------|
-| 0.12.0 | Unreleased | R-parity signature scoring, R-parity LOO filter |
+| 1.0.0 | 2026-11-04 | On-prem release: R-parity signature scoring, R-parity LOO filter, GEO over HTTPS |
 | 0.11.0 | 2026-06-10 | R end-to-end parity (formerly 1.1.0) |
 | 0.10.0 | 2026-04-22 | Internal feature completion testing (formerly 1.0.0) |
 | 0.9.0 | 2026-03-15 | Initial gap analysis testing        |

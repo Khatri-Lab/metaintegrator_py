@@ -5,8 +5,9 @@ The version appears in four places: ``pyproject.toml``, the package's
 (0.1.0 in the package, 1.1.0 in the changelog, 1.0.0 in the citation).
 This test stops that from happening again.
 
-Versioning plan: every release before the first on-prem deployment is
-0.x.x. The on-prem deployment is 1.0.0.
+Versioning plan: every release before the first on-prem deployment was
+0.x.x. The on-prem deployment, on 2026-11-04, is 1.0.0. Later releases
+follow Semantic Versioning from there.
 """
 
 from __future__ import annotations
@@ -49,10 +50,33 @@ def test_changelog_has_an_entry_for_this_version() -> None:
     assert re.search(rf"^## \[{version}\]", _read("docs/about/changelog.md"), re.MULTILINE)
 
 
-def test_pre_deployment_versions_stay_below_one() -> None:
-    """Releases before the on-prem deployment are 0.x.x.
+def test_citation_date_matches_changelog_date() -> None:
+    """``date-released`` is the date in this version's changelog heading."""
+    version = re.escape(_pyproject_version())
+    heading = re.search(
+        rf"^## \[{version}\] - (\d{{4}}-\d{{2}}-\d{{2}})\s*$",
+        _read("docs/about/changelog.md"),
+        re.MULTILINE,
+    )
+    assert heading, "the changelog heading for this version has no release date"
+    released = re.search(
+        r"^date-released:\s*\"?([\d-]+)\"?\s*$", _read("CITATION.cff"), re.MULTILINE
+    )
+    assert released, "CITATION.cff has no date-released line"
+    assert released.group(1) == heading.group(1)
 
-    Change this test on purpose when cutting the 1.0.0 on-prem release.
+
+def test_major_version_is_one_from_the_on_prem_release() -> None:
+    """The on-prem release made the major version 1.
+
+    Releases before it were 0.x.x. Major version 1 is now the expected one.
+    A move to 2.0.0 means a breaking change. Change this test on purpose
+    when that happens.
     """
     major = int(_pyproject_version().split(".")[0])
-    assert major == 0
+    assert major == 1
+
+
+def test_version_has_three_numeric_parts() -> None:
+    """``MAJOR.MINOR.PATCH``, as in the changelog headings and the tags."""
+    assert re.fullmatch(r"\d+\.\d+\.\d+", _pyproject_version())

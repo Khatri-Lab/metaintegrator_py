@@ -11,7 +11,7 @@ If you use MetaIntegrator-py in your research, please cite both the software and
 > **MetaIntegrator-py: A Python implementation for meta-analysis of gene expression data**  
 > Khatri Lab, Stanford University (2026)  
 > https://github.com/Khatri-Lab/metaintegrator_py  
-> Version 0.12.0
+> Version 1.0.0
 
 ### BibTeX
 
@@ -21,9 +21,9 @@ If you use MetaIntegrator-py in your research, please cite both the software and
   author = {{Khatri Lab}},
   year = {2026},
   url = {https://github.com/Khatri-Lab/metaintegrator_py},
-  version = {0.12.0},
+  version = {1.0.0},
   institution = {Stanford University},
-  note = {Python package version 0.12.0}
+  note = {Python package version 1.0.0}
 }
 ```
 
@@ -36,7 +36,7 @@ AU  - Khatri Lab
 PY  - 2026
 UR  - https://github.com/Khatri-Lab/metaintegrator_py
 PB  - Stanford University
-ET  - 0.12.0
+ET  - 1.0.0
 ER  -
 ```
 
@@ -93,7 +93,7 @@ If you use the gene signature scoring functionality:
 
 ### Methods Section
 
-> "Meta-analysis was performed using MetaIntegrator-py v0.12.0 (Khatri Lab, Stanford University, 2026) which implements the methodology described by Haynes et al. (2017). Random-effects models were used to pool effect sizes across studies, and leave-one-out analysis assessed result robustness."
+> "Meta-analysis was performed using MetaIntegrator-py v1.0.0 (Khatri Lab, Stanford University, 2026) which implements the methodology described by Haynes et al. (2017). Random-effects models were used to pool effect sizes across studies, and leave-one-out analysis assessed result robustness."
 
 ### Results Section
 
@@ -101,7 +101,7 @@ If you use the gene signature scoring functionality:
 
 ### Software Availability Statement
 
-> "All analyses were conducted using MetaIntegrator-py v0.12.0, available at https://github.com/Khatri-Lab/metaintegrator_py under Apache 2.0 license. Code to reproduce our analysis is available at [your repository]."
+> "All analyses were conducted using MetaIntegrator-py v1.0.0, available at https://github.com/Khatri-Lab/metaintegrator_py under Apache 2.0 license. Code to reproduce our analysis is available at [your repository]."
 
 ---
 
@@ -134,7 +134,7 @@ A Zenodo DOI will be assigned to each major release for permanent archival and c
 
 ### APA Style (7th Edition)
 
-> Khatri Lab. (2026). *MetaIntegrator-py: A Python implementation for meta-analysis of gene expression data* (Version 0.12.0) [Computer software]. Stanford University. https://github.com/Khatri-Lab/metaintegrator_py
+> Khatri Lab. (2026). *MetaIntegrator-py: A Python implementation for meta-analysis of gene expression data* (Version 1.0.0) [Computer software]. Stanford University. https://github.com/Khatri-Lab/metaintegrator_py
 
 ### Chicago Style
 
@@ -163,8 +163,8 @@ cff-version: 1.2.0
 message: "If you use this software, please cite both the software and the methodology paper."
 type: software
 title: "MetaIntegrator-py"
-version: 0.12.0
-date-released: 2026-10-08
+version: 1.0.0
+date-released: 2026-11-04
 url: "https://github.com/Khatri-Lab/metaintegrator_py"
 repository-code: "https://github.com/Khatri-Lab/metaintegrator_py"
 license: Apache-2.0

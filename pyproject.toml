@@ -4,7 +4,7 @@
 
 [project]
 name = "metaintegrator_py"
-version = "0.12.0"
+version = "1.0.0"
 description = "Python implementation of MetaIntegrator for multi-cohort meta-analysis of gene expression data"
 readme = "README.md"
 license = {text = "Apache-2.0"}
