@@ -1326,7 +1326,7 @@ class TestScoreSignature:
 
 
 # ----------------------------------------------------------------------
-# Per-dataset AUCs of a search result (R1-12)
+# Per-dataset AUCs of a search result
 # ----------------------------------------------------------------------
 # These tests build real probe-level data and run the real conversion,
 # so they cover the whole path from ``meta_object`` to a per-dataset AUC.
