@@ -167,6 +167,7 @@ nav:
     - Development: contributing/development.md
     - Guidelines: contributing/guidelines.md
     - R Parity Testing: contributing/parity_testing.md
+    - Continuous Integration: contributing/continuous_integration.md
   
   - About:
     - Overview: about/index.md

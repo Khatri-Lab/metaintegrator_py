@@ -1,0 +1,53 @@
+# Continuous integration: formatting checks and the fast test selection.
+#
+# The job is called "test" on purpose. If the repository ever gets branch
+# protection, select the check by that name.
+#
+# Tool versions for black and isort are pinned in requirements-dev.txt, so
+# a new release cannot turn a green run red. Bump the pins on purpose, in
+# a pull request of their own.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer pull request push replaces the older run. A run on main is never
+# cancelled.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -e .
+
+      - name: Format and import order
+        run: |
+          black --check src tests
+          isort --check src tests
+
+      - name: Tests
+        run: pytest -m "not slow" -o addopts="-ra --strict-markers --durations=15"

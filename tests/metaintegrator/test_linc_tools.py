@@ -650,22 +650,34 @@ class TestLincsAnalyzer:
         # Should not contain the dropped column
         assert "DROPME_PERT" not in result["hit_expression"].columns
 
+    @patch.object(LincsDataManager, "get_data")
     @patch("metaintegrator.linc_tools.np.corrcoef")
     @patch.object(LincsAnalyzer, "_get_dataset_data")
-    def test_lincs_bait_corr_success(self, mock_get_dataset, mock_corrcoef, sample_lincs_data):
-        """Test successful lincs_bait_corr."""
+    def test_lincs_bait_corr_success(
+        self, mock_get_dataset, mock_corrcoef, mock_get_data, sample_lincs_data, sample_tri_ann
+    ):
+        """Test successful lincs_bait_corr.
+
+        For the default "CP" dataset the method also reads the "tri_ann"
+        annotations from the data manager. Without a patch, that read
+        downloads the LINCS archive from the network, which made this test
+        take about 50 seconds and fail when the service was down.
+        """
         mock_get_dataset.return_value = sample_lincs_data
+        mock_get_data.return_value = sample_tri_ann
         # Mock correlation matrix
         mock_corrcoef.return_value = np.array([[1.0, 0.5, 0.3], [0.5, 1.0, 0.7], [0.3, 0.7, 1.0]])
 
         analyzer = LincsAnalyzer()
         result = analyzer.lincs_bait_corr(baits=["PERT1"])
 
+        mock_get_data.assert_called_once_with("tri_ann")
         assert isinstance(result, dict)
         assert "all_hits" in result
         assert "heatmap_df" in result
         assert isinstance(result["all_hits"], pd.DataFrame)
         assert "mean_cor" in result["all_hits"].columns
+        assert "HighestPhase" in result["hits_clin"].columns
 
     @patch.object(LincsAnalyzer, "_get_dataset_data")
     def test_lincs_bait_corr_dataset_error(self, mock_get_dataset):
