@@ -1,0 +1,12 @@
+# Keep the GitHub Actions used by the workflows up to date.
+#
+# Only Actions are tracked. Python packages are not: the tool versions in
+# requirements-dev.txt are pinned on purpose and bumped by hand.
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3

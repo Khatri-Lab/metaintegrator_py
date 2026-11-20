@@ -34,6 +34,20 @@ installed it with that number, so runs made with them record
 
 ---
 
+## [Unreleased]
+
+### Changed
+- **The documentation workflow no longer fails after every push.** It tried to
+  deploy to GitHub Pages on each change to `docs/` and failed where Pages is
+  not available, which sent a failure email each time. The workflow is now
+  called "Documentation". It builds the site with `mkdocs build --strict` on
+  pushes to `main` and on pull requests, so a broken link is caught before a
+  merge. It deploys only when the repository variable `DEPLOY_DOCS` is `true`
+  and the run is on `main`. A new test, `tests/test_workflows.py`, keeps the
+  workflow files within a few safety rules.
+
+---
+
 ## [1.0.0] - 2026-11-04
 
 First on-prem deployment, with the MetaIntegrator web app 1.0.0.

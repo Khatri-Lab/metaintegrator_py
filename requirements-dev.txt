@@ -4,9 +4,13 @@
 
 # --- Code quality ---
 flake8>=7.0.0
-black>=26.0.0
 mypy>=0.991
-isort>=9.0.0
+# black and isort are pinned exactly. The CI job runs `black --check` and
+# `isort --check`, and a new release can change what they accept. Bump both
+# on purpose, in a pull request of their own, together with the reformatting
+# (`black src tests && isort src tests`).
+black==26.10.1
+isort==9.0.2
 
 # --- Testing ---
 pytest>=6.0.0
