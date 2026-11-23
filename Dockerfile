@@ -4,8 +4,7 @@
 # deployed as a service, it's mounted read-write into a container so its
 # source can be exercised (pytest, test_runner_all.py, notebooks, parity
 # comparisons against the web app) without installing anything on the
-# host. See metaintegrator-web/docs/docker_mac_host_dev_setup.md for how
-# this is wired up via docker-compose.metaintegrator-py.yml.
+# host.
 
 FROM python:3.11-slim
 

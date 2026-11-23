@@ -103,14 +103,3 @@ here is marked `integration`.
   itself.
 - Large-dataset tests are marked `slow`; memory tests need `psutil`
   (already in `requirements-dev.txt`); coverage needs `pytest-cov` (same).
-
-## Running in Docker
-
-If you're using the metaintegrator_py dev container set up in
-`metaintegrator-web/docs/docker_mac_host_dev_setup.md`, these tests run the
-same way inside it:
-
-```bash
-make mipy-shell   # from the metaintegrator-web repo root
-pytest tests/coconut/ -v
-```

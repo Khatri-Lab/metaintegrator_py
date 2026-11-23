@@ -16,9 +16,7 @@ The per-suite (per-folder) breakdown shown in the dashboard is derived
 from that single JUnit XML report's ``file``/``classname`` attributes,
 exactly as before.
 
-Notable design points (mirrors the sibling ``metaintegrator-web`` project's
-``infra/scripts/run_tests_dashboard.py`` in spirit and look, though the two
-scripts are intentionally independent -- neither imports the other):
+Notable design points:
 
 - **Exit code correctness.** The exit code is always exactly pytest's own
   return code, dashboard or not, so it's safe to use as a CI gate.
