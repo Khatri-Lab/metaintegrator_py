@@ -7,6 +7,7 @@ and LincsVisualizer classes, as well as utility functions.
 
 import sys
 from unittest.mock import Mock, mock_open, patch
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -128,7 +129,9 @@ class TestLincsDataManager:
         manager = LincsDataManager()
         assert manager._data_cache == {}
         assert manager._data_loaded is False
-        assert "stanford.edu" in manager.data_url
+        host = urlparse(manager.data_url).hostname
+        assert host is not None
+        assert host.endswith(".stanford.edu")
 
     @patch("metaintegrator.linc_tools.shutil")
     @patch("metaintegrator.linc_tools.requests.get")
